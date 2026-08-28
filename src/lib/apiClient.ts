@@ -17,6 +17,17 @@ interface RequestOptions {
   auth?: boolean
 }
 
+interface ApiErrorBody {
+  code?: string
+  message?: string
+  errors?: Record<string, string[]>
+}
+
+function extractErrorMessage(body: ApiErrorBody | null, fallback: string): string {
+  const messages = body?.errors ? Object.values(body.errors).flat() : []
+  return messages.length > 0 ? messages.join(' ') : (body?.message ?? fallback)
+}
+
 interface RefreshTokenResponse {
   accessToken: string
   refreshToken: string
@@ -81,12 +92,8 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new ApiError(
-      response.status,
-      body?.code ?? 'Unknown',
-      body?.message ?? response.statusText,
-    )
+    const body: ApiErrorBody | null = await response.json().catch(() => null)
+    throw new ApiError(response.status, body?.code ?? 'Unknown', extractErrorMessage(body, response.statusText))
   }
 
   if (response.status === 204) return undefined as T
