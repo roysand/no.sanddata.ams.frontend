@@ -34,13 +34,13 @@ This must match the scheme/port the API is actually running on. The API also nee
 
 ## Scripts
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Type-check and build for production |
+| Command           | Purpose                              |
+| ----------------- | ------------------------------------ |
+| `npm run dev`     | Start the Vite dev server            |
+| `npm run build`   | Type-check and build for production  |
 | `npm run preview` | Preview the production build locally |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format the codebase with Prettier |
+| `npm run lint`    | Run ESLint                           |
+| `npm run format`  | Format the codebase with Prettier    |
 
 ## Project Structure
 
