@@ -30,10 +30,10 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <div className="flex min-h-screen items-center justify-center">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-8 shadow"
+        className="w-full max-w-sm space-y-4 rounded-lg bg-white/95 p-8 shadow-lg"
       >
         <h1 className="text-xl font-semibold text-slate-900">Create account</h1>
 

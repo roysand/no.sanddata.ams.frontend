@@ -1,1 +1,11 @@
 @import 'tailwindcss';
+
+body {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  background-image: url('/background.svg');
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  background-size: cover;
+  background-attachment: fixed;
+}
