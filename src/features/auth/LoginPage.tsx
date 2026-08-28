@@ -5,6 +5,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loginSchema, type LoginFormValues } from './schema'
 import { useAuth } from './useAuth'
 import { ApiError } from '../../lib/apiClient'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -29,59 +33,46 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white/95 p-8 shadow-lg"
-      >
-        <h1 className="text-xl font-semibold text-slate-900">Sign in</h1>
+      <Card className="w-full max-w-sm bg-white/95 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-xl">Sign in</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="email" {...register('email')} />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+            </div>
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            {...register('email')}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
+            </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            {...register('password')}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-          {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-          )}
-        </div>
+            {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-        {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
+            </Button>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
-        </button>
-
-        <p className="text-center text-sm text-slate-600">
-          Don't have an account?{' '}
-          <Link to="/register" className="font-medium text-slate-900 underline">
-            Create one
-          </Link>
-        </p>
-      </form>
+            <p className="text-center text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Link to="/register" className="font-medium text-foreground underline">
+                Create one
+              </Link>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

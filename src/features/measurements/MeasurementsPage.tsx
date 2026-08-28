@@ -1,22 +1,26 @@
 import { useAuth } from '../auth/useAuth'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function MeasurementsPage() {
   const { email, logout } = useAuth()
 
   return (
     <div className="min-h-screen p-8">
-      <div className="mx-auto max-w-4xl rounded-lg bg-white/95 p-6 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-slate-900">Measurements</h1>
-          <div className="flex items-center gap-4 text-sm text-slate-600">
+      <Card className="mx-auto max-w-4xl bg-white/95 shadow-lg">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl">Measurements</CardTitle>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>{email}</span>
-            <button onClick={logout} className="text-slate-900 underline">
+            <Button variant="outline" size="sm" onClick={logout}>
               Sign out
-            </button>
+            </Button>
           </div>
-        </div>
-        <p className="mt-4 text-sm text-slate-600">No data yet.</p>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">No data yet.</p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

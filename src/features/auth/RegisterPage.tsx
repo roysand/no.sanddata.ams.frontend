@@ -6,6 +6,10 @@ import { registerSchema, type RegisterFormValues } from './schema'
 import { useAuth } from './useAuth'
 import { register as registerUser } from './api'
 import { ApiError } from '../../lib/apiClient'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export function RegisterPage() {
   const { login } = useAuth()
@@ -31,91 +35,64 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white/95 p-8 shadow-lg"
-      >
-        <h1 className="text-xl font-semibold text-slate-900">Create account</h1>
+      <Card className="w-full max-w-sm bg-white/95 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-xl">Create account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex gap-4">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="firstName">First name</Label>
+                <Input id="firstName" autoComplete="given-name" {...register('firstName')} />
+                {errors.firstName && (
+                  <p className="text-sm text-destructive">{errors.firstName.message}</p>
+                )}
+              </div>
 
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label htmlFor="firstName" className="block text-sm font-medium text-slate-700">
-              First name
-            </label>
-            <input
-              id="firstName"
-              autoComplete="given-name"
-              {...register('firstName')}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
-            {errors.firstName && (
-              <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
-            )}
-          </div>
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input id="lastName" autoComplete="family-name" {...register('lastName')} />
+                {errors.lastName && (
+                  <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
 
-          <div className="flex-1">
-            <label htmlFor="lastName" className="block text-sm font-medium text-slate-700">
-              Last name
-            </label>
-            <input
-              id="lastName"
-              autoComplete="family-name"
-              {...register('lastName')}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
-            {errors.lastName && (
-              <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
-            )}
-          </div>
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="email" {...register('email')} />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+            </div>
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            {...register('email')}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
+            </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            {...register('password')}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-          {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-          )}
-        </div>
+            {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-        {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? 'Creating account…' : 'Create account'}
+            </Button>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {isSubmitting ? 'Creating account…' : 'Create account'}
-        </button>
-
-        <p className="text-center text-sm text-slate-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-slate-900 underline">
-            Sign in
-          </Link>
-        </p>
-      </form>
+            <p className="text-center text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <Link to="/login" className="font-medium text-foreground underline">
+                Sign in
+              </Link>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
