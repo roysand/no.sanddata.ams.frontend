@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const navItems = [{ to: '/', label: 'Measurements' }]
+const navItems = [{ to: '/', label: 'Dashboard' }]
 
 export function Header() {
   const { email, logout } = useAuth()
