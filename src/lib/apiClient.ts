@@ -70,7 +70,9 @@ async function request<T>(
 ): Promise<T> {
   const { auth = true } = options
   const headers = new Headers(init.headers)
-  headers.set('Content-Type', 'application/json')
+  // Only declare JSON when there is a body: the API tries to parse a body whenever the header is present,
+  // and rejects a bodiless GET with "The input does not contain any JSON tokens" (400).
+  if (init.body !== undefined) headers.set('Content-Type', 'application/json')
 
   if (auth) {
     const accessToken = authStore.getSession()?.accessToken

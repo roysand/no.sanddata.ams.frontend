@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { loginSchema, type LoginFormValues } from './schema'
 import { useAuth } from './useAuth'
 import { ApiError } from '../../lib/apiClient'
@@ -65,10 +65,7 @@ export function LoginPage() {
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-foreground underline">
-                Create one
-              </Link>
+              Accounts are created by an administrator.
             </p>
           </form>
         </CardContent>
