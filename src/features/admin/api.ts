@@ -1,10 +1,15 @@
 import { api } from '../../lib/apiClient'
 import type { AdminUser, CreateUserInput, PagedUsers } from './types'
 
-export function getUsers(page: number, pageSize: number, search: string) {
+export async function getUsers(page: number, pageSize: number, search: string) {
   const params = new URLSearchParams({ pageNumber: String(page), pageSize: String(pageSize) })
   if (search) params.set('search', search)
-  return api.get<PagedUsers>(`/api/users?${params}`)
+  const result = await api.get<PagedUsers>(`/api/users?${params}`)
+  // APIs from before the locationIds field was added omit it; treat that as "no links known" instead of crashing.
+  return {
+    ...result,
+    users: result.users.map((user) => ({ ...user, locationIds: user.locationIds ?? [] })),
+  }
 }
 
 export function createUser(input: CreateUserInput) {
