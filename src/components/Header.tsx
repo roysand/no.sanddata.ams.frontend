@@ -9,9 +9,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 const navItems = [{ to: '/', label: 'Dashboard' }]
+const adminNavItems = [{ to: '/admin/users', label: 'Users' }]
 
 export function Header() {
-  const { email, logout } = useAuth()
+  const { email, roles, logout } = useAuth()
+  const items = roles.includes('Admin') ? [...navItems, ...adminNavItems] : navItems
 
   return (
     <header className="border-b bg-white/95 shadow-sm">
@@ -19,7 +21,7 @@ export function Header() {
         <div className="flex items-center gap-6">
           <span className="text-lg font-semibold text-slate-900">AMS</span>
           <nav className="flex gap-4">
-            {navItems.map((item) => (
+            {items.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
