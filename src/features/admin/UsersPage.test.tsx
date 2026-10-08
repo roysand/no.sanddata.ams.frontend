@@ -77,4 +77,26 @@ describe('UsersPage location actions', () => {
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Add location for Roy Sand')
   })
+
+  it('does not allow adding a meter for a user without locations', async () => {
+    const u = userEvent.setup()
+    setup([{ ...roy, locations: [], locationIds: [] }])
+
+    await u.click(await screen.findByRole('button', { name: 'Actions for roy@sanddata.no' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'Add meter' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
+  it('allows adding a meter for a user with a location', async () => {
+    const u = userEvent.setup()
+    setup()
+
+    await u.click(await screen.findByRole('button', { name: 'Actions for roy@sanddata.no' }))
+    await u.click(await screen.findByRole('menuitem', { name: 'Add meter' }))
+
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Add meter for Roy Sand')
+  })
 })

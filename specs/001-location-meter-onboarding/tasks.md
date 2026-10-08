@@ -75,9 +75,9 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 **Independent Test**: Register a meter on a location with none; repeat the same device id and see the duplicate message.
 
 - [X] T020 [US3] Add a helper `userLocationOptions(user: AdminUser)` in `src/features/admin/locationOptions.ts` that pairs `user.locationIds[i]` with `user.locations[i]` (comment: relies on the API building both from the same collection, verified in T001) and `src/features/admin/locationOptions.test.ts` pinning the pairing.
-- [ ] T021 [US3] Create `src/features/admin/AddMeterDialog.tsx`: dialog containing `MeterForm` with `userLocationOptions(user)`; calls `useCreateMeter`; shows a confirmation on success; maps 409 to "A reader with this device id is already registered at this location".
-- [ ] T022 [US3] Add an "Add meter" item to the row actions in `src/features/admin/UsersPage.tsx`, hidden (or disabled with an explanation) when the user has no locations (FR-008); add `{ kind: 'addMeter'; user }` to `DialogState`.
-- [ ] T023 [US3] Write `src/features/admin/AddMeterDialog.test.tsx` with MSW: success confirmation; 409 message; not offered when the user has no locations; location choice limited to the user's locations.
+- [X] T021 [US3] Create `src/features/admin/AddMeterDialog.tsx`: dialog containing `MeterForm` with `userLocationOptions(user)`; calls `useCreateMeter`; shows a confirmation on success; maps 409 to "A reader with this device id is already registered at this location".
+- [X] T022 [US3] Add an "Add meter" item to the row actions in `src/features/admin/UsersPage.tsx`, hidden (or disabled with an explanation) when the user has no locations (FR-008); add `{ kind: 'addMeter'; user }` to `DialogState`.
+- [X] T023 [US3] Write `src/features/admin/AddMeterDialog.test.tsx` with MSW: success confirmation; 409 message; not offered when the user has no locations; location choice limited to the user's locations.
 
 **Checkpoint**: Quickstart "admin" steps 4-5 pass.
 

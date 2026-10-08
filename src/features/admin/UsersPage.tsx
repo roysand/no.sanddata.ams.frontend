@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AddLocationDialog } from './AddLocationDialog'
+import { AddMeterDialog } from './AddMeterDialog'
 import { CreateUserDialog } from './CreateUserDialog'
 import { DeleteUserDialog } from './DeleteUserDialog'
 import { PAGE_SIZE, useUserActions, useUsers } from './hooks'
@@ -34,6 +35,7 @@ import type { AdminUser } from './types'
 type DialogState =
   | { kind: 'create' }
   | { kind: 'addLocation'; user: AdminUser }
+  | { kind: 'addMeter'; user: AdminUser }
   | { kind: 'password'; user: AdminUser }
   | { kind: 'delete'; user: AdminUser }
   | null
@@ -193,6 +195,15 @@ export function UsersPage() {
                                 Add location
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={user.locationIds.length === 0}
+                                title={
+                                  user.locationIds.length === 0 ? 'Add a location first' : undefined
+                                }
+                                onClick={() => setDialog({ kind: 'addMeter', user })}
+                              >
+                                Add meter
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 disabled={isSelf && isAdmin}
                                 onClick={() =>
                                   run(
@@ -286,6 +297,9 @@ export function UsersPage() {
       {dialog?.kind === 'create' && <CreateUserDialog onClose={() => setDialog(null)} />}
       {dialog?.kind === 'addLocation' && (
         <AddLocationDialog user={dialog.user} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'addMeter' && (
+        <AddMeterDialog user={dialog.user} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'password' && (
         <ResetPasswordDialog user={dialog.user} onClose={() => setDialog(null)} />
