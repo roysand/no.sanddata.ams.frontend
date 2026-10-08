@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Self-registration wizard deliberately split into a separate future feature (needs backend changes).
+- Public self-registration (account creation) is a separate future feature; self-service location creation depends on a backend change (see Assumptions).
