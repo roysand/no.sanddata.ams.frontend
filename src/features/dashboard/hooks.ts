@@ -1,10 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import {
-  getCurrentHourCost,
-  getDailyCost,
-  getHourlyCost,
-  getMinuteConsumption,
-} from './api'
+import { getCurrentHourCost, getDailyCost, getHourlyCost, getMinuteConsumption } from './api'
 import { osloDayStartUtc } from './format'
 
 const ONE_MINUTE = 60_000

@@ -18,10 +18,17 @@ describe('locationSchema', () => {
     expect(locationSchema.safeParse({ ...validLocation, [field]: '  ' }).success).toBe(false)
   })
 
-  it.each(['name', 'address', 'serialNumber'] as const)('allows %s up to 100 characters', (field) => {
-    expect(locationSchema.safeParse({ ...validLocation, [field]: 'x'.repeat(100) }).success).toBe(true)
-    expect(locationSchema.safeParse({ ...validLocation, [field]: 'x'.repeat(101) }).success).toBe(false)
-  })
+  it.each(['name', 'address', 'serialNumber'] as const)(
+    'allows %s up to 100 characters',
+    (field) => {
+      expect(locationSchema.safeParse({ ...validLocation, [field]: 'x'.repeat(100) }).success).toBe(
+        true,
+      )
+      expect(locationSchema.safeParse({ ...validLocation, [field]: 'x'.repeat(101) }).success).toBe(
+        false,
+      )
+    },
+  )
 
   it.each(['NO1', 'NO2', 'NO3', 'NO4', 'NO5'])('accepts zone %s', (zone) => {
     expect(locationSchema.safeParse({ ...validLocation, zone }).success).toBe(true)

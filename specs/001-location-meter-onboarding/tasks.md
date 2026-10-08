@@ -57,12 +57,12 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 
 **Independent Test**: As admin, add a location to a user with none; the users table lists it; sign in as that user and see it in the location picker.
 
-- [ ] T014 [US2] Add `createLocationForUser(userId, input)` to `src/features/admin/api.ts`: call `createLocationAsAdmin` (T006), then `setLocationLink(userId, location.id, true)`. If the link call fails, throw a `LocationNotLinkedError` carrying the created `CreatedLocation` so the UI can retry only the link (FR-012).
-- [ ] T015 [US2] Add `create location` mutation and a `retryLink` mutation to `useUserActions()` in `src/features/admin/hooks.ts`; both invalidate `['admin','users']` and `['locations']`.
-- [ ] T016 [US2] Create `src/features/admin/AddLocationDialog.tsx`: dialog containing `LocationForm`; on success replaces the form with `SensorKeyNotice` (key kept in component state only, cleared on close); on `LocationNotLinkedError` shows "Location created, but not linked to this user" with a Retry button that calls `retryLink`; submit disabled while pending (FR-011).
-- [ ] T017 [US2] Add an "Add location" item to the row actions menu in `src/features/admin/UsersPage.tsx` (existing `DropdownMenu`) and a `{ kind: 'addLocation'; user }` case to `DialogState`.
-- [ ] T018 [US2] Write `src/features/admin/AddLocationDialog.test.tsx` with MSW: success shows key once and list refresh; closing hides the key; 409 duplicate serial shows message and keeps values; link failure shows retry and does not create a second location.
-- [ ] T019 [US2] Write a test in `src/features/admin/UsersPage.test.tsx` that the "Add location" action is offered for a user with no locations (MSW `GET /api/users`, `GET /api/locations`).
+- [X] T014 [US2] Add `createLocationForUser(userId, input)` to `src/features/admin/api.ts`: call `createLocationAsAdmin` (T006), then `setLocationLink(userId, location.id, true)`. If the link call fails, throw a `LocationNotLinkedError` carrying the created `CreatedLocation` so the UI can retry only the link (FR-012).
+- [X] T015 [US2] Add `create location` mutation and a `retryLink` mutation to `useUserActions()` in `src/features/admin/hooks.ts`; both invalidate `['admin','users']` and `['locations']`.
+- [X] T016 [US2] Create `src/features/admin/AddLocationDialog.tsx`: dialog containing `LocationForm`; on success replaces the form with `SensorKeyNotice` (key kept in component state only, cleared on close); on `LocationNotLinkedError` shows "Location created, but not linked to this user" with a Retry button that calls `retryLink`; submit disabled while pending (FR-011).
+- [X] T017 [US2] Add an "Add location" item to the row actions menu in `src/features/admin/UsersPage.tsx` (existing `DropdownMenu`) and a `{ kind: 'addLocation'; user }` case to `DialogState`.
+- [X] T018 [US2] Write `src/features/admin/AddLocationDialog.test.tsx` with MSW: success shows key once and list refresh; closing hides the key; 409 duplicate serial shows message and keeps values; link failure shows retry and does not create a second location.
+- [X] T019 [US2] Write a test in `src/features/admin/UsersPage.test.tsx` that the "Add location" action is offered for a user with no locations (MSW `GET /api/users`, `GET /api/locations`).
 
 **Checkpoint**: Quickstart "admin on behalf of a user" steps 1-3 and 7 pass.
 
@@ -74,7 +74,7 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 
 **Independent Test**: Register a meter on a location with none; repeat the same device id and see the duplicate message.
 
-- [ ] T020 [US3] Add a helper `userLocationOptions(user: AdminUser)` in `src/features/admin/locationOptions.ts` that pairs `user.locationIds[i]` with `user.locations[i]` (comment: relies on the API building both from the same collection, verified in T001) and `src/features/admin/locationOptions.test.ts` pinning the pairing.
+- [X] T020 [US3] Add a helper `userLocationOptions(user: AdminUser)` in `src/features/admin/locationOptions.ts` that pairs `user.locationIds[i]` with `user.locations[i]` (comment: relies on the API building both from the same collection, verified in T001) and `src/features/admin/locationOptions.test.ts` pinning the pairing.
 - [ ] T021 [US3] Create `src/features/admin/AddMeterDialog.tsx`: dialog containing `MeterForm` with `userLocationOptions(user)`; calls `useCreateMeter`; shows a confirmation on success; maps 409 to "A reader with this device id is already registered at this location".
 - [ ] T022 [US3] Add an "Add meter" item to the row actions in `src/features/admin/UsersPage.tsx`, hidden (or disabled with an explanation) when the user has no locations (FR-008); add `{ kind: 'addMeter'; user }` to `DialogState`.
 - [ ] T023 [US3] Write `src/features/admin/AddMeterDialog.test.tsx` with MSW: success confirmation; 409 message; not offered when the user has no locations; location choice limited to the user's locations.

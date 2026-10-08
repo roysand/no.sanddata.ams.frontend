@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  createLocationForUser,
   createUser,
   deleteUser,
   getUsers,
@@ -8,6 +9,7 @@ import {
   setLocationLink,
   setUserActive,
 } from './api'
+import type { LocationInput } from '../locations'
 
 export const PAGE_SIZE = 10
 
@@ -25,6 +27,7 @@ export function useUsers(page: number, search: string) {
 export function useUserActions() {
   const queryClient = useQueryClient()
   const refresh = () => queryClient.invalidateQueries({ queryKey: USERS_KEY })
+  const refreshLocations = () => queryClient.invalidateQueries({ queryKey: ['locations'] })
 
   return {
     create: useMutation({ mutationFn: createUser, onSuccess: refresh }),
@@ -42,6 +45,11 @@ export function useUserActions() {
       mutationFn: (v: { userId: string; locationId: string; linked: boolean }) =>
         setLocationLink(v.userId, v.locationId, v.linked),
       onSuccess: refresh,
+    }),
+    addLocation: useMutation({
+      mutationFn: (v: { userId: string; input: LocationInput }) =>
+        createLocationForUser(v.userId, v.input),
+      onSuccess: () => Promise.all([refresh(), refreshLocations()]),
     }),
     password: useMutation({
       mutationFn: (v: { userId: string; newPassword: string }) =>

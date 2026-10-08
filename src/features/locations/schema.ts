@@ -7,7 +7,11 @@ export const MAX_OWN_LOCATIONS = 4
 
 // Same rules as the API's CreateLocationValidator, so mistakes are caught before the request.
 export const locationSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be at most 100 characters'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be at most 100 characters'),
   address: z
     .string()
     .trim()

@@ -1,10 +1,5 @@
 import { api } from '../../lib/apiClient'
-import type {
-  Consumption,
-  CurrentHourCost,
-  DailyCost,
-  PagedHourlyCost,
-} from './types'
+import type { Consumption, CurrentHourCost, DailyCost, PagedHourlyCost } from './types'
 
 function query(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()

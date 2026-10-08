@@ -49,7 +49,12 @@ describe('LocationForm', () => {
     const { rerender } = render(<LocationForm onSubmit={vi.fn()} />)
     await fillValid(user)
 
-    rerender(<LocationForm onSubmit={vi.fn()} serverError="Another location already uses this serial number" />)
+    rerender(
+      <LocationForm
+        onSubmit={vi.fn()}
+        serverError="Another location already uses this serial number"
+      />,
+    )
 
     expect(screen.getByRole('alert')).toHaveTextContent('already uses this serial number')
     expect(screen.getByLabelText('Serial number')).toHaveValue('SN-1')
