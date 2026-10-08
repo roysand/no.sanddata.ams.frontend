@@ -45,11 +45,21 @@ Rationale: limits the exposure of credentials and keeps authorization with the A
 TypeScript `strict` MUST stay on; `any` and non-justified type assertions are prohibited. `npm run
 build` (type-check + build) and `npm run lint` MUST pass before merge. Code MUST follow Prettier
 (`semi: false`, single quotes, width 100) via `npm run format`. UI MUST use shadcn/ui primitives,
-Tailwind utilities and the `@/` import alias, not ad-hoc CSS or new component libraries. No automated
-test runner exists yet; until one is adopted, each feature MUST be verified manually in the running
-app and the steps recorded in its PR. Once a runner is adopted, new logic with branching (formatting,
-date handling, API normalization) MUST ship with unit tests.
-Rationale: strict types and lint catch most defects cheaply; the test gap is acknowledged, not hidden.
+Tailwind utilities and the `@/` import alias, not ad-hoc CSS or new component libraries.
+Rationale: strict types and lint catch most defects cheaply.
+
+### VII. Tests with Vitest and Testing Library
+Automated tests MUST use Vitest (jsdom environment), React Testing Library with
+`@testing-library/jest-dom` matchers and `@testing-library/user-event`, and MSW (Mock Service Worker)
+to mock API responses at the network boundary. Tests live beside the code as `*.test.ts(x)`, and
+shared setup and handlers live in `src/test/`. Tests MUST assert behavior a user can observe
+(roles, labels, text), not implementation details, and MUST NOT mock `apiClient` or TanStack Query
+hooks directly. Components that use queries MUST be rendered with a fresh `QueryClient` per test
+(retries off). New logic with branching (formatting, date handling, API normalization, Zod schemas,
+route guards) MUST ship with tests, and bug fixes MUST include a test that fails without the fix.
+`npm test` (single run) MUST pass before merge, alongside build and lint.
+Rationale: this is the standard stack for Vite + React; it runs on the Vite config and tests what
+users experience.
 
 ## Technology & Security Constraints
 
@@ -57,6 +67,8 @@ Rationale: strict types and lint catch most defects cheaply; the test gap is ack
   Router 7, TanStack Query 5, React Hook Form + Zod, shadcn/ui (Radix), Recharts, lucide-react.
   Adding a new runtime dependency requires justification in the PR.
 - Node.js 22+.
+- Testing: Vitest, React Testing Library, user-event, jest-dom, MSW (see Principle VII). `npm test` runs
+  `vitest run` (single run); `npm run test:watch` runs watch mode.
 - Local development against a remote API MUST use the Vite `/api` proxy with an empty
   `VITE_API_BASE_URL`; CORS is solved on the server or by the proxy, never by disabling browser
   security.
@@ -70,7 +82,7 @@ Rationale: strict types and lint catch most defects cheaply; the test gap is ack
 
 - Work happens on a feature branch and merges to `main` through a pull request; `main` is not
   committed to directly.
-- Each PR is one coherent change with a clear title and description, and passes build and lint.
+- Each PR is one coherent change with a clear title and description, and passes build, lint and tests.
 - Features larger than a single component SHOULD go through the Spec Kit flow
   (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`).
 - Reviewers MUST check the PR against the principles above; deviations MUST be justified in the PR
@@ -86,4 +98,4 @@ expanded guidance, PATCH for wording clarifications. Every PR review verifies co
 unavoidable complexity or deviation MUST be justified in writing in the PR. The README and the
 code remain the runtime guidance for day-to-day development.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08
+**Version**: 1.1.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08
