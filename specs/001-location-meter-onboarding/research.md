@@ -31,9 +31,10 @@ repository and the current frontend.
   to offer the target location in `AddMeterDialog`.
 - **Rationale**: Avoids an extra request. `/api/locations` returns the caller's own locations only
   (the admin users page already notes this), so it cannot be used for another user.
-- **Risk**: Pairing by index assumes the API returns both lists in the same order. Verify in
-  `GetUsersQuery`/`UserMapper`; if not guaranteed, request names with ids from the API or use
-  `GET /api/admin/locations` and filter by `locationIds`. Recorded as a task to verify first.
+- **Verified 2026-10-08**: `UserMapper` (API) builds `Locations` and `LocationIds` from the same
+  `user.Locations` collection, so the order matches. It is not an explicit sort, so the frontend pairs
+  by index in one helper with a comment, and a test pins the behaviour. If the API ever changes this,
+  fall back to `GET /api/admin/locations` filtered by `locationIds`.
 
 ## 4. Sensor key handling
 
