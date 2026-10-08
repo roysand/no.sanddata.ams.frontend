@@ -27,7 +27,7 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 ## Phase 1: Setup
 
 - [X] T001 Verify that the API returns `AdminUser.locations` (names) and `locationIds` in the same order. Result: both are built from the same `user.Locations` collection in the API's `Features/Users/Mappers/UserMapper.cs` (lines 56-57), so the order matches; not an explicit sort. Recorded in `specs/001-location-meter-onboarding/research.md` item 3.
-- [ ] T002 Track the backend dependency: confirm `specs/_backlog/user-creates-own-location.md` and the CLAUDE.md "Starting a New Feature" note exist in the API repo (`/Users/roysand/develop/repo/ams/no.sanddata.ams.api`) and are committed on a branch there.
+- [X] T002 Track the backend dependency: confirm `specs/_backlog/user-creates-own-location.md` and the CLAUDE.md "Starting a New Feature" note exist in the API repo (`/Users/roysand/develop/repo/ams/no.sanddata.ams.api`) and are committed on a branch there.
 
 ---
 
