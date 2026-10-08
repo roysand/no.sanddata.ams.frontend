@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,8 @@ interface LocationFormProps {
   onSubmit: (values: LocationFormValues) => void | Promise<void>
   submitLabel?: string
   serverError?: string | null
+  /** Messages the API attached to individual fields. */
+  fieldErrors?: Partial<Record<keyof LocationFormValues, string>>
   isSubmitting?: boolean
 }
 
@@ -24,13 +27,15 @@ export function LocationForm({
   onSubmit,
   submitLabel = 'Add location',
   serverError,
+  fieldErrors,
   isSubmitting,
 }: LocationFormProps) {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    setError,
+    formState: { errors, isSubmitting: submitting },
   } = useForm<LocationFormValues>({
     resolver: zodResolver(locationSchema),
     defaultValues: {
@@ -41,6 +46,12 @@ export function LocationForm({
       isActive: true,
     },
   })
+
+  useEffect(() => {
+    for (const [field, message] of Object.entries(fieldErrors ?? {})) {
+      setError(field as keyof LocationFormValues, { type: 'server', message })
+    }
+  }, [fieldErrors, setError])
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -118,8 +129,8 @@ export function LocationForm({
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving…' : submitLabel}
+      <Button type="submit" disabled={isSubmitting || submitting}>
+        {isSubmitting || submitting ? 'Saving…' : submitLabel}
       </Button>
     </form>
   )

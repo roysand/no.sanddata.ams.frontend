@@ -77,4 +77,22 @@ describe('AddMeterDialog', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('already registered')
     expect(screen.getByLabelText('Device id')).toHaveValue(meter.deviceId)
   })
+
+  it('shows API validation errors on the matching field', async () => {
+    server.use(
+      http.post('*/api/meters', () =>
+        HttpResponse.json(
+          { code: 'Validation', errors: { deviceId: ['Device id is not valid'] } },
+          { status: 400 },
+        ),
+      ),
+    )
+    const u = userEvent.setup()
+    renderWithQuery(<AddMeterDialog user={user} onClose={vi.fn()} />)
+
+    await chooseHouseAndSubmit(u)
+
+    expect(await screen.findByText('Device id is not valid')).toBeInTheDocument()
+    expect(screen.getByLabelText('Device id')).toHaveValue(meter.deviceId)
+  })
 })

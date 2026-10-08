@@ -9,10 +9,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { LocationForm, SensorKeyNotice, type LocationFormValues } from '../locations'
+import {
+  LocationForm,
+  SensorKeyNotice,
+  toFormServerError,
+  type LocationFormValues,
+} from '../locations'
 import { LocationNotLinkedError } from './api'
 import { useUserActions } from './hooks'
 import type { AdminUser } from './types'
+
+const LOCATION_FIELDS = ['name', 'address', 'serialNumber', 'zone'] as const
 
 type Stage =
   | { kind: 'form' }
@@ -24,9 +31,13 @@ export function AddLocationDialog({ user, onClose }: { user: AdminUser; onClose:
   const { addLocation, link } = useUserActions()
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [serverError, setServerError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LocationFormValues, string>>>(
+    {},
+  )
 
   const submit = async (values: LocationFormValues) => {
     setServerError(null)
+    setFieldErrors({})
     try {
       const created = await addLocation.mutateAsync({ userId: user.id, input: values })
       setStage({ kind: 'done', apiKey: created.apiKey })
@@ -38,7 +49,9 @@ export function AddLocationDialog({ user, onClose }: { user: AdminUser; onClose:
           locationId: error.created.location.id,
         })
       } else {
-        setServerError(error instanceof ApiError ? error.message : 'Could not add the location')
+        const parsed = toFormServerError(error, LOCATION_FIELDS, 'Could not add the location')
+        setFieldErrors(parsed.fields)
+        setServerError(parsed.message)
       }
     }
   }
@@ -71,6 +84,7 @@ export function AddLocationDialog({ user, onClose }: { user: AdminUser; onClose:
           <LocationForm
             onSubmit={submit}
             serverError={serverError}
+            fieldErrors={fieldErrors}
             isSubmitting={addLocation.isPending}
           />
         )}

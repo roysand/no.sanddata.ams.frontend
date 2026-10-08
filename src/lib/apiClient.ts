@@ -7,6 +7,8 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    /** Validation messages by field name, when the API sent them (`errors` in the body). */
+    public fieldErrors?: Record<string, string[]>,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -95,7 +97,12 @@ async function request<T>(
 
   if (!response.ok) {
     const body: ApiErrorBody | null = await response.json().catch(() => null)
-    throw new ApiError(response.status, body?.code ?? 'Unknown', extractErrorMessage(body, response.statusText))
+    throw new ApiError(
+      response.status,
+      body?.code ?? 'Unknown',
+      extractErrorMessage(body, response.statusText),
+      body?.errors,
+    )
   }
 
   if (response.status === 204) return undefined as T

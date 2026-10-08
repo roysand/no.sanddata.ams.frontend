@@ -89,10 +89,10 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 
 **Independent Test**: Duplicate serial number shows a specific message and values remain.
 
-- [ ] T024 [US4] Map API validation errors to form fields: in `src/features/locations/LocationForm.tsx` and `MeterForm.tsx`, when `ApiError` has field-keyed `errors`, call `setError` for matching fields, otherwise show the message above the submit button (see `extractErrorMessage` in `src/lib/apiClient.ts`).
-- [ ] T025 [US4] Handle 401 during a submit by letting `apiClient`'s refresh/sign-out flow run and keeping the form values; add a test in `src/features/locations/LocationForm.test.tsx`.
-- [ ] T026 [P] [US4] Add tests in `src/features/admin/AddLocationDialog.test.tsx` for a 400 with field errors (shown on the fields) and a 400 with a generic message.
-- [ ] T027 [US4] Guard against double submission in both dialogs (button disabled and `isSubmitting` respected); test that two rapid clicks send one request.
+- [X] T024 [US4] Map API validation errors to form fields: in `src/features/locations/LocationForm.tsx` and `MeterForm.tsx`, when `ApiError` has field-keyed `errors`, call `setError` for matching fields, otherwise show the message above the submit button (see `extractErrorMessage` in `src/lib/apiClient.ts`).
+- [X] T025 [US4] Handle 401 during a submit by letting `apiClient`'s refresh/sign-out flow run and keeping the form values; add a test in `src/features/locations/LocationForm.test.tsx`.
+- [X] T026 [P] [US4] Add tests in `src/features/admin/AddLocationDialog.test.tsx` for a 400 with field errors (shown on the fields) and a 400 with a generic message.
+- [X] T027 [US4] Guard against double submission in both dialogs (button disabled and `isSubmitting` respected); test that two rapid clicks send one request.
 
 **Checkpoint**: Spec Acceptance Scenarios for US4 pass.
 

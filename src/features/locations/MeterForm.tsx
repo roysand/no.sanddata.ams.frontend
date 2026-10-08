@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,8 @@ interface MeterFormProps {
   onSubmit: (values: MeterFormValues) => void | Promise<void>
   submitLabel?: string
   serverError?: string | null
+  /** Messages the API attached to individual fields. */
+  fieldErrors?: Partial<Record<keyof MeterFormValues, string>>
   isSubmitting?: boolean
 }
 
@@ -25,13 +28,15 @@ export function MeterForm({
   onSubmit,
   submitLabel = 'Add meter',
   serverError,
+  fieldErrors,
   isSubmitting,
 }: MeterFormProps) {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    setError,
+    formState: { errors, isSubmitting: submitting },
   } = useForm<MeterFormValues>({
     resolver: zodResolver(meterSchema),
     defaultValues: {
@@ -40,6 +45,12 @@ export function MeterForm({
       comment: '',
     },
   })
+
+  useEffect(() => {
+    for (const [field, message] of Object.entries(fieldErrors ?? {})) {
+      setError(field as keyof MeterFormValues, { type: 'server', message })
+    }
+  }, [fieldErrors, setError])
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -89,8 +100,8 @@ export function MeterForm({
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving…' : submitLabel}
+      <Button type="submit" disabled={isSubmitting || submitting}>
+        {isSubmitting || submitting ? 'Saving…' : submitLabel}
       </Button>
     </form>
   )
