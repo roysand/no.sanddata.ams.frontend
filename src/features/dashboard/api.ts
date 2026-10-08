@@ -3,7 +3,6 @@ import type {
   Consumption,
   CurrentHourCost,
   DailyCost,
-  LocationSummary,
   PagedHourlyCost,
 } from './types'
 
@@ -13,10 +12,6 @@ function query(params: Record<string, string | number | undefined>): string {
     if (value !== undefined) search.set(key, String(value))
   }
   return search.toString()
-}
-
-export function getLocations() {
-  return api.get<LocationSummary[]>('/api/locations')
 }
 
 export function getCurrentHourCost(locationId: string) {

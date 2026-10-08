@@ -3,16 +3,11 @@ import {
   getCurrentHourCost,
   getDailyCost,
   getHourlyCost,
-  getLocations,
   getMinuteConsumption,
 } from './api'
 import { osloDayStartUtc } from './format'
 
 const ONE_MINUTE = 60_000
-
-export function useLocations() {
-  return useQuery({ queryKey: ['locations'], queryFn: getLocations })
-}
 
 export function useCurrentHourCost(locationId: string | undefined) {
   return useQuery({

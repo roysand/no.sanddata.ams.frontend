@@ -1,18 +1,4 @@
-export interface MeterSummary {
-  id: string
-  locationId: string
-  deviceId: string
-  comment: string | null
-  isActive: boolean
-}
-
-export interface LocationSummary {
-  id: string
-  name: string
-  address: string
-  zone: string
-  meters: MeterSummary[]
-}
+export type { LocationSummary, MeterSummary } from '../locations/types'
 
 /** "Spot" or "NorgesPris": the location's enrolled pricing model (actual) or the other one (comparison). */
 export type PricingModel = 'Spot' | 'NorgesPris'

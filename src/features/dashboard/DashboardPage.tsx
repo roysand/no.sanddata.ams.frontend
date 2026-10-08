@@ -1,11 +1,11 @@
 import { useState } from 'react'
+import { useLocations } from '../locations'
 import { Card, CardContent } from '@/components/ui/card'
 import { CurrentHourCard } from './CurrentHourCard'
 import { DailyCostChart } from './DailyCostChart'
 import { HourlyCostChart } from './HourlyCostChart'
 import { LocationPicker } from './LocationPicker'
 import { PowerChart } from './PowerChart'
-import { useLocations } from './hooks'
 
 const SELECTED_LOCATION_KEY = 'ams.selectedLocation'
 

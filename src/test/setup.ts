@@ -9,3 +9,14 @@ afterEach(() => {
   server.resetHandlers()
 })
 afterAll(() => server.close())
+
+// jsdom lacks these; Radix Select (used by shadcn Select) calls them when opening.
+Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.setPointerCapture ??= () => {}
+Element.prototype.releasePointerCapture ??= () => {}
+Element.prototype.scrollIntoView ??= () => {}
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
