@@ -103,6 +103,7 @@ When the system rejects a location or meter (invalid input, or a location serial
 - **FR-008**: Adding a meter MUST NOT be offered for a user who has no locations; adding a location is offered instead.
 - **FR-009**: When the system rejects a request, the user MUST see its reason, and the form MUST keep the entered values.
 - **FR-010**: Acting on another user's behalf MUST be visible and usable only by administrators; other users can act only on their own locations.
+- **FR-013**: A user can have at most 4 locations through self-service. When the limit is reached the user MUST be told they have the maximum and to ask an administrator; the add-location action for the user's own account MUST be disabled or replaced by that message. Administrators are not limited when adding locations for a user.
 - **FR-011**: Submitting MUST be blocked while a request is in progress, to prevent duplicates.
 - **FR-012**: If creating the location succeeds but linking it to the user fails, the user MUST be told and MUST be able to retry the link without creating another location.
 
@@ -127,6 +128,7 @@ When the system rejects a location or meter (invalid input, or a location serial
 
 - **Dependency (backend change required):** today the backend only lets administrators create locations. For a normal user to create a location that belongs to them, the backend must allow a signed-in user to create a location that is automatically linked to the caller. Registering a meter for a linked location is already allowed for normal users. The administrator flow (create a location, link it to a user, register a meter) works with the current backend.
 - Because of that dependency, the administrator-on-behalf-of flow (User Stories 2 and 3) can be delivered first, and the self-service flow (User Story 1) follows once the backend change exists.
+- A user's own locations are limited to 4 (counting every location linked to them, including ones an administrator added). Beyond that an administrator adds more.
 - Rotating or replacing a lost sensor key is out of scope for this feature.
 - Editing or deleting locations and meters is out of scope.
 - **Out of scope, separate feature:** public self-registration (a person creating their own account). Today only administrators can create users. Once it exists, a new account lands in the User Story 1 setup.

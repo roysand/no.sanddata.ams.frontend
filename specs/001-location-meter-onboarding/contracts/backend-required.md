@@ -9,7 +9,7 @@ Needed only for User Story 1 (users set up their own location). Not implemented 
 - **Behaviour**: creates the location, generates its sensor key and links the caller to it in one
   transaction.
 - **Success**: `201 { location, apiKey }`. The key is returned only here.
-- **Errors**: `400` validation (same validator as the admin endpoint), `401`, `409` serial number in use.
+- **Errors**: `400` validation (same validator as the admin endpoint), `401`, `409` serial number in use, `409` with code `Location.LimitReached` when the user is already linked to 4 locations.
 - **Out of scope here**: key rotation for non-admins.
 
-Open point for the API owner: whether non-admin-created locations should be limited in number per user.
+**Status**: implemented in the API repo on branch `feature/005-user-creates-own-location` (not yet deployed). The limit of 4 counts all locations linked to the user; the admin endpoints are not limited.
