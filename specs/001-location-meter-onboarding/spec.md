@@ -101,10 +101,10 @@ When the system rejects a location or meter (invalid input, or a location serial
 - **FR-006**: The sensor key MUST NOT be stored in browser storage, written to logs, placed in a URL or shown again after the confirmation is dismissed.
 - **FR-007**: Users MUST be able to register a meter for one of their own locations (administrators for any user's location) by entering a device identifier (required, at most 100 characters) and an optional comment (at most 200 characters).
 - **FR-008**: Adding a meter MUST NOT be offered for a user who has no locations; adding a location is offered instead.
-- **FR-009**: When the system rejects a request, the administrator MUST see its reason, and the form MUST keep the entered values.
+- **FR-009**: When the system rejects a request, the user MUST see its reason, and the form MUST keep the entered values.
 - **FR-010**: Acting on another user's behalf MUST be visible and usable only by administrators; other users can act only on their own locations.
 - **FR-011**: Submitting MUST be blocked while a request is in progress, to prevent duplicates.
-- **FR-012**: If creating the location succeeds but linking it to the user fails, the administrator MUST be told and MUST be able to retry the link without creating another location.
+- **FR-012**: If creating the location succeeds but linking it to the user fails, the user MUST be told and MUST be able to retry the link without creating another location.
 
 ### Key Entities
 
