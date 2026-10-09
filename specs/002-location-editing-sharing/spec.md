@@ -85,7 +85,7 @@ A second administrator menu item lists every location in the system, with its na
 ### Edge Cases
 
 - A viewer opens a direct link to an edit view: they see a not-allowed message rather than a form.
-- A user is removed as owner or the owner link is missing: a location always has exactly one owner; the administrator cannot remove the owner without first allocating a new one.
+- A user is removed as owner or the owner link is missing: a location always has at least one owner; the administrator cannot remove or demote the last owner without first making another user an owner.
 - An owner sets the location inactive and later wants it active again: they can, with no warning needed when activating.
 - Two people edit the same location at the same time: the later save wins, and the user is shown the saved values afterward.
 - The session expires while editing: the user is returned to sign-in as elsewhere in the app.
@@ -97,7 +97,7 @@ A second administrator menu item lists every location in the system, with its na
 
 ### Functional Requirements
 
-- **FR-001**: Every link between a user and a location MUST carry a role, either owner or viewer. A location has exactly one owner.
+- **FR-001**: Every link between a user and a location MUST carry a role, either owner or viewer. A location has at least one owner (normally exactly one).
 - **FR-002**: The user a location is allocated to by an administrator, or the user who creates it themselves (feature 001), MUST be its owner.
 - **FR-003**: Owners MUST be able to edit the name and address of their locations, with the same required-field and 100-character rules as when creating a location.
 - **FR-004**: Owners MUST be able to change the active flag of their locations. Setting it to inactive MUST first show a warning and require confirmation.
@@ -118,7 +118,7 @@ A second administrator menu item lists every location in the system, with its na
 
 - **User**: A person who signs in. Has access to zero or more locations, each with a role.
 - **Location**: A place where electricity is measured. Has editable fields (name, address, active flag) and system fields (serial number, price zone, Norgespris agreement, sensor key).
-- **Location access**: The link between a user and a location. Carries the role owner or viewer. A location has one owner and any number of viewers.
+- **Location access**: The link between a user and a location. Carries the role owner or viewer. A location has at least one owner (normally one) and any number of viewers.
 - **Meter (reader)**: A device registered for a location, with a device identifier and an editable comment.
 
 ## Success Criteria *(mandatory)*
@@ -137,7 +137,7 @@ A second administrator menu item lists every location in the system, with its na
 - **Dependency (backend change required):** the backend needs an endpoint for updating a location (owner: name, address, active flag; administrator: all fields), an endpoint for updating a meter's comment, a role on the user-location link, endpoints to add and remove viewers, and endpoints listing all users with their locations and all locations. Authorisation for these must be enforced by the backend, not only hidden in the interface.
 - Existing user-location links, created before roles existed, are treated as owner links.
 - Sharing is done by administrators only. Owners cannot invite viewers themselves.
-- A location has exactly one owner; changing the owner is done by an administrator allocating the location to another user.
+- A location normally has one owner and always at least one. The owner is changed by an administrator adding the new owner and then demoting or removing the old one.
 - Deleting locations and meters is out of scope.
 - Sensor key rotation is out of scope and tracked in `backlog.md`.
 - "Usage and cost" refers to the existing dashboard views of consumption and cost; this feature only controls who may see them, and does not add new views.

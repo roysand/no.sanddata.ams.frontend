@@ -5,7 +5,7 @@ changed fields are marked.
 
 ## LocationRole
 
-`'Owner' | 'Viewer'`. A location has one owner (target state; see research item 2 for legacy data) and
+`'Owner' | 'Viewer'`. A location has at least one owner (normally one; see research item 2 for legacy data) and
 any number of viewers.
 
 ## LocationSummary (response of `GET /api/locations`) - extended

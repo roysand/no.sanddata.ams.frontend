@@ -11,7 +11,7 @@ Suggested name in the API repository: `006-location-roles-and-owner-edit`.
 - **`PUT /api/users/{userId}/locations/{locationId}`** (admin): optional body `{ "role": "Owner" | "Viewer" }`,
   **default `Owner`** so existing callers are unchanged. Still idempotent; sending a different role on an
   existing link changes the role.
-- **Rules**: creating a second `Owner` on a location is refused `409`; demoting the last `Owner` is
+- **Rules**: a location always has at least one `Owner`; several are allowed. Demoting the last `Owner` is
   refused `409`.
 - **`DELETE /api/users/{userId}/locations/{locationId}`** (admin): refused `409` (`Location.LastOwner`) when the
   link is the location's last owner.

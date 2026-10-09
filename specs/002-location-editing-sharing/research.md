@@ -31,10 +31,12 @@ current frontend.
 - **Rationale**: Backward compatible; the new "add viewer" action is the only caller that sends a role.
 - **Legacy data**: existing links have no role. The migration marks them all `Owner`. Some locations
   already have more than one linked user (for example one location linked to two users locally), so
-  "exactly one owner" cannot be enforced retroactively. The backend refuses to *create* a second owner
-  and refuses to remove or demote the *last* owner (`409 Location.LastOwner`); an administrator can
-  demote surplus legacy owners to viewer. The spec's one-owner rule is therefore the target state, not
-  a precondition.
+  "exactly one owner" cannot be enforced retroactively. The rule is therefore **at least one owner**:
+  several owners are allowed, and the backend refuses to remove or demote the *last* owner (`409`).
+  Ownership is transferred by adding the new owner first and then demoting or removing the old one.
+  An administrator can demote surplus legacy owners to viewer. "Exactly one" is the normal case, not
+  an enforced invariant. (An earlier draft also refused a second owner; that made transfer impossible
+  without a moment of having none, so it was dropped.)
 - **Alternatives considered**: Picking the earliest link as owner. Rejected: links have no timestamp,
   so the choice would be arbitrary.
 
