@@ -39,7 +39,18 @@ interface RefreshTokenResponse {
 
 let refreshPromise: Promise<string | null> | null = null
 
-export async function refreshAccessToken(): Promise<string | null> {
+/**
+ * Concurrent callers share one request: the API rotates refresh tokens, so a second call with the same
+ * token would be rejected and sign the user out (React StrictMode runs the restore effect twice in dev).
+ */
+export function refreshAccessToken(): Promise<string | null> {
+  refreshPromise ??= requestNewAccessToken().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+
+async function requestNewAccessToken(): Promise<string | null> {
   const refreshToken = authStore.getSession()?.refreshToken ?? authStore.getStoredRefreshToken()
   if (!refreshToken) return null
 
@@ -84,10 +95,7 @@ async function request<T>(
   let response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
 
   if (response.status === 401 && auth) {
-    refreshPromise ??= refreshAccessToken().finally(() => {
-      refreshPromise = null
-    })
-    const newAccessToken = await refreshPromise
+    const newAccessToken = await refreshAccessToken()
 
     if (newAccessToken) {
       headers.set('Authorization', `Bearer ${newAccessToken}`)

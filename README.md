@@ -24,23 +24,30 @@ The app runs at `http://localhost:5173`.
 
 ### Configuration
 
-Copy or edit `.env.development` to point at your local API instance:
+Copy `.env.example` to `.env` (git-ignored) and edit it to choose which API the dev server talks to:
 
 ```
-VITE_API_BASE_URL=http://localhost:5231
+# Local API
+API_PROXY_TARGET=https://localhost:7130
+# API on the internet
+API_PROXY_TARGET=https://ams-api.sanddata.eu
 ```
 
-This must match the scheme/port the API is actually running on. The API also needs a CORS policy allowing `http://localhost:5173` (see `Cors:AllowedOrigins` in the API's `appsettings.Development.json`).
+The dev server proxies `/api` requests to `API_PROXY_TARGET`, so no CORS setup is needed in development. Restart `npm run dev` after changing `.env`. If unset, it defaults to `https://ams-api.sanddata.eu`.
+
+This must match the scheme/port the API is actually running on. For production builds, set `VITE_API_BASE_URL` to the API's URL instead.
 
 ## Scripts
 
-| Command           | Purpose                              |
-| ----------------- | ------------------------------------ |
-| `npm run dev`     | Start the Vite dev server            |
-| `npm run build`   | Type-check and build for production  |
-| `npm run preview` | Preview the production build locally |
-| `npm run lint`    | Run ESLint                           |
-| `npm run format`  | Format the codebase with Prettier    |
+| Command              | Purpose                              |
+| -------------------- | ------------------------------------ |
+| `npm run dev`        | Start the Vite dev server            |
+| `npm run build`      | Type-check and build for production  |
+| `npm run preview`    | Preview the production build locally |
+| `npm test`           | Run the tests once (Vitest)          |
+| `npm run test:watch` | Run the tests in watch mode          |
+| `npm run lint`       | Run ESLint                           |
+| `npm run format`     | Format the codebase with Prettier    |
 
 ## Project Structure
 
@@ -51,10 +58,16 @@ src/
   app/            Router setup and top-level providers (App.tsx, routes.tsx)
   features/
     auth/         Login form, auth context/hook, API calls, session restore
-    measurements/ Measurement views
-  components/     Shared components (e.g. ProtectedRoute)
+    dashboard/    Location picker, current hour, power and cost charts
+    locations/    A user's locations and meters: setup wizard, "My locations" page,
+                  shared location/meter forms, one-time sensor key notice
+    admin/        Administrator pages: users, add location or meter on behalf of a user
+  components/     Shared components (e.g. ProtectedRoute, AdminRoute, Header) and ui/ primitives
   lib/            API client, auth token store, TanStack Query client
+  test/           Test setup, shared MSW server and render helpers
 ```
+
+Slices import each other only through their `index.ts` (for example `features/locations/index.ts`).
 
 ## Authentication
 
