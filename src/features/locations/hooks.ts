@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createMeter, getLocations } from './api'
+import { createMeter, createOwnLocation, getLocations } from './api'
 
 export function useLocations() {
   return useQuery({ queryKey: ['locations'], queryFn: getLocations })
+}
+
+export function useCreateOwnLocation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createOwnLocation,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locations'] }),
+  })
 }
 
 export function useCreateMeter() {

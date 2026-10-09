@@ -5,6 +5,7 @@ import { AppLayout } from '../components/AppLayout'
 import { LoginPage } from '../features/auth/LoginPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { UsersPage } from '../features/admin/UsersPage'
+import { LocationsPage, SetupPage } from '../features/locations'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -15,6 +16,8 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: '/', element: <DashboardPage /> },
+          { path: '/setup', element: <SetupPage /> },
+          { path: '/locations', element: <LocationsPage /> },
           {
             element: <AdminRoute />,
             children: [{ path: '/admin/users', element: <UsersPage /> }],

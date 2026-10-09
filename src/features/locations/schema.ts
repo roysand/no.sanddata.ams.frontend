@@ -5,6 +5,12 @@ export const ZONES = ['NO1', 'NO2', 'NO3', 'NO4', 'NO5'] as const
 /** A user may have at most this many locations through self-service; mirrors the API's limit. */
 export const MAX_OWN_LOCATIONS = 4
 
+export const LOCATION_LIMIT_MESSAGE = `You have the maximum of ${MAX_OWN_LOCATIONS} locations. Ask an administrator to add more.`
+
+export function hasReachedLocationLimit(locationCount: number): boolean {
+  return locationCount >= MAX_OWN_LOCATIONS
+}
+
 // Same rules as the API's CreateLocationValidator, so mistakes are caught before the request.
 export const locationSchema = z.object({
   name: z

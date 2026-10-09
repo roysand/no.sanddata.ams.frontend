@@ -12,4 +12,4 @@ Needed only for User Story 1 (users set up their own location). Not implemented 
 - **Errors**: `400` validation (same validator as the admin endpoint), `401`, `409` serial number in use, `409` with code `Location.LimitReached` when the user is already linked to 4 locations.
 - **Out of scope here**: key rotation for non-admins.
 
-**Status**: implemented in the API repo on branch `feature/005-user-creates-own-location` (not yet deployed). The limit of 4 counts all locations linked to the user; the admin endpoints are not limited.
+**Status**: implemented in the API repo on branch `feature/005-user-creates-own-location` (merged to `main` on 2026-10-09 as PR #12, merge commit `7a7721e`; the Build, Push & Deploy workflow finished successfully). The limit of 4 counts all locations linked to the user; the admin endpoints are not limited.
