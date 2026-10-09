@@ -121,7 +121,7 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 
 ## Phase 7: Polish and cross-cutting
 
-- [ ] T037 [P] Update `README.md`: project structure (add `locations/`, remove the stale `measurements/` entry), remove the outdated CORS note, mention the dev proxy and `npm test`.
+- [x] T037 [P] Update `README.md`: project structure (add `locations/`, remove the stale `measurements/` entry), remove the outdated CORS note, mention the dev proxy and `npm test`.
 - [x] T038 Run `npm test`, `npm run build`, `npm run lint`; fix any failures.
 - [ ] T039 Walk through `specs/001-location-meter-onboarding/quickstart.md` against the real API (admin section now; self-service section after T028) and note the result in the PR description.
 - [ ] T040 Confirm the sensor key never reaches storage or logs: grep `src/` for `localStorage`/`console` uses near `apiKey`, and check the browser Application tab after a run (FR-006). Status: code grep done (no storage or console use touches `apiKey`; only the selected location id and refresh token are stored); the browser Application-tab check after a real run is still open.
