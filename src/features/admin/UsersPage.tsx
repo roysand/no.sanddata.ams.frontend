@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { ApiError } from '../../lib/apiClient'
 import { useAuth } from '../auth/useAuth'
-import { useLocations } from '../dashboard/hooks'
+import { useLocations } from '../locations'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,14 +23,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { AddLocationDialog } from './AddLocationDialog'
+import { AddMeterDialog } from './AddMeterDialog'
 import { CreateUserDialog } from './CreateUserDialog'
 import { DeleteUserDialog } from './DeleteUserDialog'
 import { PAGE_SIZE, useUserActions, useUsers } from './hooks'
 import { ResetPasswordDialog } from './ResetPasswordDialog'
+import { userLocationOptions } from './locationOptions'
 import type { AdminUser } from './types'
 
 type DialogState =
   | { kind: 'create' }
+  | { kind: 'addLocation'; user: AdminUser }
+  | { kind: 'addMeter'; user: AdminUser }
   | { kind: 'password'; user: AdminUser }
   | { kind: 'delete'; user: AdminUser }
   | null
@@ -156,6 +161,15 @@ export function UsersPage() {
                                   {location.name}
                                 </label>
                               ))}
+                              {userLocationOptions(user)
+                                .filter(
+                                  (option) => !locations.data?.some((l) => l.id === option.id),
+                                )
+                                .map((option) => (
+                                  <span key={option.id} className="text-sm text-muted-foreground">
+                                    {option.name}
+                                  </span>
+                                ))}
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">
@@ -175,6 +189,20 @@ export function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setDialog({ kind: 'addLocation', user })}
+                              >
+                                Add location
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={user.locationIds.length === 0}
+                                title={
+                                  user.locationIds.length === 0 ? 'Add a location first' : undefined
+                                }
+                                onClick={() => setDialog({ kind: 'addMeter', user })}
+                              >
+                                Add meter
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={isSelf && isAdmin}
                                 onClick={() =>
@@ -257,8 +285,9 @@ export function UsersPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Location checkboxes list your own locations. You cannot change your own role, status
-                or password here, or delete yourself.
+                Location checkboxes list your own locations; other locations the user has are shown
+                as text. You cannot change your own role, status or password here, or delete
+                yourself.
               </p>
             </>
           )}
@@ -266,6 +295,12 @@ export function UsersPage() {
       </Card>
 
       {dialog?.kind === 'create' && <CreateUserDialog onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'addLocation' && (
+        <AddLocationDialog user={dialog.user} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'addMeter' && (
+        <AddMeterDialog user={dialog.user} onClose={() => setDialog(null)} />
+      )}
       {dialog?.kind === 'password' && (
         <ResetPasswordDialog user={dialog.user} onClose={() => setDialog(null)} />
       )}

@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { LocationSummary } from './types'
+import type { LocationSummary } from '../locations'
 
 interface LocationPickerProps {
   locations: LocationSummary[]

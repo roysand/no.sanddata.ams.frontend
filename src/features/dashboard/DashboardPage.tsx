@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
+import { SELF_SERVICE_ENABLED, useLocations } from '../locations'
 import { Card, CardContent } from '@/components/ui/card'
 import { CurrentHourCard } from './CurrentHourCard'
 import { DailyCostChart } from './DailyCostChart'
 import { HourlyCostChart } from './HourlyCostChart'
 import { LocationPicker } from './LocationPicker'
 import { PowerChart } from './PowerChart'
-import { useLocations } from './hooks'
 
 const SELECTED_LOCATION_KEY = 'ams.selectedLocation'
 
@@ -26,6 +27,7 @@ export function DashboardPage() {
   }
 
   if (!locations || locations.length === 0) {
+    if (SELF_SERVICE_ENABLED) return <Navigate to="/setup" replace />
     return (
       <Card className="mx-auto max-w-4xl bg-white/95 shadow-lg">
         <CardContent className="pt-6 text-sm text-muted-foreground">

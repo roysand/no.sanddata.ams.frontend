@@ -7,6 +7,8 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    /** Validation messages by field name, when the API sent them (`errors` in the body). */
+    public fieldErrors?: Record<string, string[]>,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -37,7 +39,18 @@ interface RefreshTokenResponse {
 
 let refreshPromise: Promise<string | null> | null = null
 
-export async function refreshAccessToken(): Promise<string | null> {
+/**
+ * Concurrent callers share one request: the API rotates refresh tokens, so a second call with the same
+ * token would be rejected and sign the user out (React StrictMode runs the restore effect twice in dev).
+ */
+export function refreshAccessToken(): Promise<string | null> {
+  refreshPromise ??= requestNewAccessToken().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+
+async function requestNewAccessToken(): Promise<string | null> {
   const refreshToken = authStore.getSession()?.refreshToken ?? authStore.getStoredRefreshToken()
   if (!refreshToken) return null
 
@@ -82,10 +95,7 @@ async function request<T>(
   let response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
 
   if (response.status === 401 && auth) {
-    refreshPromise ??= refreshAccessToken().finally(() => {
-      refreshPromise = null
-    })
-    const newAccessToken = await refreshPromise
+    const newAccessToken = await refreshAccessToken()
 
     if (newAccessToken) {
       headers.set('Authorization', `Bearer ${newAccessToken}`)
@@ -95,7 +105,12 @@ async function request<T>(
 
   if (!response.ok) {
     const body: ApiErrorBody | null = await response.json().catch(() => null)
-    throw new ApiError(response.status, body?.code ?? 'Unknown', extractErrorMessage(body, response.statusText))
+    throw new ApiError(
+      response.status,
+      body?.code ?? 'Unknown',
+      extractErrorMessage(body, response.statusText),
+      body?.errors,
+    )
   }
 
   if (response.status === 204) return undefined as T

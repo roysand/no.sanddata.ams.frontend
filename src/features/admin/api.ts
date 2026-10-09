@@ -1,4 +1,5 @@
 import { api } from '../../lib/apiClient'
+import { createLocationAsAdmin, type CreatedLocation, type LocationInput } from '../locations'
 import type { AdminUser, CreateUserInput, PagedUsers } from './types'
 
 export async function getUsers(page: number, pageSize: number, search: string) {
@@ -43,4 +44,26 @@ export function setLocationLink(userId: string, locationId: string, linked: bool
 /** An administrator resetting someone else's password does not need the current one. */
 export function resetPassword(userId: string, newPassword: string) {
   return api.put<void>(`/api/users/${userId}/password`, { newPassword })
+}
+
+/** The location was created (and its key issued) but linking it to the user failed; the link can be retried. */
+export class LocationNotLinkedError extends Error {
+  constructor(
+    public created: CreatedLocation,
+    public cause: unknown,
+  ) {
+    super('The location was created but could not be linked to the user')
+    this.name = 'LocationNotLinkedError'
+  }
+}
+
+/** Creates a location (admin endpoint, which links nobody) and links it to `userId`. */
+export async function createLocationForUser(userId: string, input: LocationInput) {
+  const created = await createLocationAsAdmin(input)
+  try {
+    await setLocationLink(userId, created.location.id, true)
+  } catch (error) {
+    throw new LocationNotLinkedError(created, error)
+  }
+  return created
 }

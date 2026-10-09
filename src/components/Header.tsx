@@ -8,7 +8,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const navItems = [{ to: '/', label: 'Dashboard' }]
+const navItems = [
+  { to: '/', label: 'Dashboard' },
+  { to: '/locations', label: 'My locations' },
+]
 const adminNavItems = [{ to: '/admin/users', label: 'Users' }]
 
 export function Header() {
