@@ -1,5 +1,10 @@
 import { api } from '../../lib/apiClient'
-import { createLocationAsAdmin, type CreatedLocation, type LocationInput } from '../locations'
+import {
+  createLocationAsAdmin,
+  type AdminLocation,
+  type CreatedLocation,
+  type LocationInput,
+} from '../locations'
 import type { AdminUser, CreateUserInput, PagedUsers } from './types'
 
 export async function getUsers(page: number, pageSize: number, search: string) {
@@ -66,4 +71,14 @@ export async function createLocationForUser(userId: string, input: LocationInput
     throw new LocationNotLinkedError(created, error)
   }
   return created
+}
+
+/** Every location in the system, including ones the caller is not linked to. */
+export function getAdminLocations() {
+  return api.get<AdminLocation[]>('/api/admin/locations')
+}
+
+/** Administrators may change every field; owners use the narrower endpoint in `features/locations`. */
+export function updateLocationAsAdmin(id: string, input: LocationInput) {
+  return api.put<AdminLocation>(`/api/admin/locations/${id}`, { id, ...input })
 }

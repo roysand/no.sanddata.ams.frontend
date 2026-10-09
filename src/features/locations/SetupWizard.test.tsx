@@ -26,6 +26,10 @@ const cabin: LocationSummary = {
   name: 'Cabin',
   address: 'Hyttevegen 1',
   zone: 'NO3',
+  serialNumber: 'SN-1',
+  hasNorgesPriceAgreement: false,
+  isActive: true,
+  role: 'Owner',
   meters: [],
 }
 
@@ -127,7 +131,10 @@ describe('SetupWizard', () => {
       http.get('*/api/locations', () => HttpResponse.json([])),
       http.post('*/api/locations', () =>
         HttpResponse.json(
-          { message: 'Duplicate', errors: { generalErrors: ['Serial number SN-1 is already in use'] } },
+          {
+            message: 'Duplicate',
+            errors: { generalErrors: ['Serial number SN-1 is already in use'] },
+          },
           { status: 409 },
         ),
       ),

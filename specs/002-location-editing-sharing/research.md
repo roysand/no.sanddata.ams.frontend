@@ -77,7 +77,7 @@ current frontend.
 - **Decision**: Viewers keep today's read access: the existing measurement and cost endpoints already
   authorise by "linked to the location". No new read endpoint is needed; only the role check on writes
   is new.
-- **Open check for the backend task**: confirm that every read endpoint the dashboard uses authorises
+- **Verified 2026-10-09**: every read handler the dashboard uses (`GetConsumption`, `GetCurrentHourCost`, `GetDailyCost`, `GetHourlyCost`, `GetLatestMeasurement`, `GetMeasurements`) authorises with `IsUserAssociatedAsync`, i.e. by link, not by ownership. Viewers therefore see usage and cost with no change. (Original check: confirm that every read endpoint the dashboard uses authorises
   by link, not by ownership, so viewers see usage and cost.
 
 ## 7. The 4-location limit
