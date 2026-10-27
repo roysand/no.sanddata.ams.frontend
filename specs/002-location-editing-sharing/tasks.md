@@ -88,9 +88,9 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 
 **Independent Test**: Open Users; every user is listed with each location and its role; a user with no locations shows an add action; search narrows by name or email.
 
-- [ ] T023 [US3] In `src/features/admin/types.ts` add `locationAccess?: { locationId: string; name: string; role: LocationRole }[]` to `AdminUser`. In `getUsers` (`api.ts`) normalise a response without it to the legacy pairing of `locations` and `locationIds` with `role: null`, so the page shows names without a role badge until the backend ships. Keep `locations` and `locationIds` for compatibility (data-model.md).
-- [ ] T024 [US3] Update `src/features/admin/locationOptions.ts` and `src/features/admin/UsersPage.tsx` to render each location with a role badge (Owner or Viewer; no badge when the role is unknown), and add per-location row actions "Make owner", "Make viewer" and "Remove" that call `setLocationLink` / unlink and show the server's message when refused (the page already has an error banner). Users with no locations stay listed with "Add location" (existing). Search by name or email already exists; keep it.
-- [ ] T025 [P] [US3] Extend `src/features/admin/UsersPage.test.tsx` and `src/features/admin/locationOptions.test.ts`: roles shown next to locations; no badge for legacy responses; "Make viewer" sends `PUT` with `{ role: 'Viewer' }`; a `409` on removing the last owner shows the message; a user with no locations is still listed.
+- [x] T023 [US3] In `src/features/admin/types.ts` add `locationAccess?: { locationId: string; name: string; role: LocationRole }[]` to `AdminUser`. In `getUsers` (`api.ts`) normalise a response without it to the legacy pairing of `locations` and `locationIds` with `role: null`, so the page shows names without a role badge until the backend ships. Keep `locations` and `locationIds` for compatibility (data-model.md).
+- [x] T024 [US3] Update `src/features/admin/locationOptions.ts` and `src/features/admin/UsersPage.tsx` to render each location with a role badge (Owner or Viewer; no badge when the role is unknown), and add per-location row actions "Make owner", "Make viewer" and "Remove" that call `setLocationLink` / unlink and show the server's message when refused (the page already has an error banner). Users with no locations stay listed with "Add location" (existing). Search by name or email already exists; keep it.
+- [x] T025 [P] [US3] Extend `src/features/admin/UsersPage.test.tsx` and `src/features/admin/locationOptions.test.ts`: roles shown next to locations; no badge for legacy responses; "Make viewer" sends `PUT` with `{ role: 'Viewer' }`; a `409` on removing the last owner shows the message; a user with no locations is still listed.
 
 **Checkpoint**: US2 and US3 complete the administrator side.
 
@@ -123,7 +123,7 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 - [ ] T037 Run `npm test`, `npm run build`, `npm run lint`; fix any failures.
 - [ ] T038 Walk through `specs/002-location-editing-sharing/quickstart.md` against the local API (admin part with today's API, owner and viewer parts once the backend is deployed), using a throwaway local database as in feature 001, and note the result in the PR description.
 - [ ] T039 Confirm no system field or sensor key can reach the owner screens: search `src/features/locations/EditLocationDialog.tsx` and the owner API calls for `serialNumber`, `zone`, `hasNorgesPriceAgreement` and `apiKey` in request bodies and form inputs, and check one owner request in the browser network tab.
-- [ ] T040 When the backend is deployed: set `LOCATION_SHARING_ENABLED` handling to permanent (remove the constant and its uses) and remove the normalisation shims from T004 and T023 (`role` default, `isActive` default, legacy `locationAccess` pairing).
+- [ ] T040 When the backend is deployed: set `LOCATION_SHARING_ENABLED` handling to permanent (remove the constant and its uses) and remove the normalisation shim from T004 (`role` default, `isActive` default). T023 needed no shim: the API was already deployed, so `AdminUser.locationAccess` is required and the page no longer reads `locations` or `locationIds`.
 
 ---
 

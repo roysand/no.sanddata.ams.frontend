@@ -13,8 +13,7 @@ const person = (id: string, first: string) => ({
   email: `${first.toLowerCase()}@sanddata.no`,
   isActive: true,
   roles: ['User'],
-  locations: [],
-  locationIds: [],
+  locationAccess: [],
 })
 
 const cabin: AdminLocation = {

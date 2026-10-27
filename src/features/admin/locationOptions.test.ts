@@ -8,12 +8,14 @@ const user: AdminUser = {
   email: 'roy@sanddata.no',
   isActive: true,
   roles: ['User'],
-  locations: ['Cabin', 'House'],
-  locationIds: ['l1', 'l2'],
+  locationAccess: [
+    { locationId: 'l1', name: 'Cabin', role: 'Owner' },
+    { locationId: 'l2', name: 'House', role: 'Viewer' },
+  ],
 }
 
 describe('userLocationOptions', () => {
-  it('pairs names with ids by position', () => {
+  it('lists the ids with their names, whatever the role', () => {
     expect(userLocationOptions(user)).toEqual([
       { id: 'l1', name: 'Cabin' },
       { id: 'l2', name: 'House' },
@@ -21,13 +23,6 @@ describe('userLocationOptions', () => {
   })
 
   it('is empty for a user without locations', () => {
-    expect(userLocationOptions({ ...user, locations: [], locationIds: [] })).toEqual([])
-  })
-
-  it('falls back to the id when a name is missing', () => {
-    expect(userLocationOptions({ ...user, locations: ['Cabin'] })[1]).toEqual({
-      id: 'l2',
-      name: 'l2',
-    })
+    expect(userLocationOptions({ ...user, locationAccess: [] })).toEqual([])
   })
 })

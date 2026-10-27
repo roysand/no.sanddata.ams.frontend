@@ -13,8 +13,10 @@ const user: AdminUser = {
   email: 'roy@sanddata.no',
   isActive: true,
   roles: ['User'],
-  locations: ['Cabin', 'House'],
-  locationIds: ['l1', 'l2'],
+  locationAccess: [
+    { locationId: 'l1', name: 'Cabin', role: 'Owner' as const },
+    { locationId: 'l2', name: 'House', role: 'Viewer' as const },
+  ],
 }
 
 const meter = {

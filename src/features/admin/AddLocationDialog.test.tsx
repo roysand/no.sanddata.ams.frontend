@@ -14,8 +14,7 @@ const user: AdminUser = {
   email: 'roy@sanddata.no',
   isActive: true,
   roles: ['User'],
-  locations: [],
-  locationIds: [],
+  locationAccess: [],
 }
 
 const created = {
