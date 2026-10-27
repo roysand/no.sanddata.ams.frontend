@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-09
 
-**Status**: Draft
+**Status**: Implemented and merged 2026-10-27 (PR #6); quickstart passed against the deployed API
 
 **Input**: User description: "Location editing and sharing. Admin creates users and allocates them to locations. Each user-location link has a role: owner (the user the admin allocates) or viewer (other users given rights to see the location data and usage/cost). Owners can edit all non-system fields of a location (starting with name and address) and also meter fields such as comment, but never API/sensor keys or other system fields (serial number, zone, price agreement), which stay admin-only. If an owner sets the active flag to false, show a warning. Admin gets a menu item listing all users with their locations, and another menu item listing all locations in the system. Admin can add/remove viewers on a location. Sensor key rotation is out of scope (in backlog.md)."
 
