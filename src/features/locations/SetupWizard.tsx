@@ -12,6 +12,7 @@ import {
 } from './schema'
 import { SensorKeyNotice } from './SensorKeyNotice'
 import { toFormServerError } from './serverErrors'
+import { ownedLocations } from './access'
 import type { LocationSummary } from './types'
 
 const LOCATION_FIELDS = ['name', 'address', 'serialNumber', 'zone'] as const
@@ -24,9 +25,12 @@ type Step =
   | { kind: 'meter'; locationId: string }
   | { kind: 'done' }
 
-/** Resume at the meter step when the user already has a location without a meter. */
+/**
+ * Resume at the meter step when the user owns a location without a meter. A shared location without meters
+ * is not theirs to finish, so it must not send a viewer to the meter step.
+ */
 function initialStep(locations: LocationSummary[]): Step {
-  const unfinished = locations.find((location) => location.meters.length === 0)
+  const unfinished = ownedLocations(locations).find((location) => location.meters.length === 0)
   return unfinished ? { kind: 'meter', locationId: unfinished.id } : { kind: 'location' }
 }
 
@@ -82,7 +86,7 @@ function WizardSteps({ locations }: { locations: LocationSummary[] }) {
   }
 
   if (step.kind === 'location') {
-    if (hasReachedLocationLimit(locations.length)) {
+    if (hasReachedLocationLimit(ownedLocations(locations).length)) {
       return (
         <p className="text-sm" role="status">
           {LOCATION_LIMIT_MESSAGE}

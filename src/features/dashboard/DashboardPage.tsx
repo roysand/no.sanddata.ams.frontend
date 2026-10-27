@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { SELF_SERVICE_ENABLED, useLocations } from '../locations'
 import { Card, CardContent } from '@/components/ui/card'
 import { CurrentHourCard } from './CurrentHourCard'
@@ -37,8 +37,26 @@ export function DashboardPage() {
     )
   }
 
+  // Owners also receive their inactive locations (to reactivate them under My locations); the dashboard shows
+  // only active ones.
+  const activeLocations = locations.filter((location) => location.isActive !== false)
+  if (activeLocations.length === 0) {
+    return (
+      <Card className="mx-auto max-w-4xl bg-white/95 shadow-lg">
+        <CardContent className="pt-6 text-sm text-muted-foreground">
+          All your locations are inactive. Activate one under{' '}
+          <Link to="/locations" className="underline">
+            My locations
+          </Link>
+          .
+        </CardContent>
+      </Card>
+    )
+  }
+
   // Fall back to the first location when nothing (or a location we no longer have access to) is remembered.
-  const selected = locations.find((location) => location.id === chosenId) ?? locations[0]
+  const selected =
+    activeLocations.find((location) => location.id === chosenId) ?? activeLocations[0]
 
   const choose = (locationId: string) => {
     localStorage.setItem(SELECTED_LOCATION_KEY, locationId)
@@ -54,7 +72,7 @@ export function DashboardPage() {
             {selected.address} · price zone {selected.zone}
           </p>
         </div>
-        <LocationPicker locations={locations} value={selected.id} onChange={choose} />
+        <LocationPicker locations={activeLocations} value={selected.id} onChange={choose} />
       </div>
 
       <CurrentHourCard locationId={selected.id} />

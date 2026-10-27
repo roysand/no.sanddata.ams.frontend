@@ -3,17 +3,20 @@ import {
   createLocationForUser,
   createUser,
   deleteUser,
+  getAdminLocations,
   getUsers,
   resetPassword,
   setAdmin,
   setLocationLink,
   setUserActive,
+  updateLocationAsAdmin,
 } from './api'
-import type { LocationInput } from '../locations'
+import type { LocationInput, LocationRole } from '../locations'
 
 export const PAGE_SIZE = 10
 
 const USERS_KEY = ['admin', 'users']
+const ADMIN_LOCATIONS_KEY = ['admin', 'locations']
 
 export function useUsers(page: number, search: string) {
   return useQuery({
@@ -27,7 +30,11 @@ export function useUsers(page: number, search: string) {
 export function useUserActions() {
   const queryClient = useQueryClient()
   const refresh = () => queryClient.invalidateQueries({ queryKey: USERS_KEY })
-  const refreshLocations = () => queryClient.invalidateQueries({ queryKey: ['locations'] })
+  const refreshLocations = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['locations'] }),
+      queryClient.invalidateQueries({ queryKey: ADMIN_LOCATIONS_KEY }),
+    ])
 
   return {
     create: useMutation({ mutationFn: createUser, onSuccess: refresh }),
@@ -42,9 +49,13 @@ export function useUserActions() {
       onSuccess: refresh,
     }),
     link: useMutation({
-      mutationFn: (v: { userId: string; locationId: string; linked: boolean }) =>
-        setLocationLink(v.userId, v.locationId, v.linked),
-      onSuccess: refresh,
+      mutationFn: (v: {
+        userId: string
+        locationId: string
+        linked: boolean
+        role?: LocationRole
+      }) => setLocationLink(v.userId, v.locationId, v.linked, v.role),
+      onSuccess: () => Promise.all([refresh(), refreshLocations()]),
     }),
     addLocation: useMutation({
       mutationFn: (v: { userId: string; input: LocationInput }) =>
@@ -56,4 +67,21 @@ export function useUserActions() {
         resetPassword(v.userId, v.newPassword),
     }),
   }
+}
+
+export function useAdminLocations() {
+  return useQuery({ queryKey: ADMIN_LOCATIONS_KEY, queryFn: getAdminLocations })
+}
+
+export function useUpdateLocationAsAdmin() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { id: string; input: LocationInput }) => updateLocationAsAdmin(v.id, v.input),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ADMIN_LOCATIONS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['locations'] }),
+        queryClient.invalidateQueries({ queryKey: USERS_KEY }),
+      ]),
+  })
 }

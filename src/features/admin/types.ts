@@ -1,3 +1,5 @@
+import type { LocationRole } from '../locations'
+
 export interface AdminUser {
   id: string
   firstName: string
@@ -5,10 +7,14 @@ export interface AdminUser {
   email: string
   isActive: boolean
   roles: string[]
-  /** Location names, for display */
-  locations: string[]
-  /** Location ids, for linking and unlinking */
-  locationIds: string[]
+  /** The user's locations with their role there (the API also sends `locations` and `locationIds`; unused). */
+  locationAccess: UserLocationAccess[]
+}
+
+export interface UserLocationAccess {
+  locationId: string
+  name: string
+  role: LocationRole
 }
 
 export interface PagedUsers {

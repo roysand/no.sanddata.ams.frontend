@@ -5,6 +5,7 @@ import { AppLayout } from '../components/AppLayout'
 import { LoginPage } from '../features/auth/LoginPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { UsersPage } from '../features/admin/UsersPage'
+import { AdminLocationsPage } from '../features/admin/AdminLocationsPage'
 import { LocationsPage, SetupPage } from '../features/locations'
 
 export const router = createBrowserRouter([
@@ -20,7 +21,10 @@ export const router = createBrowserRouter([
           { path: '/locations', element: <LocationsPage /> },
           {
             element: <AdminRoute />,
-            children: [{ path: '/admin/users', element: <UsersPage /> }],
+            children: [
+              { path: '/admin/users', element: <UsersPage /> },
+              { path: '/admin/locations', element: <AdminLocationsPage /> },
+            ],
           },
         ],
       },

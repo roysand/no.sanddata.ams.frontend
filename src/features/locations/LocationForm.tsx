@@ -21,6 +21,8 @@ interface LocationFormProps {
   /** Messages the API attached to individual fields. */
   fieldErrors?: Partial<Record<keyof LocationFormValues, string>>
   isSubmitting?: boolean
+  /** Start values, for editing an existing location. */
+  defaultValues?: Partial<LocationFormValues>
 }
 
 export function LocationForm({
@@ -29,6 +31,7 @@ export function LocationForm({
   serverError,
   fieldErrors,
   isSubmitting,
+  defaultValues,
 }: LocationFormProps) {
   const {
     register,
@@ -44,6 +47,7 @@ export function LocationForm({
       serialNumber: '',
       hasNorgesPriceAgreement: false,
       isActive: true,
+      ...defaultValues,
     },
   })
 

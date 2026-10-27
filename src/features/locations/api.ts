@@ -18,3 +18,15 @@ export function createLocationAsAdmin(input: LocationInput) {
 export function createMeter(input: MeterInput) {
   return api.post<Meter>('/api/meters', input)
 }
+
+/** An owner changes only name, address and the active flag; system fields cannot be sent from here. */
+export function updateOwnLocation(
+  id: string,
+  input: { name: string; address: string; isActive: boolean },
+) {
+  return api.put<LocationSummary>(`/api/locations/${id}`, input)
+}
+
+export function updateMeterComment(id: string, comment: string | null) {
+  return api.put<Meter>(`/api/meters/${id}`, { comment })
+}

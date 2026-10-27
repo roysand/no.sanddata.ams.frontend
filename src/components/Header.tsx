@@ -12,7 +12,10 @@ const navItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/locations', label: 'My locations' },
 ]
-const adminNavItems = [{ to: '/admin/users', label: 'Users' }]
+const adminNavItems = [
+  { to: '/admin/users', label: 'Users' },
+  { to: '/admin/locations', label: 'Locations' },
+]
 
 export function Header() {
   const { email, roles, logout } = useAuth()

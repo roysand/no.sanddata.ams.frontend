@@ -1,4 +1,4 @@
-import { locationSchema, meterSchema } from './schema'
+import { locationSchema, meterCommentSchema, meterSchema, ownerLocationSchema } from './schema'
 
 const validLocation = {
   name: 'Cabin',
@@ -55,5 +55,43 @@ describe('meterSchema', () => {
     expect(meterSchema.safeParse({ ...validMeter, deviceId: 'x'.repeat(101) }).success).toBe(false)
     expect(meterSchema.safeParse({ ...validMeter, comment: 'x'.repeat(200) }).success).toBe(true)
     expect(meterSchema.safeParse({ ...validMeter, comment: 'x'.repeat(201) }).success).toBe(false)
+  })
+})
+
+describe('ownerLocationSchema', () => {
+  const valid = { name: 'Cabin', address: 'Hyttevegen 1', isActive: true }
+
+  it('accepts a valid edit', () => {
+    expect(ownerLocationSchema.safeParse(valid).success).toBe(true)
+  })
+
+  it('requires name and address', () => {
+    expect(ownerLocationSchema.safeParse({ ...valid, name: '  ' }).success).toBe(false)
+    expect(ownerLocationSchema.safeParse({ ...valid, address: '' }).success).toBe(false)
+  })
+
+  it('limits name and address to 100 characters', () => {
+    expect(ownerLocationSchema.safeParse({ ...valid, name: 'x'.repeat(100) }).success).toBe(true)
+    expect(ownerLocationSchema.safeParse({ ...valid, name: 'x'.repeat(101) }).success).toBe(false)
+    expect(ownerLocationSchema.safeParse({ ...valid, address: 'x'.repeat(101) }).success).toBe(
+      false,
+    )
+  })
+
+  it('does not carry system fields', () => {
+    const parsed = ownerLocationSchema.parse({ ...valid, serialNumber: 'SN-1', zone: 'NO1' })
+
+    expect(parsed).toEqual(valid)
+  })
+})
+
+describe('meterCommentSchema', () => {
+  it('allows no comment and up to 200 characters', () => {
+    expect(meterCommentSchema.safeParse({}).success).toBe(true)
+    expect(meterCommentSchema.safeParse({ comment: 'x'.repeat(200) }).success).toBe(true)
+  })
+
+  it('rejects 201 characters', () => {
+    expect(meterCommentSchema.safeParse({ comment: 'x'.repeat(201) }).success).toBe(false)
   })
 })

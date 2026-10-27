@@ -2,11 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { ApiError } from '../../lib/apiClient'
 import { useAuth } from '../auth/useAuth'
-import { useLocations } from '../locations'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +27,6 @@ import { CreateUserDialog } from './CreateUserDialog'
 import { DeleteUserDialog } from './DeleteUserDialog'
 import { PAGE_SIZE, useUserActions, useUsers } from './hooks'
 import { ResetPasswordDialog } from './ResetPasswordDialog'
-import { userLocationOptions } from './locationOptions'
 import type { AdminUser } from './types'
 
 type DialogState =
@@ -49,7 +46,6 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null)
 
   const users = useUsers(page, search)
-  const locations = useLocations()
   const actions = useUserActions()
 
   // Run an action; show the server's message above the table if it is refused (e.g. the last admin).
@@ -138,43 +134,59 @@ export function UsersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {locations.data?.length ? (
-                            <div className="flex flex-col gap-1">
-                              {locations.data.map((location) => (
-                                <label
-                                  key={location.id}
-                                  className="flex items-center gap-2 text-sm"
+                          {user.locationAccess.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : (
+                            <ul className="flex flex-col gap-1">
+                              {user.locationAccess.map((access) => (
+                                <li
+                                  key={access.locationId}
+                                  className="flex flex-wrap items-center gap-2 text-sm"
                                 >
-                                  <Checkbox
-                                    checked={user.locationIds.includes(location.id)}
-                                    onCheckedChange={(checked) =>
+                                  {access.name}
+                                  <Badge
+                                    variant={access.role === 'Owner' ? 'default' : 'secondary'}
+                                  >
+                                    {access.role}
+                                  </Badge>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={actions.link.isPending}
+                                    aria-label={`Make ${user.email} ${access.role === 'Owner' ? 'viewer' : 'owner'} of ${access.name}`}
+                                    onClick={() =>
                                       run(
                                         actions.link.mutateAsync({
                                           userId: user.id,
-                                          locationId: location.id,
-                                          linked: checked === true,
+                                          locationId: access.locationId,
+                                          linked: true,
+                                          role: access.role === 'Owner' ? 'Viewer' : 'Owner',
                                         }),
                                       )
                                     }
+                                  >
+                                    {access.role === 'Owner' ? 'Make viewer' : 'Make owner'}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
                                     disabled={actions.link.isPending}
-                                  />
-                                  {location.name}
-                                </label>
+                                    aria-label={`Remove ${user.email} from ${access.name}`}
+                                    onClick={() =>
+                                      run(
+                                        actions.link.mutateAsync({
+                                          userId: user.id,
+                                          locationId: access.locationId,
+                                          linked: false,
+                                        }),
+                                      )
+                                    }
+                                  >
+                                    Remove
+                                  </Button>
+                                </li>
                               ))}
-                              {userLocationOptions(user)
-                                .filter(
-                                  (option) => !locations.data?.some((l) => l.id === option.id),
-                                )
-                                .map((option) => (
-                                  <span key={option.id} className="text-sm text-muted-foreground">
-                                    {option.name}
-                                  </span>
-                                ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {user.locations.join(', ') || '—'}
-                            </span>
+                            </ul>
                           )}
                         </TableCell>
                         <TableCell>
@@ -195,9 +207,11 @@ export function UsersPage() {
                                 Add location
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                disabled={user.locationIds.length === 0}
+                                disabled={user.locationAccess.length === 0}
                                 title={
-                                  user.locationIds.length === 0 ? 'Add a location first' : undefined
+                                  user.locationAccess.length === 0
+                                    ? 'Add a location first'
+                                    : undefined
                                 }
                                 onClick={() => setDialog({ kind: 'addMeter', user })}
                               >
@@ -285,9 +299,8 @@ export function UsersPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Location checkboxes list your own locations; other locations the user has are shown
-                as text. You cannot change your own role, status or password here, or delete
-                yourself.
+                Share an existing location with a user from the Locations page. You cannot change
+                your own role, status or password here, or delete yourself.
               </p>
             </>
           )}

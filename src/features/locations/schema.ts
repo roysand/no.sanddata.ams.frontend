@@ -47,3 +47,29 @@ export const meterSchema = z.object({
 })
 
 export type MeterFormValues = z.infer<typeof meterSchema>
+
+// What an owner may change on their location: the same name and address rules as the API's
+// UpdateLocationValidator, plus the active flag. System fields (serial number, zone, Norgespris, key) are
+// deliberately not part of this schema.
+export const ownerLocationSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be at most 100 characters'),
+  address: z
+    .string()
+    .trim()
+    .min(1, 'Address is required')
+    .max(100, 'Address must be at most 100 characters'),
+  isActive: z.boolean(),
+})
+
+export type OwnerLocationFormValues = z.infer<typeof ownerLocationSchema>
+
+// Same rule as the meter comment in the API's CreateMeterValidator.
+export const meterCommentSchema = z.object({
+  comment: z.string().max(200, 'Comment must be at most 200 characters').optional(),
+})
+
+export type MeterCommentFormValues = z.infer<typeof meterCommentSchema>

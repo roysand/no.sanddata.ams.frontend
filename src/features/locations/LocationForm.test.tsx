@@ -61,3 +61,41 @@ describe('LocationForm', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Cabin')
   })
 })
+
+describe('LocationForm when editing', () => {
+  it('starts with the given values and submits the edited ones', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(
+      <LocationForm
+        submitLabel="Save"
+        onSubmit={onSubmit}
+        defaultValues={{
+          name: 'Cabin',
+          address: 'Hyttevegen 1',
+          serialNumber: 'SN-1',
+          zone: 'NO3',
+          hasNorgesPriceAgreement: true,
+          isActive: false,
+        }}
+      />,
+    )
+
+    expect(screen.getByLabelText('Name')).toHaveValue('Cabin')
+    expect(screen.getByLabelText('Serial number')).toHaveValue('SN-1')
+
+    await user.clear(screen.getByLabelText('Name'))
+    await user.type(screen.getByLabelText('Name'), 'Mountain cabin')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSubmit).toHaveBeenCalledOnce()
+    expect(onSubmit.mock.calls[0][0]).toEqual({
+      name: 'Mountain cabin',
+      address: 'Hyttevegen 1',
+      serialNumber: 'SN-1',
+      zone: 'NO3',
+      hasNorgesPriceAgreement: true,
+      isActive: false,
+    })
+  })
+})

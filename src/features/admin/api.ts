@@ -1,16 +1,17 @@
 import { api } from '../../lib/apiClient'
-import { createLocationAsAdmin, type CreatedLocation, type LocationInput } from '../locations'
+import {
+  createLocationAsAdmin,
+  type AdminLocation,
+  type CreatedLocation,
+  type LocationInput,
+  type LocationRole,
+} from '../locations'
 import type { AdminUser, CreateUserInput, PagedUsers } from './types'
 
 export async function getUsers(page: number, pageSize: number, search: string) {
   const params = new URLSearchParams({ pageNumber: String(page), pageSize: String(pageSize) })
   if (search) params.set('search', search)
-  const result = await api.get<PagedUsers>(`/api/users?${params}`)
-  // APIs from before the locationIds field was added omit it; treat that as "no links known" instead of crashing.
-  return {
-    ...result,
-    users: result.users.map((user) => ({ ...user, locationIds: user.locationIds ?? [] })),
-  }
+  return api.get<PagedUsers>(`/api/users?${params}`)
 }
 
 export function createUser(input: CreateUserInput) {
@@ -36,9 +37,19 @@ export function setAdmin(userId: string, isAdmin: boolean) {
   return isAdmin ? api.put<void>(path) : api.delete<void>(path)
 }
 
-export function setLocationLink(userId: string, locationId: string, linked: boolean) {
+/**
+ * Without `role` no body is sent, so the API's default (Owner) applies and the original flow is unchanged.
+ * Linking again with another role changes the role.
+ */
+export function setLocationLink(
+  userId: string,
+  locationId: string,
+  linked: boolean,
+  role?: LocationRole,
+) {
   const path = `/api/users/${userId}/locations/${locationId}`
-  return linked ? api.put<void>(path) : api.delete<void>(path)
+  if (!linked) return api.delete<void>(path)
+  return role ? api.put<void>(path, { role }) : api.put<void>(path)
 }
 
 /** An administrator resetting someone else's password does not need the current one. */
@@ -66,4 +77,14 @@ export async function createLocationForUser(userId: string, input: LocationInput
     throw new LocationNotLinkedError(created, error)
   }
   return created
+}
+
+/** Every location in the system, including ones the caller is not linked to. */
+export function getAdminLocations() {
+  return api.get<AdminLocation[]>('/api/admin/locations')
+}
+
+/** Administrators may change every field; owners use the narrower endpoint in `features/locations`. */
+export function updateLocationAsAdmin(id: string, input: LocationInput) {
+  return api.put<AdminLocation>(`/api/admin/locations/${id}`, { id, ...input })
 }

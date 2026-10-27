@@ -57,10 +57,12 @@ describe('Header', () => {
   it('shows the Users link only to administrators', () => {
     const { unmount } = renderHeader(['User'])
     expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Locations' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'My locations' })).toBeInTheDocument()
     unmount()
 
     renderHeader(['Admin'])
     expect(screen.getByRole('link', { name: 'Users' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Locations' })).toBeInTheDocument()
   })
 })
