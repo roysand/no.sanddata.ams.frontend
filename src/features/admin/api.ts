@@ -4,6 +4,7 @@ import {
   type AdminLocation,
   type CreatedLocation,
   type LocationInput,
+  type LocationRole,
 } from '../locations'
 import type { AdminUser, CreateUserInput, PagedUsers } from './types'
 
@@ -41,9 +42,19 @@ export function setAdmin(userId: string, isAdmin: boolean) {
   return isAdmin ? api.put<void>(path) : api.delete<void>(path)
 }
 
-export function setLocationLink(userId: string, locationId: string, linked: boolean) {
+/**
+ * Without `role` no body is sent, so the API's default (Owner) applies and the original flow is unchanged.
+ * Linking again with another role changes the role.
+ */
+export function setLocationLink(
+  userId: string,
+  locationId: string,
+  linked: boolean,
+  role?: LocationRole,
+) {
   const path = `/api/users/${userId}/locations/${locationId}`
-  return linked ? api.put<void>(path) : api.delete<void>(path)
+  if (!linked) return api.delete<void>(path)
+  return role ? api.put<void>(path, { role }) : api.put<void>(path)
 }
 
 /** An administrator resetting someone else's password does not need the current one. */

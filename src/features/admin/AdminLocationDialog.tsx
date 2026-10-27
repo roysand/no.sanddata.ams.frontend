@@ -13,6 +13,7 @@ import {
   type AdminLocation,
   type LocationFormValues,
 } from '../locations'
+import { LocationAccessList } from './LocationAccessList'
 import { useUpdateLocationAsAdmin } from './hooks'
 
 const LOCATION_FIELDS = ['name', 'address', 'serialNumber', 'zone'] as const
@@ -81,6 +82,8 @@ export function AdminLocationDialog({
             fieldErrors={fieldErrors}
             isSubmitting={update.isPending}
           />
+
+          <LocationAccessList location={location} />
 
           {location.apiKey && (
             <p className="text-xs text-muted-foreground">

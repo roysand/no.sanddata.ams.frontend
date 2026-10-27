@@ -11,7 +11,7 @@ import {
   setUserActive,
   updateLocationAsAdmin,
 } from './api'
-import type { LocationInput } from '../locations'
+import type { LocationInput, LocationRole } from '../locations'
 
 export const PAGE_SIZE = 10
 
@@ -49,9 +49,13 @@ export function useUserActions() {
       onSuccess: refresh,
     }),
     link: useMutation({
-      mutationFn: (v: { userId: string; locationId: string; linked: boolean }) =>
-        setLocationLink(v.userId, v.locationId, v.linked),
-      onSuccess: refresh,
+      mutationFn: (v: {
+        userId: string
+        locationId: string
+        linked: boolean
+        role?: LocationRole
+      }) => setLocationLink(v.userId, v.locationId, v.linked, v.role),
+      onSuccess: () => Promise.all([refresh(), refreshLocations()]),
     }),
     addLocation: useMutation({
       mutationFn: (v: { userId: string; input: LocationInput }) =>

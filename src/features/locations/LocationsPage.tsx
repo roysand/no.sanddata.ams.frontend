@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -9,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { canEdit } from './access'
 import { useCreateMeter, useCreateOwnLocation, useLocations } from './hooks'
 import { LocationForm } from './LocationForm'
 import { MeterForm } from './MeterForm'
@@ -70,14 +72,19 @@ export function LocationsPage() {
         <Card key={location.id} className="bg-white/95 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>{location.name}</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                {location.name}
+                <Badge variant={canEdit(location) ? 'default' : 'secondary'}>{location.role}</Badge>
+              </CardTitle>
               <p className="text-sm text-muted-foreground">
                 {location.address} · price zone {location.zone}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setMeterFor(location)}>
-              Add meter
-            </Button>
+            {canEdit(location) && (
+              <Button variant="outline" size="sm" onClick={() => setMeterFor(location)}>
+                Add meter
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {location.meters.length === 0 ? (
