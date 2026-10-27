@@ -10,7 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { canEdit } from './access'
+import { canEdit, ownedLocations } from './access'
+import { EditLocationDialog } from './EditLocationDialog'
+import { EditMeterCommentDialog } from './EditMeterCommentDialog'
 import { useCreateMeter, useCreateOwnLocation, useLocations } from './hooks'
 import { LocationForm } from './LocationForm'
 import { MeterForm } from './MeterForm'
@@ -22,7 +24,7 @@ import {
 } from './schema'
 import { SensorKeyNotice } from './SensorKeyNotice'
 import { toFormServerError } from './serverErrors'
-import type { LocationSummary } from './types'
+import type { LocationSummary, MeterSummary } from './types'
 
 const LOCATION_FIELDS = ['name', 'address', 'serialNumber', 'zone'] as const
 const METER_FIELDS = ['locationId', 'deviceId', 'comment'] as const
@@ -32,6 +34,9 @@ export function LocationsPage() {
   const { data: locations, isLoading, error } = useLocations()
   const [adding, setAdding] = useState(false)
   const [meterFor, setMeterFor] = useState<LocationSummary | null>(null)
+  // Ids, not objects: the dialogs read the live data, and one for a location that is no longer ours closes itself.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [commentMeterId, setCommentMeterId] = useState<string | null>(null)
 
   if (isLoading) return <p className="text-center text-sm text-white">Loading…</p>
   if (error || !locations) {
@@ -44,7 +49,13 @@ export function LocationsPage() {
     )
   }
 
-  const atLimit = hasReachedLocationLimit(locations.length)
+  const editing = locations.find((l) => l.id === editingId && canEdit(l))
+  const commentMeter: MeterSummary | undefined = locations
+    .filter(canEdit)
+    .flatMap((l) => l.meters)
+    .find((m) => m.id === commentMeterId)
+
+  const atLimit = hasReachedLocationLimit(ownedLocations(locations).length)
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
@@ -75,15 +86,26 @@ export function LocationsPage() {
               <CardTitle className="flex items-center gap-2">
                 {location.name}
                 <Badge variant={canEdit(location) ? 'default' : 'secondary'}>{location.role}</Badge>
+                {!location.isActive && <Badge variant="outline">Inactive</Badge>}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 {location.address} · price zone {location.zone}
               </p>
             </div>
             {canEdit(location) && (
-              <Button variant="outline" size="sm" onClick={() => setMeterFor(location)}>
-                Add meter
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Edit ${location.name}`}
+                  onClick={() => setEditingId(location.id)}
+                >
+                  Edit
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setMeterFor(location)}>
+                  Add meter
+                </Button>
+              </div>
             )}
           </CardHeader>
           <CardContent>
@@ -92,9 +114,21 @@ export function LocationsPage() {
             ) : (
               <ul className="space-y-1 text-sm">
                 {location.meters.map((meter) => (
-                  <li key={meter.id}>
-                    {meter.deviceId}
-                    {meter.comment ? ` · ${meter.comment}` : ''}
+                  <li key={meter.id} className="flex items-center gap-2">
+                    <span>
+                      {meter.deviceId}
+                      {meter.comment ? ` · ${meter.comment}` : ''}
+                    </span>
+                    {canEdit(location) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Edit comment for ${meter.deviceId}`}
+                        onClick={() => setCommentMeterId(meter.id)}
+                      >
+                        Edit comment
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -104,6 +138,10 @@ export function LocationsPage() {
       ))}
 
       {adding && <AddOwnLocationDialog onClose={() => setAdding(false)} />}
+      {editing && <EditLocationDialog location={editing} onClose={() => setEditingId(null)} />}
+      {commentMeter && (
+        <EditMeterCommentDialog meter={commentMeter} onClose={() => setCommentMeterId(null)} />
+      )}
       {meterFor && <AddOwnMeterDialog location={meterFor} onClose={() => setMeterFor(null)} />}
     </div>
   )

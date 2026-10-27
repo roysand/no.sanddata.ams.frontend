@@ -59,4 +59,36 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Cabin' })).toBeInTheDocument()
   })
+
+  it('leaves inactive locations out of the picker', async () => {
+    localStorage.clear()
+    server.use(
+      http.get('*/api/locations', () =>
+        HttpResponse.json([
+          { ...location('l1', 'Home', 'Owner'), isActive: false },
+          location('l2', 'Cabin', 'Owner'),
+          location('l3', 'House', 'Owner'),
+        ]),
+      ),
+    )
+    const user = userEvent.setup()
+    renderDashboard()
+
+    expect(await screen.findByRole('heading', { name: 'Cabin' })).toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'Location' }))
+    expect(await screen.findByRole('option', { name: 'House' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Home' })).not.toBeInTheDocument()
+  })
+
+  it('tells a user whose locations are all inactive, and does not send them to the setup', async () => {
+    server.use(
+      http.get('*/api/locations', () =>
+        HttpResponse.json([{ ...location('l1', 'Home', 'Owner'), isActive: false }]),
+      ),
+    )
+    renderDashboard()
+
+    expect(await screen.findByText(/All your locations are inactive/)).toBeInTheDocument()
+    expect(screen.queryByText('Setup page')).not.toBeInTheDocument()
+  })
 })

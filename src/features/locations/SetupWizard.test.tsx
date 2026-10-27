@@ -161,4 +161,26 @@ describe('SetupWizard', () => {
     expect(await screen.findByText(/maximum of 4 locations/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Serial number')).not.toBeInTheDocument()
   })
+
+  it('does not send a viewer to the meter step for a shared location without meters', async () => {
+    server.use(http.get('*/api/locations', () => HttpResponse.json([{ ...cabin, role: 'Viewer' }])))
+    renderWizard()
+
+    expect(await screen.findByLabelText('Serial number')).toBeInTheDocument()
+    expect(screen.queryByText(/Step 2 of 2/)).not.toBeInTheDocument()
+  })
+
+  it('counts only owned locations towards the limit', async () => {
+    const shared = ['a', 'b', 'c', 'd'].map((id) => ({
+      ...cabin,
+      id,
+      role: 'Viewer' as const,
+      meters: [{ id: `m-${id}`, locationId: id, deviceId: 'X', comment: null, isActive: true }],
+    }))
+    server.use(http.get('*/api/locations', () => HttpResponse.json(shared)))
+    renderWizard()
+
+    expect(await screen.findByLabelText('Serial number')).toBeInTheDocument()
+    expect(screen.queryByText(/maximum of 4 locations/)).not.toBeInTheDocument()
+  })
 })
