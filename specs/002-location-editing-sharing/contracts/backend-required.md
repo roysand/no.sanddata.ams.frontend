@@ -1,6 +1,6 @@
 # Contract required from the backend (API repository)
 
-Needed for the owner/viewer parts of this feature. Not implemented in this repository. User Story 4
+Needed for the owner/viewer parts of this feature. Implemented in the API repository as `006-location-roles-and-owner-edit`; deployed 2026-10-27 (PR #13). Not implemented in this repository. User Story 4
 (the administrator's all-locations page and editing) needs only the `users` addition in item 3.
 
 Suggested name in the API repository: `006-location-roles-and-owner-edit`.

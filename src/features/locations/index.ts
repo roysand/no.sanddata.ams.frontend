@@ -4,11 +4,6 @@ export { useLocations, useCreateMeter, useCreateOwnLocation } from './hooks'
 /** Self-service setup needs `POST /api/locations`, deployed 2026-10-09. Set to false to ship it dark. */
 export const SELF_SERVICE_ENABLED = true
 
-/**
- * Gates the administrator Locations page and the owner edit actions (feature 002), so the frontend can be
- * merged before the API ships roles. Remove it, and the normalisation in api.ts, once the API is deployed.
- */
-export const LOCATION_SHARING_ENABLED = true
 export { LocationForm } from './LocationForm'
 export { MeterForm } from './MeterForm'
 export { SensorKeyNotice } from './SensorKeyNotice'

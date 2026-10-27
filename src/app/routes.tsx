@@ -6,7 +6,7 @@ import { LoginPage } from '../features/auth/LoginPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { UsersPage } from '../features/admin/UsersPage'
 import { AdminLocationsPage } from '../features/admin/AdminLocationsPage'
-import { LOCATION_SHARING_ENABLED, LocationsPage, SetupPage } from '../features/locations'
+import { LocationsPage, SetupPage } from '../features/locations'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -23,9 +23,7 @@ export const router = createBrowserRouter([
             element: <AdminRoute />,
             children: [
               { path: '/admin/users', element: <UsersPage /> },
-              ...(LOCATION_SHARING_ENABLED
-                ? [{ path: '/admin/locations', element: <AdminLocationsPage /> }]
-                : []),
+              { path: '/admin/locations', element: <AdminLocationsPage /> },
             ],
           },
         ],

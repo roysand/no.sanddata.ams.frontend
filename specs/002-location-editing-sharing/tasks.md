@@ -118,12 +118,12 @@ Single frontend project: `src/` and tests beside the code as `*.test.ts(x)`; sha
 
 ## Phase 7: Polish and cross-cutting
 
-- [ ] T035 [P] Update `README.md` project structure for the new admin Locations page and the owner dialogs under `locations/`.
-- [ ] T036 [P] Update the cross-reference in `specs/001-location-meter-onboarding/spec.md` (Assumptions: "Editing or deleting locations and meters is out of scope") to say editing is covered by feature 002 and deleting remains out of scope.
-- [ ] T037 Run `npm test`, `npm run build`, `npm run lint`; fix any failures.
+- [x] T035 [P] Update `README.md` project structure for the new admin Locations page and the owner dialogs under `locations/`.
+- [x] T036 [P] Update the cross-reference in `specs/001-location-meter-onboarding/spec.md` (Assumptions: "Editing or deleting locations and meters is out of scope") to say editing is covered by feature 002 and deleting remains out of scope.
+- [x] T037 Run `npm test`, `npm run build`, `npm run lint`; fix any failures.
 - [ ] T038 Walk through `specs/002-location-editing-sharing/quickstart.md` against the local API (admin part with today's API, owner and viewer parts once the backend is deployed), using a throwaway local database as in feature 001, and note the result in the PR description.
-- [ ] T039 Confirm no system field or sensor key can reach the owner screens: search `src/features/locations/EditLocationDialog.tsx` and the owner API calls for `serialNumber`, `zone`, `hasNorgesPriceAgreement` and `apiKey` in request bodies and form inputs, and check one owner request in the browser network tab.
-- [ ] T040 When the backend is deployed: set `LOCATION_SHARING_ENABLED` handling to permanent (remove the constant and its uses) and remove the normalisation shim from T004 (`role` default, `isActive` default). T023 needed no shim: the API was already deployed, so `AdminUser.locationAccess` is required and the page no longer reads `locations` or `locationIds`.
+- [x] T039 Confirm no system field or sensor key can reach the owner screens: search `src/features/locations/EditLocationDialog.tsx` and the owner API calls for `serialNumber`, `zone`, `hasNorgesPriceAgreement` and `apiKey` in request bodies and form inputs, and check one owner request in the browser network tab.
+- [x] T040 When the backend is deployed: set `LOCATION_SHARING_ENABLED` handling to permanent (remove the constant and its uses) and remove the normalisation shim from T004 (`role` default, `isActive` default). T023 needed no shim: the API was already deployed, so `AdminUser.locationAccess` is required and the page no longer reads `locations` or `locationIds`.
 
 ---
 

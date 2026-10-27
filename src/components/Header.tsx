@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
-import { LOCATION_SHARING_ENABLED } from '../features/locations'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,7 +14,7 @@ const navItems = [
 ]
 const adminNavItems = [
   { to: '/admin/users', label: 'Users' },
-  ...(LOCATION_SHARING_ENABLED ? [{ to: '/admin/locations', label: 'Locations' }] : []),
+  { to: '/admin/locations', label: 'Locations' },
 ]
 
 export function Header() {

@@ -130,6 +130,6 @@ When the system rejects a location or meter (invalid input, or a location serial
 - Because of that dependency, the administrator-on-behalf-of flow (User Stories 2 and 3) can be delivered first, and the self-service flow (User Story 1) follows once the backend change exists.
 - A user's own locations are limited to 4 (counting every location linked to them, including ones an administrator added). Beyond that an administrator adds more.
 - Rotating or replacing a lost sensor key is out of scope for this feature.
-- Editing or deleting locations and meters is out of scope.
+- Deleting locations and meters is out of scope. Editing is covered by feature 002 (location editing and sharing).
 - **Out of scope, separate feature:** public self-registration (a person creating their own account). Today only administrators can create users. Once it exists, a new account lands in the User Story 1 setup.
 - Price zones are limited to the five Norwegian zones NO1–NO5.

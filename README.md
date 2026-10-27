@@ -59,9 +59,11 @@ src/
   features/
     auth/         Login form, auth context/hook, API calls, session restore
     dashboard/    Location picker, current hour, power and cost charts
-    locations/    A user's locations and meters: setup wizard, "My locations" page,
-                  shared location/meter forms, one-time sensor key notice
-    admin/        Administrator pages: users, add location or meter on behalf of a user
+    locations/    A user's locations and meters: setup wizard, "My locations" page, owner dialogs
+                  (edit location, edit meter comment), shared location/meter forms, one-time
+                  sensor key notice, role helpers (owner or viewer)
+    admin/        Administrator pages: users with their location roles, all locations with an
+                  access list (add viewers, change roles), add location or meter on behalf of a user
   components/     Shared components (e.g. ProtectedRoute, AdminRoute, Header) and ui/ primitives
   lib/            API client, auth token store, TanStack Query client
   test/           Test setup, shared MSW server and render helpers

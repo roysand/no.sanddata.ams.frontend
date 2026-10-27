@@ -3,22 +3,7 @@ import { server } from '../../test/server'
 import { getLocations } from './api'
 
 describe('getLocations', () => {
-  it('treats a location from an API without roles as an active location the caller owns', async () => {
-    server.use(
-      http.get('*/api/locations', () =>
-        HttpResponse.json([
-          { id: 'a', name: 'Cabin', address: 'Hyttevegen 1', zone: 'NO3', meters: [] },
-        ]),
-      ),
-    )
-
-    const [location] = await getLocations()
-
-    expect(location.role).toBe('Owner')
-    expect(location.isActive).toBe(true)
-  })
-
-  it('keeps the role and active flag the API sends', async () => {
+  it('returns the role, active flag and system fields the API sends', async () => {
     server.use(
       http.get('*/api/locations', () =>
         HttpResponse.json([
