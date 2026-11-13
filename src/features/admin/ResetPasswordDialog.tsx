@@ -11,8 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import { useUserActions } from './hooks'
 import { resetPasswordSchema, type ResetPasswordFormValues } from './schema'
 import type { AdminUser } from './types'
@@ -51,9 +51,8 @@ export function ResetPasswordDialog({ user, onClose }: { user: AdminUser; onClos
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="newPassword">New password</Label>
-            <Input
+            <PasswordInput
               id="newPassword"
-              type="password"
               autoComplete="new-password"
               {...register('newPassword')}
             />
