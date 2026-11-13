@@ -44,10 +44,23 @@ App settings on the web app:
 `.github/workflows/deploy.yml` runs on every push to `main`: `npm ci`, lint, tests, build, then deploys the package.
 Pull requests run the same checks without deploying. A deploy can also be started by hand from the Actions tab.
 
-Signing in to Azure uses OIDC: the managed identity has a federated credential that trusts only
-`repo:roysand/no.sanddata.ams.frontend:ref:refs/heads/main`. No password or publish profile is stored in GitHub.
-The workflow reads three repository **variables** (not secrets): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
-`AZURE_SUBSCRIPTION_ID`.
+Signing in to Azure uses OIDC: the managed identity has a federated credential (`github-main`) that trusts only
+`repo:roysand@26359436/no.sanddata.ams.frontend@928782571:ref:refs/heads/main`. No password or publish profile is
+stored in GitHub. The workflow reads three repository **variables** (not secrets): `AZURE_CLIENT_ID`,
+`AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
+
+GitHub puts the owner and repository IDs in the subject (`owner@ownerId/repo@repoId`), not only the names. If the
+login step fails with `AADSTS700213: No matching federated identity record`, copy the "subject claim" printed by
+`azure/login` in the failed run and set it on the credential:
+
+```bash
+az identity federated-credential update -g rg-ams-noeast --identity-name id-gh-ams-frontend-deploy -n github-main \
+  --issuer https://token.actions.githubusercontent.com --audiences api://AzureADTokenExchange \
+  --subject "<subject claim from the failed run>"
+```
+
+The IDs do not change when the repository is renamed, so this only comes up if the repository moves to another
+owner or is recreated.
 
 ## Log in with the Azure CLI
 
