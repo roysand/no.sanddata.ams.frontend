@@ -63,3 +63,18 @@ export interface Consumption {
   granularity: 'minute' | 'hour'
   items: ConsumptionItem[]
 }
+
+/** One hour of the Oslo day. `ratePerKwh` is null when the price or exchange rate is not available yet. */
+export interface HourPrice {
+  hourStart: string
+  ratePerKwh: number | null
+}
+
+export interface DayPrices {
+  /** Oslo calendar day, yyyy-MM-dd */
+  date: string
+  zone: string
+  pricingModel: PricingModel
+  /** One item per real hour of the day: 23, 24 or 25 on the daylight-saving days. */
+  items: HourPrice[]
+}

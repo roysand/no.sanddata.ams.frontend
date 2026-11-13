@@ -4,9 +4,11 @@ import { AdminRoute } from '../components/AdminRoute'
 import { AppLayout } from '../components/AppLayout'
 import { LoginPage } from '../features/auth/LoginPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
+import { HistoryPage } from '../features/dashboard/HistoryPage'
 import { UsersPage } from '../features/admin/UsersPage'
 import { AdminLocationsPage } from '../features/admin/AdminLocationsPage'
 import { LocationsPage, SetupPage } from '../features/locations'
+import { LocationsEntry } from '../features/overview/LocationsEntry'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -18,7 +20,9 @@ export const router = createBrowserRouter([
         children: [
           { path: '/', element: <DashboardPage /> },
           { path: '/setup', element: <SetupPage /> },
-          { path: '/locations', element: <LocationsPage /> },
+          { path: '/history', element: <HistoryPage /> },
+          { path: '/locations', element: <LocationsEntry /> },
+          { path: '/locations/manage', element: <LocationsPage /> },
           {
             element: <AdminRoute />,
             children: [

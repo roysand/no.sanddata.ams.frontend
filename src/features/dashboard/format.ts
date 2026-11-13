@@ -83,3 +83,18 @@ export function lastOsloDays(now: Date, count: number): string[] {
     new Date(Date.UTC(y, m - 1, d - (count - 1 - i))).toISOString().slice(0, 10),
   )
 }
+
+/** The same Oslo wall-clock time one calendar day earlier (DST-safe: yesterday may have 23 or 25 hours). */
+export function sameHourYesterday(hourStartUtc: Date): Date {
+  const local = new Date(hourStartUtc.getTime() + osloOffsetMs(hourStartUtc))
+  const wall = Date.UTC(
+    local.getUTCFullYear(),
+    local.getUTCMonth(),
+    local.getUTCDate() - 1,
+    local.getUTCHours(),
+    local.getUTCMinutes(),
+  )
+  // Wall-clock time to instant: subtract the offset in force at that moment (settled in two steps).
+  const first = wall - osloOffsetMs(new Date(wall))
+  return new Date(wall - osloOffsetMs(new Date(first)))
+}
