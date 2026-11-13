@@ -1,12 +1,13 @@
 # Azure Deployment
 
-The web app runs on **Azure App Service** in **Norway East**. The API and database stay on Hetzner
+The web app runs on **Azure App Service** in **Norway East** at **https://ams-frontend.sanddata.eu** (also reachable at
+`https://ams-frontend-noeast.azurewebsites.net`). The API and database stay on Hetzner
 (`https://ams-api.sanddata.eu`). Static Web Apps was not used because it is not offered in Norway East.
 
 ## How it works
 
 ```text
-browser ──HTTPS──> ams-frontend-noeast.azurewebsites.net   (App Service, Node 24, server/server.mjs)
+browser ──HTTPS──> ams-frontend.sanddata.eu                (App Service, Node 24, server/server.mjs)
                       ├─ /assets/*, /index.html  → built app from ./dist
                       ├─ any other page path     → index.html (the app routes in the browser)
                       └─ /api/*                  → https://ams-api.sanddata.eu (forwarded)
@@ -94,18 +95,35 @@ mkdir -p /tmp/ams-deploy && cp server/server.mjs server/app.mjs /tmp/ams-deploy/
 cd /tmp/ams-deploy && PORT=8080 API_PROXY_TARGET=https://ams-api.sanddata.eu node server.mjs
 ```
 
-## Custom domain (not set up yet)
+## Custom domain
 
-For example `ams.sanddata.eu`:
+`ams-frontend.sanddata.eu` is set up:
+
+| Part             | Value                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DNS (Domeneshop) | `CNAME ams-frontend` → `ams-frontend-noeast.azurewebsites.net`                                                                                    |
+| Certificate      | Free App Service managed certificate (issued by DigiCert/GeoTrust), SNI binding. Azure renews it automatically; the first one expires 2027-05-13. |
+| HTTP             | Redirects to HTTPS (the web app is HTTPS only)                                                                                                    |
+
+A DNS record alone is not enough for HTTPS: Azure's own certificate only covers `*.azurewebsites.net`, so the name
+must be added to the web app and get its own certificate. To add another name (for example `ams.sanddata.eu`):
 
 ```bash
-# 1. At the DNS provider: CNAME ams -> ams-frontend-noeast.azurewebsites.net
-#    and TXT asuid.ams -> the value printed by:
+# 1. At Domeneshop: CNAME ams -> ams-frontend-noeast.azurewebsites.net
+#    Azure accepted ams-frontend.sanddata.eu on the CNAME alone. If it asks for proof of ownership, also add
+#    TXT asuid.ams -> the value printed by:
 az webapp show -g rg-ams-noeast -n ams-frontend-noeast --query customDomainVerificationId -o tsv
 
-# 2. Add the name and a free managed certificate
+# 2. Add the name to the web app
 az webapp config hostname add -g rg-ams-noeast --webapp-name ams-frontend-noeast --hostname ams.sanddata.eu
+
+# 3. Create the free managed certificate (takes a few minutes). The CLI may end with a JSONDecodeError even though
+#    the certificate is being issued; check with the next command until it is listed.
 az webapp config ssl create -g rg-ams-noeast -n ams-frontend-noeast --hostname ams.sanddata.eu
-az webapp config ssl bind -g rg-ams-noeast -n ams-frontend-noeast --ssl-type SNI \
-  --certificate-thumbprint "$(az webapp config ssl show -g rg-ams-noeast --certificate-name ams.sanddata.eu --query thumbprint -o tsv)"
+az resource show -g rg-ams-noeast --resource-type Microsoft.Web/certificates -n ams.sanddata.eu \
+  --query "{subject:properties.subjectName, thumbprint:properties.thumbprint}" -o table
+
+# 4. Bind it (HTTPS can take a minute or two to start working after this)
+az webapp config ssl bind -g rg-ams-noeast -n ams-frontend-noeast --ssl-type SNI --hostname ams.sanddata.eu \
+  --certificate-thumbprint <thumbprint from step 3>
 ```
