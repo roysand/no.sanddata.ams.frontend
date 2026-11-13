@@ -1,0 +1,69 @@
+name: Deploy to Azure App Service
+
+# Builds, tests and deploys on every push to main. Pull requests only build and test.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+      # The package App Service runs: server.mjs + app.mjs next to the built app in ./dist. No node_modules needed.
+      - name: Assemble deploy package
+        run: |
+          mkdir deploy
+          cp server/server.mjs server/app.mjs deploy/
+          cp -r dist deploy/dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: deploy
+          retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC: Azure trusts this repo's main branch through a federated credential, no stored password
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: app
+          path: deploy
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ams-frontend-noeast
+          package: deploy

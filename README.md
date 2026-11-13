@@ -76,3 +76,8 @@ Slices import each other only through their `index.ts` (for example `features/lo
 - Login calls `POST /api/auth/login` and stores the access token in memory only and the refresh token in `localStorage`.
 - `lib/apiClient.ts` automatically retries a request once with a refreshed access token on `401`.
 - On page load, if a refresh token is present, the session is silently restored via `POST /api/auth/refresh` followed by `GET /api/auth/me` (see `features/auth/api.ts`).
+
+## Deployment
+
+Pushes to `main` are built, tested and deployed to Azure App Service (Norway East) by GitHub Actions. In production a
+small Node server (`server/`) serves the app and forwards `/api` to the API. See [AzureDeployment.md](AzureDeployment.md).

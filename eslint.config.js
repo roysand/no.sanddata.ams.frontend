@@ -23,5 +23,14 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  {
+    // The production web server (server/*.mjs) runs on Node, not in the browser.
+    extends: [js.configs.recommended],
+    files: ['server/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: { ...globals.node, ...globals.vitest },
+    },
+  },
   eslintConfigPrettier,
 )
