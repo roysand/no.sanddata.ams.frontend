@@ -237,42 +237,54 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                 width={40}
                 tickFormatter={(value: number) => String(Math.round(value * 10) / 10)}
               />
-              <Line
-                dataKey="previous"
-                type="monotone"
-                stroke="var(--usage-ghost)"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                dot={isolatedDot(
-                  rows.map((row) => row.previous),
-                  'var(--usage-ghost)',
-                )}
-                activeDot={false}
-                isAnimationActive={false}
-                connectNulls
-              />
               {period === 'year' ? (
-                <Bar
-                  dataKey="current"
-                  fill="var(--usage)"
-                  radius={[4, 4, 2, 2]}
-                  maxBarSize={28}
-                  isAnimationActive={false}
-                />
+                // Monthly totals: last year and this year side by side for each month.
+                <>
+                  <Bar
+                    dataKey="previous"
+                    fill="var(--usage-ghost)"
+                    radius={[4, 4, 2, 2]}
+                    maxBarSize={14}
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey="current"
+                    fill="var(--usage)"
+                    radius={[4, 4, 2, 2]}
+                    maxBarSize={14}
+                    isAnimationActive={false}
+                  />
+                </>
               ) : (
-                <Area
-                  dataKey="current"
-                  type="monotone"
-                  stroke="var(--usage)"
-                  strokeWidth={2.5}
-                  fill="var(--usage)"
-                  fillOpacity={0.14}
-                  dot={isolatedDot(
-                    rows.map((row) => row.current),
-                    'var(--usage)',
-                  )}
-                  isAnimationActive={false}
-                />
+                <>
+                  <Line
+                    dataKey="previous"
+                    type="monotone"
+                    stroke="var(--usage-ghost)"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={isolatedDot(
+                      rows.map((row) => row.previous),
+                      'var(--usage-ghost)',
+                    )}
+                    activeDot={false}
+                    isAnimationActive={false}
+                    connectNulls
+                  />
+                  <Area
+                    dataKey="current"
+                    type="monotone"
+                    stroke="var(--usage)"
+                    strokeWidth={2.5}
+                    fill="var(--usage)"
+                    fillOpacity={0.14}
+                    dot={isolatedDot(
+                      rows.map((row) => row.current),
+                      'var(--usage)',
+                    )}
+                    isAnimationActive={false}
+                  />
+                </>
               )}
             </ComposedChart>
           </ChartContainer>
@@ -280,14 +292,21 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
 
         <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <li className="flex items-center gap-1.5">
-            <span aria-hidden="true" className="h-0.5 w-4 bg-usage" />
+            <span
+              aria-hidden="true"
+              className={period === 'year' ? 'size-2.5 rounded-sm bg-usage' : 'h-0.5 w-4 bg-usage'}
+            />
             {plan.current.title}
           </li>
           {series.hasPrevious && (
             <li className="flex items-center gap-1.5">
               <span
                 aria-hidden="true"
-                className="h-0 w-4 border-t-2 border-dashed border-usage-ghost"
+                className={
+                  period === 'year'
+                    ? 'size-2.5 rounded-sm bg-usage-ghost'
+                    : 'h-0 w-4 border-t-2 border-dashed border-usage-ghost'
+                }
               />
               {plan.previous.title}
             </li>

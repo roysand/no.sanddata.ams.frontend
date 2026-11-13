@@ -40,17 +40,23 @@ function useApi({ cost = 2, empty = false, previousKwh = 1 }: Handlers = {}) {
         totalCount: 3,
       })
     }),
-    http.get('*/api/electricity-cost/daily', () =>
-      HttpResponse.json({
-        items: weekPlan.current.slots.map((slot) => ({
-          date: slot.key,
+    http.get('*/api/electricity-cost/daily', ({ request }) => {
+      // A request for last year gets one October day; anything else gets the current week.
+      const from = new URL(request.url).searchParams.get('from') ?? ''
+      const lastYear = String(new Date().getFullYear() - 1)
+      const days = from.startsWith(lastYear)
+        ? [`${lastYear}-10-15`]
+        : weekPlan.current.slots.map((slot) => slot.key)
+      return HttpResponse.json({
+        items: days.map((date) => ({
+          date,
           consumptionKwh: 10,
           pricingModel: 'Spot',
           actual: { cost: 12 },
           comparison: null,
         })),
-      }),
-    ),
+      })
+    }),
   )
 }
 
@@ -89,6 +95,21 @@ describe('UsageChart', () => {
 
     expect(await screen.findByText(/Last 7 days so far/)).toBeInTheDocument()
     expect(screen.getByText(/70 kWh/)).toBeInTheDocument() // 7 days x 10 kWh
+  })
+
+  it('shows this year and last year side by side on the Year tab', async () => {
+    useApi()
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await screen.findByText(/Today so far/)
+    await user.click(screen.getByRole('button', { name: 'Year' }))
+
+    const year = String(new Date().getFullYear())
+    const lastYear = String(new Date().getFullYear() - 1)
+    expect(await screen.findByText(new RegExp(`${year} so far`))).toBeInTheDocument()
+    expect(screen.getByText(lastYear, { selector: 'li' })).toBeInTheDocument()
+    expect(screen.getByText(year, { selector: 'li' })).toBeInTheDocument()
   })
 
   it('remembers the chosen period and unit', async () => {
