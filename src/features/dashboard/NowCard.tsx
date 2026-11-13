@@ -120,8 +120,22 @@ export function NowCard({ locationId }: { locationId: string }) {
             <dd className="text-xl font-extrabold tracking-tight tabular-nums">
               {data.actual ? formatRate(data.actual.ratePerKwh) : '–'}
             </dd>
-            <dt className="text-sm text-muted-foreground">Price per kWh</dt>
+            <dt className="text-sm text-muted-foreground">
+              {data.pricingModel === 'NorgesPris' ? 'Norgespris per kWh' : 'Price per kWh'}
+            </dt>
           </div>
+          {data.pricingModel === 'NorgesPris' && (
+            <div className="col-span-2">
+              <dd className="text-xl font-extrabold tracking-tight tabular-nums">
+                {data.comparison ? formatRate(data.comparison.ratePerKwh) : '–'}
+              </dd>
+              <dt className="text-sm text-muted-foreground">
+                {data.comparison
+                  ? 'Spot price now (the market price)'
+                  : 'Spot price not available yet'}
+              </dt>
+            </div>
+          )}
         </dl>
 
         {!hasPrice && (

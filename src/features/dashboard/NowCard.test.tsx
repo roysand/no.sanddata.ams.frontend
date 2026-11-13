@@ -30,6 +30,7 @@ function dayPrices(currentRate: number | null, other: number) {
 }
 
 interface Setup {
+  pricingModel?: 'Spot' | 'NorgesPris'
   actual?: { ratePerKwh: number; costSoFar: number } | null
   kwh?: number
   prices?: ReturnType<typeof dayPrices>
@@ -38,6 +39,7 @@ interface Setup {
 }
 
 function renderNow({
+  pricingModel = 'Spot',
   actual = { ratePerKwh: 0.49, costSoFar: 0.67 },
   kwh = 1.37,
   prices = dayPrices(0.4, 1),
@@ -50,7 +52,7 @@ function renderNow({
       HttpResponse.json({
         hourStart: currentHourStart().toISOString(),
         consumptionKwhSoFar: kwh,
-        pricingModel: 'Spot',
+        pricingModel,
         actual,
         comparison: actual ? { ratePerKwh: 0.6, costSoFar: 0.9 } : null,
       }),
@@ -127,6 +129,21 @@ describe('NowCard', () => {
     expect(await screen.findByText('3,42')).toBeInTheDocument()
     expect(screen.getByText('Price not available yet')).toBeInTheDocument()
     expect(screen.getByText(/Cost and price level appear as soon as/)).toBeInTheDocument()
+  })
+
+  it('shows the real (spot) price next to Norgespris for a Norgespris location', async () => {
+    renderNow({ pricingModel: 'NorgesPris', actual: { ratePerKwh: 0.5, costSoFar: 0.7 } })
+
+    expect(await screen.findByText('Norgespris per kWh')).toBeInTheDocument()
+    expect(screen.getByText('Spot price now (the market price)')).toBeInTheDocument()
+    expect(screen.getByText(/0,60/)).toBeInTheDocument()
+  })
+
+  it('does not repeat the spot price for a Spot location', async () => {
+    renderNow()
+
+    await screen.findByText('Price per kWh')
+    expect(screen.queryByText(/Spot price now/)).not.toBeInTheDocument()
   })
 
   it('shows an empty state when the location has no readings', async () => {
