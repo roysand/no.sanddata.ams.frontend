@@ -16,16 +16,17 @@
   "zone": "NO1",
   "pricingModel": "Spot",
   "items": [
-    { "hourStart": "2026-11-12T23:00:00Z", "ratePerKwh": 0.74 },
-    { "hourStart": "2026-11-13T00:00:00Z", "ratePerKwh": 0.70 },
-    { "hourStart": "2026-11-13T18:00:00Z", "ratePerKwh": null }
+    { "hourStart": "2026-11-12T23:00:00Z", "ratePerKwh": 0.74, "spotRatePerKwh": 0.74 },
+    { "hourStart": "2026-11-13T00:00:00Z", "ratePerKwh": 0.70, "spotRatePerKwh": 0.70 },
+    { "hourStart": "2026-11-13T18:00:00Z", "ratePerKwh": null, "spotRatePerKwh": null }
   ]
 }
 ```
 
 - One item per real hour of the Oslo day: 24 normally, 23 and 25 on the daylight-saving days.
-- `ratePerKwh` is the NOK rate for the location's enrolled model, calculated exactly as in `CostCalculator` so it matches the rate used in cost responses. It is `null` when the price or exchange rate is not available yet.
-- For a Norgespris location every item has the same flat rate.
+- `ratePerKwh` is the NOK rate for the location's enrolled model, calculated exactly as in `CostCalculator`, so it matches the rate used in cost responses.
+- `spotRatePerKwh` is the spot (market) rate for the same hour, whatever the enrolled model is. The frontend ranks the day on this rate (price pill, best hours), because it shows when power is plentiful and cheap. For a Norgespris location `ratePerKwh` is the same flat rate every hour while `spotRatePerKwh` still varies.
+- Either rate is `null` when its price or exchange rate is not available yet.
 
 ## Errors
 

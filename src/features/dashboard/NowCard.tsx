@@ -164,7 +164,7 @@ export function NowCard({ locationId }: { locationId: string }) {
         {hasPrice && (
           <p className="mt-2 text-sm text-muted-foreground">
             {rank !== null && day
-              ? `${ordinal(rank)} cheapest of ${ratedHourCount(day)} hours today. `
+              ? `${ordinal(rank)} cheapest spot price of ${ratedHourCount(day)} hours today. `
               : ''}
             {difference !== null && Math.abs(difference) >= 0.005
               ? difference > 0

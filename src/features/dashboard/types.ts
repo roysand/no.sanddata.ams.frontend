@@ -64,10 +64,13 @@ export interface Consumption {
   items: ConsumptionItem[]
 }
 
-/** One hour of the Oslo day. `ratePerKwh` is null when the price or exchange rate is not available yet. */
+/** One hour of the Oslo day. A rate is null when its price or exchange rate is not available yet. */
 export interface HourPrice {
   hourStart: string
+  /** The rate under the location's own plan; flat for a Norgespris location. */
   ratePerKwh: number | null
+  /** The spot (market) rate: when power is plentiful and cheap, whatever plan the location is on. */
+  spotRatePerKwh: number | null
 }
 
 export interface DayPrices {

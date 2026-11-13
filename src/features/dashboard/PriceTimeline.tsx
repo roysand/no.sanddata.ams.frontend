@@ -29,7 +29,7 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
   const header = (
     <CardHeader>
       <div className="flex items-center justify-between gap-3">
-        <CardTitle className="text-base font-extrabold">Today&apos;s price by hour</CardTitle>
+        <CardTitle className="text-base font-extrabold">Today&apos;s spot price by hour</CardTitle>
         <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
           kr / kWh
         </span>

@@ -4,9 +4,10 @@ import type { HourPrice } from './types'
 const MIDNIGHT = Date.UTC(2026, 9, 31, 22) // 2026-11-01 00:00 Oslo is 23:00 UTC; any fixed hour works here
 
 function day(rates: (number | null)[]): HourPrice[] {
-  return rates.map((ratePerKwh, i) => ({
+  return rates.map((rate, i) => ({
     hourStart: new Date(MIDNIGHT + i * 3_600_000).toISOString(),
-    ratePerKwh,
+    ratePerKwh: 0.5, // the plan rate is not what the day is ranked on
+    spotRatePerKwh: rate,
   }))
 }
 
@@ -97,5 +98,16 @@ describe('priceRank', () => {
     const result = buildPriceDay(day([0.5, null]), at(0))
 
     expect(priceRank(result, 1)).toBeNull()
+  })
+})
+
+describe('buildPriceDay with a flat plan rate', () => {
+  it('ranks the day on the spot rate, not on the flat plan rate', () => {
+    // Every hour has the same plan rate (Norgespris), but the market price moves.
+    const result = buildPriceDay(day(PRICES), at(13))
+
+    expect(result.hours[13].level).toBe('cheap')
+    expect(result.hours[18].level).toBe('expensive')
+    expect(result.best).toEqual([12, 13, 14, 15])
   })
 })

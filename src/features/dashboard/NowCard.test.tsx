@@ -23,7 +23,8 @@ function dayPrices(currentRate: number | null, other: number) {
       const hourStart = start + i * HOUR
       return {
         hourStart: new Date(hourStart).toISOString(),
-        ratePerKwh: hourStart === now ? currentRate : other + i * 0.001,
+        ratePerKwh: 0.5,
+        spotRatePerKwh: hourStart === now ? currentRate : other + i * 0.001,
       }
     }),
   }

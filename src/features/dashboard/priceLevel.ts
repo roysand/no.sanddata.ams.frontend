@@ -23,12 +23,15 @@ export const BEST_HOUR_COUNT = 4
 const HOUR_MS = 3_600_000
 
 /**
- * Cheap is the lowest third of the day's rated hours, expensive the highest third, normal the rest.
- * Best hours are the cheapest few. When every rated hour costs the same (for example a flat-rate
- * plan) everything is normal and nothing is marked best.
+ * Based on the spot (market) price, so it tells when power is plentiful whatever plan the location is on.
+ * Cheap is the lowest third of the day's rated hours, expensive the highest third, normal the rest. Best
+ * hours are the cheapest few. When every rated hour costs the same everything is normal and nothing is
+ * marked best.
  */
 export function buildPriceDay(items: HourPrice[], now: Date): PriceDay {
-  const rated = items.map((item) => item.ratePerKwh).filter((rate): rate is number => rate !== null)
+  const rated = items
+    .map((item) => item.spotRatePerKwh)
+    .filter((rate): rate is number => rate !== null)
   const sorted = [...rated].sort((a, b) => a - b)
   const allEqual = sorted.length > 0 && sorted[0] === sorted[sorted.length - 1]
   const third = Math.ceil(sorted.length / 3)
@@ -46,7 +49,7 @@ export function buildPriceDay(items: HourPrice[], now: Date): PriceDay {
   const best = allEqual
     ? []
     : items
-        .map((item, index) => ({ rate: item.ratePerKwh, index }))
+        .map((item, index) => ({ rate: item.spotRatePerKwh, index }))
         .filter((entry): entry is { rate: number; index: number } => entry.rate !== null)
         .sort((a, b) => a.rate - b.rate || a.index - b.index)
         .slice(0, BEST_HOUR_COUNT)
@@ -57,8 +60,8 @@ export function buildPriceDay(items: HourPrice[], now: Date): PriceDay {
     const start = new Date(item.hourStart).getTime()
     return {
       hourStart: item.hourStart,
-      rate: item.ratePerKwh,
-      level: levelOf(item.ratePerKwh),
+      rate: item.spotRatePerKwh,
+      level: levelOf(item.spotRatePerKwh),
       isBest: best.includes(index),
       isPast: start + HOUR_MS <= now.getTime(),
       isCurrent: start <= now.getTime() && now.getTime() < start + HOUR_MS,

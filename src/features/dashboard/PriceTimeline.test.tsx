@@ -15,7 +15,8 @@ function prices(rate: (hour: number) => number | null, hours = 24) {
     pricingModel: 'Spot',
     items: Array.from({ length: hours }, (_, i) => ({
       hourStart: new Date(start + i * HOUR).toISOString(),
-      ratePerKwh: rate(i),
+      ratePerKwh: 0.5,
+      spotRatePerKwh: rate(i),
     })),
   }
 }
