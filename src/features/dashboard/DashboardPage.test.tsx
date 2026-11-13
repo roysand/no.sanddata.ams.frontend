@@ -1,16 +1,16 @@
 import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { server } from '../../test/server'
 import { renderWithQuery } from '../../test/render'
 import { DashboardPage } from './DashboardPage'
 
-// The charts load their own data; these tests are about which location the page offers.
-vi.mock('./CurrentHourCard', () => ({ CurrentHourCard: () => null }))
-vi.mock('./PowerChart', () => ({ PowerChart: () => null }))
-vi.mock('./HourlyCostChart', () => ({ HourlyCostChart: () => null }))
-vi.mock('./DailyCostChart', () => ({ DailyCostChart: () => null }))
+// The cards load their own data; these tests are about which location the page shows.
+vi.mock('./NowCard', () => ({
+  NowCard: ({ locationId }: { locationId: string }) => <p>now:{locationId}</p>,
+}))
+vi.mock('./PriceTimeline', () => ({ PriceTimeline: () => null }))
+vi.mock('./UsageChart', () => ({ UsageChart: () => null }))
 
 const location = (id: string, name: string, role: 'Owner' | 'Viewer') => ({
   id,
@@ -36,6 +36,8 @@ function renderDashboard() {
 }
 
 describe('DashboardPage', () => {
+  beforeEach(() => localStorage.clear())
+
   it('sends a user without locations to the setup', async () => {
     server.use(http.get('*/api/locations', () => HttpResponse.json([])))
     renderDashboard()
@@ -43,41 +45,42 @@ describe('DashboardPage', () => {
     expect(await screen.findByText('Setup page')).toBeInTheDocument()
   })
 
-  it('offers a shared (viewer) location in the picker and shows its name, as for an owned one', async () => {
-    localStorage.clear()
+  it('shows the first location when none is remembered', async () => {
     server.use(
       http.get('*/api/locations', () =>
         HttpResponse.json([location('l1', 'Home', 'Owner'), location('l2', 'Cabin', 'Viewer')]),
       ),
     )
-    const user = userEvent.setup()
     renderDashboard()
 
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'Location' }))
-    await user.click(await screen.findByRole('option', { name: 'Cabin' }))
-
-    expect(await screen.findByRole('heading', { name: 'Cabin' })).toBeInTheDocument()
+    expect(await screen.findByText('now:l1')).toBeInTheDocument()
   })
 
-  it('leaves inactive locations out of the picker', async () => {
-    localStorage.clear()
+  it('shows the remembered location, also when it is a shared (viewer) one', async () => {
+    localStorage.setItem('ams.selectedLocation', 'l2')
+    server.use(
+      http.get('*/api/locations', () =>
+        HttpResponse.json([location('l1', 'Home', 'Owner'), location('l2', 'Cabin', 'Viewer')]),
+      ),
+    )
+    renderDashboard()
+
+    expect(await screen.findByText('now:l2')).toBeInTheDocument()
+  })
+
+  it('leaves inactive locations out and falls back to the first active one', async () => {
+    localStorage.setItem('ams.selectedLocation', 'l1')
     server.use(
       http.get('*/api/locations', () =>
         HttpResponse.json([
           { ...location('l1', 'Home', 'Owner'), isActive: false },
           location('l2', 'Cabin', 'Owner'),
-          location('l3', 'House', 'Owner'),
         ]),
       ),
     )
-    const user = userEvent.setup()
     renderDashboard()
 
-    expect(await screen.findByRole('heading', { name: 'Cabin' })).toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'Location' }))
-    expect(await screen.findByRole('option', { name: 'House' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'Home' })).not.toBeInTheDocument()
+    expect(await screen.findByText('now:l2')).toBeInTheDocument()
   })
 
   it('tells a user whose locations are all inactive, and does not send them to the setup', async () => {

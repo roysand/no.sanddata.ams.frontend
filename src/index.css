@@ -16,6 +16,14 @@ body {
 }
 
 @theme inline {
+  --color-price-cheap: var(--price-cheap);
+  --color-price-cheap-soft: var(--price-cheap-soft);
+  --color-price-normal: var(--price-normal);
+  --color-price-normal-soft: var(--price-normal-soft);
+  --color-price-expensive: var(--price-expensive);
+  --color-price-expensive-soft: var(--price-expensive-soft);
+  --color-usage: var(--usage);
+  --color-usage-ghost: var(--usage-ghost);
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -91,6 +99,14 @@ body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --price-cheap: oklch(0.5 0.13 160);
+  --price-cheap-soft: oklch(0.95 0.05 160);
+  --price-normal: oklch(0.5 0.12 70);
+  --price-normal-soft: oklch(0.96 0.06 85);
+  --price-expensive: oklch(0.5 0.19 22);
+  --price-expensive-soft: oklch(0.95 0.04 20);
+  --usage: oklch(0.52 0.2 262);
+  --usage-ghost: oklch(0.65 0.02 262);
 }
 
 .dark {
@@ -125,6 +141,14 @@ body {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --price-cheap: oklch(0.82 0.16 160);
+  --price-cheap-soft: oklch(0.3 0.06 160);
+  --price-normal: oklch(0.85 0.14 85);
+  --price-normal-soft: oklch(0.32 0.06 85);
+  --price-expensive: oklch(0.78 0.16 22);
+  --price-expensive-soft: oklch(0.3 0.08 22);
+  --usage: oklch(0.75 0.14 262);
+  --usage-ghost: oklch(0.55 0.03 262);
 }
 
 @layer base {

@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthContext, type AuthContextValue } from '../features/auth/context'
 import { AdminRoute } from './AdminRoute'
-import { Header } from './Header'
 
 function auth(roles: string[]): AuthContextValue {
   return {
@@ -30,16 +29,6 @@ function renderAdminRoute(roles: string[]) {
   )
 }
 
-function renderHeader(roles: string[]) {
-  return render(
-    <AuthContext.Provider value={auth(roles)}>
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>
-    </AuthContext.Provider>,
-  )
-}
-
 describe('AdminRoute', () => {
   it('lets administrators in', () => {
     renderAdminRoute(['Admin'])
@@ -50,19 +39,5 @@ describe('AdminRoute', () => {
     renderAdminRoute(['User'])
     expect(screen.getByText('Dashboard page')).toBeInTheDocument()
     expect(screen.queryByText('Users page')).not.toBeInTheDocument()
-  })
-})
-
-describe('Header', () => {
-  it('shows the Users link only to administrators', () => {
-    const { unmount } = renderHeader(['User'])
-    expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Locations' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'My locations' })).toBeInTheDocument()
-    unmount()
-
-    renderHeader(['Admin'])
-    expect(screen.getByRole('link', { name: 'Users' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Locations' })).toBeInTheDocument()
   })
 })

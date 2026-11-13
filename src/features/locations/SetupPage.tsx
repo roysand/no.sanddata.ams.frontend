@@ -3,7 +3,7 @@ import { SetupWizard } from './SetupWizard'
 
 export function SetupPage() {
   return (
-    <Card className="mx-auto max-w-xl bg-white/95 shadow-lg">
+    <Card className="mx-auto max-w-xl bg-card shadow-lg">
       <CardHeader>
         <CardTitle>Set up your location</CardTitle>
       </CardHeader>

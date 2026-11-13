@@ -1,51 +1,50 @@
-import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { SELF_SERVICE_ENABLED, useLocations } from '../locations'
+import { SELF_SERVICE_ENABLED, useSelectedLocation } from '../locations'
 import { Card, CardContent } from '@/components/ui/card'
-import { CurrentHourCard } from './CurrentHourCard'
-import { DailyCostChart } from './DailyCostChart'
-import { HourlyCostChart } from './HourlyCostChart'
-import { LocationPicker } from './LocationPicker'
-import { PowerChart } from './PowerChart'
-
-const SELECTED_LOCATION_KEY = 'ams.selectedLocation'
+import { Skeleton } from '@/components/ui/skeleton'
+import { NowCard } from './NowCard'
+import { PriceTimeline } from './PriceTimeline'
+import { UsageChart } from './UsageChart'
 
 export function DashboardPage() {
-  const { data: locations, isLoading, error } = useLocations()
-  const [chosenId, setChosenId] = useState<string | null>(() =>
-    localStorage.getItem(SELECTED_LOCATION_KEY),
-  )
+  const { all, selected, isLoading, error } = useSelectedLocation()
 
-  if (isLoading) return <p className="text-center text-sm text-white">Loading…</p>
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading">
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-56 w-full rounded-xl" />
+      </div>
+    )
+  }
 
   if (error) {
     return (
-      <Card className="mx-auto max-w-4xl bg-white/95 shadow-lg">
-        <CardContent className="pt-6 text-sm text-destructive">{error.message}</CardContent>
+      <Card>
+        <CardContent className="text-sm text-destructive">{error.message}</CardContent>
       </Card>
     )
   }
 
-  if (!locations || locations.length === 0) {
+  if (all.length === 0) {
     if (SELF_SERVICE_ENABLED) return <Navigate to="/setup" replace />
     return (
-      <Card className="mx-auto max-w-4xl bg-white/95 shadow-lg">
-        <CardContent className="pt-6 text-sm text-muted-foreground">
+      <Card>
+        <CardContent className="text-sm text-muted-foreground">
           No locations are linked to your account yet. Ask an administrator to give you access.
         </CardContent>
       </Card>
     )
   }
 
-  // Owners also receive their inactive locations (to reactivate them under My locations); the dashboard shows
-  // only active ones.
-  const activeLocations = locations.filter((location) => location.isActive !== false)
-  if (activeLocations.length === 0) {
+  // Owners also receive their inactive locations (to reactivate them under My locations); the dashboard
+  // shows only active ones.
+  if (!selected) {
     return (
-      <Card className="mx-auto max-w-4xl bg-white/95 shadow-lg">
-        <CardContent className="pt-6 text-sm text-muted-foreground">
+      <Card>
+        <CardContent className="text-sm text-muted-foreground">
           All your locations are inactive. Activate one under{' '}
-          <Link to="/locations" className="underline">
+          <Link to="/locations/manage" className="underline">
             My locations
           </Link>
           .
@@ -54,31 +53,11 @@ export function DashboardPage() {
     )
   }
 
-  // Fall back to the first location when nothing (or a location we no longer have access to) is remembered.
-  const selected =
-    activeLocations.find((location) => location.id === chosenId) ?? activeLocations[0]
-
-  const choose = (locationId: string) => {
-    localStorage.setItem(SELECTED_LOCATION_KEY, locationId)
-    setChosenId(locationId)
-  }
-
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-white drop-shadow">{selected.name}</h1>
-          <p className="text-sm text-white/80 drop-shadow">
-            {selected.address} · price zone {selected.zone}
-          </p>
-        </div>
-        <LocationPicker locations={activeLocations} value={selected.id} onChange={choose} />
-      </div>
-
-      <CurrentHourCard locationId={selected.id} />
-      <PowerChart locationId={selected.id} />
-      <HourlyCostChart locationId={selected.id} />
-      <DailyCostChart locationId={selected.id} />
+    <div className="flex flex-col gap-4">
+      <NowCard locationId={selected.id} />
+      <PriceTimeline locationId={selected.id} />
+      <UsageChart locationId={selected.id} />
     </div>
   )
 }
