@@ -7,6 +7,7 @@ import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { HistoryPage } from '../features/dashboard/HistoryPage'
 import { UsersPage } from '../features/admin/UsersPage'
 import { AdminLocationsPage } from '../features/admin/AdminLocationsPage'
+import { NorgesPrisPage } from '../features/admin/NorgesPrisPage'
 import { LocationsPage, SetupPage } from '../features/locations'
 import { LocationsEntry } from '../features/overview/LocationsEntry'
 
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
             children: [
               { path: '/admin/users', element: <UsersPage /> },
               { path: '/admin/locations', element: <AdminLocationsPage /> },
+              { path: '/admin/norgespris', element: <NorgesPrisPage /> },
             ],
           },
         ],

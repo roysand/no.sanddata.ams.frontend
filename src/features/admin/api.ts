@@ -6,7 +6,13 @@ import {
   type LocationInput,
   type LocationRole,
 } from '../locations'
-import type { AdminUser, CreateUserInput, PagedUsers } from './types'
+import type {
+  AdminUser,
+  CreateUserInput,
+  NorgesPrisRate,
+  NorgesPrisRateInput,
+  PagedUsers,
+} from './types'
 
 export async function getUsers(page: number, pageSize: number, search: string) {
   const params = new URLSearchParams({ pageNumber: String(page), pageSize: String(pageSize) })
@@ -87,4 +93,18 @@ export function getAdminLocations() {
 /** Administrators may change every field; owners use the narrower endpoint in `features/locations`. */
 export function updateLocationAsAdmin(id: string, input: LocationInput) {
   return api.put<AdminLocation>(`/api/admin/locations/${id}`, { id, ...input })
+}
+
+/** Every Norgespris rate, oldest start date first. */
+export function getNorgesPrisRates() {
+  return api.get<NorgesPrisRate[]>('/api/admin/norgespris')
+}
+
+export function addNorgesPrisRate(input: NorgesPrisRateInput) {
+  return api.post<NorgesPrisRate>('/api/admin/norgespris', input)
+}
+
+/** Only a rate that has not started can be deleted; the API answers 409 otherwise. */
+export function deleteNorgesPrisRate(id: string) {
+  return api.delete<void>(`/api/admin/norgespris/${id}`)
 }

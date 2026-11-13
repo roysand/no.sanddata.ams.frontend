@@ -31,3 +31,25 @@ export interface CreateUserInput {
   email: string
   password: string
 }
+
+/** Computed by the server from today's date in Norway. */
+export type NorgesPrisStatus = 'Superseded' | 'InEffect' | 'Upcoming'
+
+/** A Norgespris (government flat price) rate, valid from `validFrom` until a later-dated rate takes over. */
+export interface NorgesPrisRate {
+  id: string
+  /** First Norwegian calendar day the rate applies to, `yyyy-MM-dd`. */
+  validFrom: string
+  ratePerKwh: number
+  taxPerKwh: number
+  totalPerKwh: number
+  status: NorgesPrisStatus
+}
+
+export interface NorgesPrisRateInput {
+  validFrom: string
+  ratePerKwh: number
+  taxPerKwh: number
+  /** Must be true for a start date of today or earlier: the caller accepts that past costs are recalculated. */
+  confirmPastDate: boolean
+}
