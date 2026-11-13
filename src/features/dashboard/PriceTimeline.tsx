@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Bar, BarChart, Cell, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, Cell, ReferenceLine, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useDayPrices } from './hooks'
+import { useCurrentHourCost, useDayPrices } from './hooks'
 import { formatClock, formatRate } from './format'
 import { buildPriceDay, type PriceHour, type PriceLevel } from './priceLevel'
 
@@ -15,16 +15,33 @@ const LEVEL_TEXT: Record<PriceLevel, string> = {
   expensive: 'expensive',
 }
 
-function describe(hour: PriceHour): string {
+/** How an hour's spot price compares with the flat Norgespris rate. */
+function againstNorgespris(rate: number, norgesRate: number | null): string {
+  if (norgesRate === null) return ''
+  if (Math.abs(rate - norgesRate) < 0.005) return ' · same as Norgespris'
+  return rate < norgesRate ? ' · below Norgespris' : ' · above Norgespris'
+}
+
+function describe(hour: PriceHour, norgesRate: number | null): string {
   if (hour.rate === null) return `${formatClock(hour.hourStart)} · price not available yet`
   return `${formatClock(hour.hourStart)} · ${formatRate(hour.rate)} · ${LEVEL_TEXT[hour.level!]}${
     hour.isBest ? ' · best hour' : ''
-  }${hour.isCurrent ? ' · now' : ''}`
+  }${againstNorgespris(hour.rate, norgesRate)}${hour.isCurrent ? ' · now' : ''}`
 }
 
 export function PriceTimeline({ locationId }: { locationId: string }) {
   const { data, isLoading, error } = useDayPrices(locationId)
+  const current = useCurrentHourCost(locationId)
   const [selected, setSelected] = useState<number | null>(null)
+
+  // The flat Norgespris rate: the location's own rate when it is on Norgespris, otherwise the comparison rate.
+  // The current-hour query is shared with the "right now" card, so this costs no extra request.
+  const norgesRate =
+    current.data === undefined
+      ? null
+      : ((current.data.pricingModel === 'NorgesPris'
+          ? current.data.actual?.ratePerKwh
+          : current.data.comparison?.ratePerKwh) ?? null)
 
   const header = (
     <CardHeader>
@@ -69,6 +86,9 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
   const currentIndex = day.hours.findIndex((hour) => hour.isCurrent)
   const shown = day.hours[selected ?? (currentIndex >= 0 ? currentIndex : 0)]
   const upcomingBest = day.hours.filter((hour) => hour.isBest && !hour.isPast)
+  const rated = day.hours.filter((hour) => hour.rate !== null)
+  const belowNorges =
+    norgesRate === null ? 0 : rated.filter((hour) => (hour.rate as number) < norgesRate).length
 
   return (
     <Card>
@@ -80,6 +100,8 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
             : upcomingBest.length > 0
               ? `Best hours still to come: ${upcomingBest.map((h) => formatClock(h.hourStart)).join(', ')}.`
               : "All of today's best hours have passed."}
+          {norgesRate !== null &&
+            ` The spot price is below Norgespris in ${belowNorges} of ${rated.length} hours today.`}
         </p>
 
         <ChartContainer config={config} className="mt-3 h-40 w-full">
@@ -102,6 +124,21 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
               }
             />
             <YAxis hide domain={[0, 'dataMax']} />
+            {norgesRate !== null && (
+              <ReferenceLine
+                y={norgesRate}
+                ifOverflow="extendDomain"
+                stroke="var(--foreground)"
+                strokeOpacity={0.75}
+                strokeDasharray="5 4"
+                label={{
+                  value: `Norgespris ${formatRate(norgesRate)}`,
+                  position: 'insideTopLeft',
+                  fontSize: 11,
+                  fill: 'var(--foreground)',
+                }}
+              />
+            )}
             <Bar
               dataKey="rate"
               radius={[4, 4, 2, 2]}
@@ -155,6 +192,15 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
             Expensive
           </li>
           <li>★ Best hour</li>
+          {norgesRate !== null && (
+            <li className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="h-0 w-4 border-t-2 border-dashed border-foreground/75"
+              />
+              Norgespris {formatRate(norgesRate)}
+            </li>
+          )}
           <li>Outlined = now</li>
         </ul>
 
@@ -162,7 +208,7 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
           className="mt-3 flex min-h-12 items-center rounded-xl bg-muted px-3.5 text-sm"
           aria-live="polite"
         >
-          {describe(shown)}
+          {describe(shown, norgesRate)}
         </p>
 
         <table className="sr-only">
@@ -171,7 +217,7 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
             {day.hours.map((hour) => (
               <tr key={hour.hourStart}>
                 <th scope="row">{formatClock(hour.hourStart)}</th>
-                <td>{describe(hour)}</td>
+                <td>{describe(hour, norgesRate)}</td>
               </tr>
             ))}
           </tbody>

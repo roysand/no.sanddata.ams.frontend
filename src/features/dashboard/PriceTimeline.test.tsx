@@ -21,8 +21,30 @@ function prices(rate: (hour: number) => number | null, hours = 24) {
   }
 }
 
-function renderTimeline(body: ReturnType<typeof prices>) {
-  server.use(http.get('*/api/electricity-cost/prices', () => HttpResponse.json(body)))
+interface CurrentOptions {
+  model?: 'Spot' | 'NorgesPris'
+  /** The Norgespris rate; null leaves the current-hour data without prices. */
+  norgesRate?: number | null
+}
+
+function renderTimeline(
+  body: ReturnType<typeof prices>,
+  { model = 'Spot', norgesRate = 0.92 }: CurrentOptions = {},
+) {
+  const own = { ratePerKwh: model === 'NorgesPris' ? norgesRate : 1, costSoFar: 1 }
+  const other = { ratePerKwh: model === 'NorgesPris' ? 1 : norgesRate, costSoFar: 1 }
+  server.use(
+    http.get('*/api/electricity-cost/prices', () => HttpResponse.json(body)),
+    http.get('*/api/electricity-cost/current', () =>
+      HttpResponse.json({
+        hourStart: new Date().toISOString(),
+        consumptionKwhSoFar: 1,
+        pricingModel: model,
+        actual: norgesRate === null && model === 'NorgesPris' ? null : own,
+        comparison: norgesRate === null && model === 'Spot' ? null : other,
+      }),
+    ),
+  )
   return renderWithQuery(<PriceTimeline locationId="l1" />)
 }
 
@@ -70,6 +92,46 @@ describe('PriceTimeline', () => {
     const table = await screen.findByRole('table', { name: 'Price per hour today' })
     expect(within(table).getAllByText(/price not available yet/)).toHaveLength(4)
     expect(within(table).getAllByText(/best hour/)).toHaveLength(4)
+  })
+
+  it('draws the Norgespris rate and says how many hours the spot price is below it', async () => {
+    renderTimeline(prices((i) => 0.5 + i * 0.05))
+
+    expect(
+      await screen.findByText(/Norgespris 0,92 kr.kWh/, { selector: 'li' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/The spot price is below Norgespris in 9 of 24 hours today/),
+    ).toBeInTheDocument()
+  })
+
+  it('tells in each hour whether the spot price is below or above Norgespris', async () => {
+    renderTimeline(prices((i) => 0.5 + i * 0.05))
+
+    const table = await screen.findByRole('table', { name: 'Price per hour today' })
+    expect(within(table).getAllByText(/below Norgespris/)).toHaveLength(9)
+    expect(within(table).getAllByText(/above Norgespris/)).toHaveLength(15)
+  })
+
+  it('uses the plan rate as the Norgespris line for a Norgespris location', async () => {
+    renderTimeline(
+      prices((i) => 0.5 + i * 0.05),
+      { model: 'NorgesPris', norgesRate: 0.92 },
+    )
+
+    expect(
+      await screen.findByText(/Norgespris 0,92 kr.kWh/, { selector: 'li' }),
+    ).toBeInTheDocument()
+  })
+
+  it('leaves the Norgespris line out when its rate is not known', async () => {
+    renderTimeline(
+      prices((i) => 0.5 + i * 0.05),
+      { norgesRate: null },
+    )
+
+    await screen.findByRole('table', { name: 'Price per hour today' })
+    expect(screen.queryByText(/Norgespris/)).not.toBeInTheDocument()
   })
 
   it('explains when no prices are published yet', async () => {
