@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
+import { Area, Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 import { Segmented } from '@/components/ui/segmented'
@@ -8,6 +8,7 @@ import { usePeriodData } from './hooks'
 import { formatNok } from './format'
 import type { Period, Unit } from './periods'
 import { buildUsageSeries, type UsageSeries } from './series'
+import { isolatedDot } from './chartDots'
 
 const STORAGE_KEY = 'ams.chart'
 const PERIODS: Period[] = ['day', 'week', 'month', 'year']
@@ -242,21 +243,37 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                 stroke="var(--usage-ghost)"
                 strokeWidth={2}
                 strokeDasharray="4 4"
-                dot={false}
+                dot={isolatedDot(
+                  rows.map((row) => row.previous),
+                  'var(--usage-ghost)',
+                )}
                 activeDot={false}
                 isAnimationActive={false}
                 connectNulls
               />
-              <Area
-                dataKey="current"
-                type="monotone"
-                stroke="var(--usage)"
-                strokeWidth={2.5}
-                fill="var(--usage)"
-                fillOpacity={0.14}
-                dot={false}
-                isAnimationActive={false}
-              />
+              {period === 'year' ? (
+                <Bar
+                  dataKey="current"
+                  fill="var(--usage)"
+                  radius={[4, 4, 2, 2]}
+                  maxBarSize={28}
+                  isAnimationActive={false}
+                />
+              ) : (
+                <Area
+                  dataKey="current"
+                  type="monotone"
+                  stroke="var(--usage)"
+                  strokeWidth={2.5}
+                  fill="var(--usage)"
+                  fillOpacity={0.14}
+                  dot={isolatedDot(
+                    rows.map((row) => row.current),
+                    'var(--usage)',
+                  )}
+                  isAnimationActive={false}
+                />
+              )}
             </ComposedChart>
           </ChartContainer>
         </div>
