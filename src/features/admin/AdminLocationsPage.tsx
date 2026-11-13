@@ -41,7 +41,7 @@ export function AdminLocationsPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <Card className="bg-white/95 shadow-lg">
+      <Card className="bg-card shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle className="text-xl">Locations</CardTitle>
           <Input

@@ -38,10 +38,10 @@ export function LocationsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [commentMeterId, setCommentMeterId] = useState<string | null>(null)
 
-  if (isLoading) return <p className="text-center text-sm text-white">Loading…</p>
+  if (isLoading) return <p className="text-center text-sm text-muted-foreground">Loading…</p>
   if (error || !locations) {
     return (
-      <Card className="mx-auto max-w-4xl bg-white/95 shadow-lg">
+      <Card className="mx-auto max-w-4xl bg-card shadow-lg">
         <CardContent className="pt-6 text-sm text-destructive">
           {error?.message ?? 'Could not load your locations'}
         </CardContent>
@@ -60,19 +60,19 @@ export function LocationsPage() {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-white drop-shadow">My locations</h1>
+        <h1 className="text-xl font-semibold text-foreground">My locations</h1>
         <Button onClick={() => setAdding(true)} disabled={atLimit}>
           Add location
         </Button>
       </div>
       {atLimit && (
-        <p className="text-sm text-white drop-shadow" role="status">
+        <p className="text-sm text-foreground" role="status">
           {LOCATION_LIMIT_MESSAGE}
         </p>
       )}
 
       {locations.length === 0 && (
-        <Card className="bg-white/95 shadow-lg">
+        <Card className="bg-card shadow-lg">
           <CardContent className="pt-6 text-sm text-muted-foreground">
             You have no locations yet.
           </CardContent>
@@ -80,7 +80,7 @@ export function LocationsPage() {
       )}
 
       {locations.map((location) => (
-        <Card key={location.id} className="bg-white/95 shadow-lg">
+        <Card key={location.id} className="bg-card shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">

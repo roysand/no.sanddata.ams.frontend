@@ -34,7 +34,7 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <Card className="w-full max-w-sm bg-white/95 shadow-lg">
+      <Card className="w-full max-w-sm bg-card shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl">Sign in</CardTitle>
         </CardHeader>
