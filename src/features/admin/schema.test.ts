@@ -4,12 +4,16 @@ const valid = {
   firstName: 'Ola',
   lastName: 'Nordmann',
   email: 'ola@example.com',
-  password: 'Passw0rd!',
+  password: 'Passw0rd12!',
 }
 
 describe('createUserSchema', () => {
   it('accepts a valid user', () => {
     expect(createUserSchema.safeParse(valid).success).toBe(true)
+  })
+
+  it('accepts a password without a special character', () => {
+    expect(createUserSchema.safeParse({ ...valid, password: 'Password12' }).success).toBe(true)
   })
 
   it('rejects an invalid email', () => {
@@ -18,11 +22,10 @@ describe('createUserSchema', () => {
   })
 
   it.each([
-    ['Sh0rt!', 'at least 8 characters'],
+    ['Sh0rt!', 'at least 10 characters'],
     ['password1!', 'uppercase'],
     ['PASSWORD1!', 'lowercase'],
     ['Password!!', 'number'],
-    ['Password12', 'special character'],
   ])('rejects password %s', (password, message) => {
     const result = resetPasswordSchema.safeParse({ newPassword: password })
     expect(result.success).toBe(false)
