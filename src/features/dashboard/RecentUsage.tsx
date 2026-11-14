@@ -105,7 +105,7 @@ export function RecentUsage({ locationId }: { locationId: string }) {
                 kWh
               </span>
             </dd>
-            <dt className="sr-only">Energy used</dt>
+            <dt className="text-sm text-muted-foreground">Power</dt>
             <Delta percent={usage.deltaPercent} />
           </div>
           <div>
