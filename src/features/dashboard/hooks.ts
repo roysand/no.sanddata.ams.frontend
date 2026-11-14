@@ -143,23 +143,33 @@ export function useLocationSnapshots(locationIds: string[], period: 'day' | 'wee
   }))
 }
 
-/** The last two hours of per-minute usage and the same two hours yesterday (same Oslo clock time). */
+/** The last three hours of per-minute usage, with hourly rates for the cost, and the same three hours yesterday (same Oslo clock time). */
 export function useRecentUsage(locationId: string | undefined) {
   return useQuery({
-    queryKey: ['consumption', 'recent-2h', locationId],
+    queryKey: ['consumption', 'recent', locationId],
     queryFn: async () => {
       const startMs = Math.floor((Date.now() - RECENT_WINDOW_MS) / ONE_MINUTE) * ONE_MINUTE
       const previousStartMs = sameHourYesterday(new Date(startMs)).getTime()
       const iso = (ms: number) => new Date(ms).toISOString()
-      const [current, previous] = await Promise.all([
-        getMinuteConsumption(locationId!, iso(startMs), iso(startMs + RECENT_WINDOW_MS)),
-        getMinuteConsumption(
-          locationId!,
-          iso(previousStartMs),
-          iso(previousStartMs + RECENT_WINDOW_MS),
-        ),
+      // Hourly rows are keyed by the start of the hour, so ask from the hour the window begins in.
+      const hourStart = (ms: number) => Math.floor(ms / HOUR_MS) * HOUR_MS
+      const window = (from: number) =>
+        Promise.all([
+          getMinuteConsumption(locationId!, iso(from), iso(from + RECENT_WINDOW_MS)),
+          getHourlyCost(locationId!, iso(hourStart(from)), iso(from + RECENT_WINDOW_MS)),
+        ])
+      const [[current, currentRates], [previous, previousRates]] = await Promise.all([
+        window(startMs),
+        window(previousStartMs),
       ])
-      return { current: current.items, previous: previous.items, startMs, previousStartMs }
+      return {
+        current: current.items,
+        previous: previous.items,
+        currentRates: currentRates.items,
+        previousRates: previousRates.items,
+        startMs,
+        previousStartMs,
+      }
     },
     enabled: !!locationId,
     refetchInterval: ONE_MINUTE,
