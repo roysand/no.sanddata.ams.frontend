@@ -97,7 +97,7 @@ export function NowCard({ locationId }: { locationId: string }) {
 
         <dl className="mt-3 flex flex-wrap items-end justify-between gap-x-5 gap-y-3">
           <div>
-            <dd className="text-4xl leading-none font-extrabold tracking-tighter tabular-nums">
+            <dd className="text-[2rem] leading-none font-extrabold tracking-tighter tabular-nums sm:text-4xl">
               {powerKw === null ? '–' : kw.format(powerKw)}
               <span className="ml-1 text-base font-semibold tracking-normal text-muted-foreground">
                 kW
@@ -108,13 +108,16 @@ export function NowCard({ locationId }: { locationId: string }) {
             </dt>
           </div>
           <div>
-            <dd className="text-xl leading-none font-extrabold tracking-tight tabular-nums">
-              {data.actual ? formatNok(data.actual.costSoFar) : '–'}
+            <dd className="text-[2rem] leading-none font-extrabold tracking-tighter tabular-nums sm:text-4xl">
+              {data.actual ? kw.format(data.actual.costSoFar) : '–'}
+              <span className="ml-1 text-sm font-semibold tracking-normal text-muted-foreground">
+                kr
+              </span>
             </dd>
             <dt className="mt-1 text-xs text-muted-foreground">Cost this hour</dt>
           </div>
           <div className="text-right">
-            <dd className="text-xl leading-none font-extrabold tracking-tight tabular-nums">
+            <dd className="text-[2rem] leading-none font-extrabold tracking-tighter tabular-nums sm:text-4xl">
               {spotRate === null ? '–' : kw.format(spotRate)}
               <span className="ml-1 text-xs font-semibold tracking-normal text-muted-foreground">
                 kr/kWh
