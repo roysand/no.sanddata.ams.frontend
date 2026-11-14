@@ -9,7 +9,7 @@ import {
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
 import { periodPlan, type Period, type PeriodWindow } from './periods'
-import { rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
+import { RECENT_WINDOW_MS, rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
 import type { Consumption } from './types'
 
 const ONE_MINUTE = 60_000
@@ -141,4 +141,37 @@ export function useLocationSnapshots(locationIds: string[], period: 'day' | 'wee
     power: results[i * 3 + 1] as UseQueryResult<Consumption>,
     period: results[i * 3 + 2] as UseQueryResult<Awaited<ReturnType<typeof fetchPeriod>>>,
   }))
+}
+
+/** The last three hours of per-minute usage, with hourly rates for the cost, and the same three hours yesterday (same Oslo clock time). */
+export function useRecentUsage(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ['consumption', 'recent', locationId],
+    queryFn: async () => {
+      const startMs = Math.floor((Date.now() - RECENT_WINDOW_MS) / ONE_MINUTE) * ONE_MINUTE
+      const previousStartMs = sameHourYesterday(new Date(startMs)).getTime()
+      const iso = (ms: number) => new Date(ms).toISOString()
+      // Hourly rows are keyed by the start of the hour, so ask from the hour the window begins in.
+      const hourStart = (ms: number) => Math.floor(ms / HOUR_MS) * HOUR_MS
+      const window = (from: number) =>
+        Promise.all([
+          getMinuteConsumption(locationId!, iso(from), iso(from + RECENT_WINDOW_MS)),
+          getHourlyCost(locationId!, iso(hourStart(from)), iso(from + RECENT_WINDOW_MS)),
+        ])
+      const [[current, currentRates], [previous, previousRates]] = await Promise.all([
+        window(startMs),
+        window(previousStartMs),
+      ])
+      return {
+        current: current.items,
+        previous: previous.items,
+        currentRates: currentRates.items,
+        previousRates: previousRates.items,
+        startMs,
+        previousStartMs,
+      }
+    },
+    enabled: !!locationId,
+    refetchInterval: ONE_MINUTE,
+  })
 }

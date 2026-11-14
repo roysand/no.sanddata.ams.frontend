@@ -1,4 +1,5 @@
 import {
+  buildRecentUsage,
   buildUsageSeries,
   currentPowerKw,
   hourTrend,
@@ -182,5 +183,121 @@ describe('row builders', () => {
       { key: '2026-10', kwh: 15, nok: 18 },
       { key: '2026-11', kwh: 7, nok: null },
     ])
+  })
+})
+
+describe('buildRecentUsage', () => {
+  const START = Date.UTC(2026, 10, 13, 10, 0)
+  const YESTERDAY = Date.UTC(2026, 10, 12, 10, 0)
+  const HOURS_3 = 3 * 3_600_000
+  const NOW_AFTER_WINDOW = new Date(START + HOURS_3)
+  const label = (ms: number) => new Date(ms).toISOString().slice(11, 16)
+  const minute = (base: number, offsetMin: number, kwh: number) => ({
+    periodStart: new Date(base + offsetMin * 60_000).toISOString(),
+    consumptionKwh: kwh,
+  })
+  const rate = (base: number, hourOffset: number, ratePerKwh: number | null): HourlyCostItem => ({
+    hourStart: new Date(base + hourOffset * 3_600_000).toISOString(),
+    consumptionKwh: 1,
+    pricingModel: 'Spot',
+    actual: ratePerKwh === null ? null : { ratePerKwh, cost: ratePerKwh },
+    comparison: null,
+  })
+  const input = (overrides: Partial<Parameters<typeof buildRecentUsage>[0]> = {}) => ({
+    current: [],
+    previous: [],
+    currentRates: [],
+    previousRates: [],
+    startMs: START,
+    previousStartMs: YESTERDAY,
+    now: NOW_AFTER_WINDOW,
+    label,
+    ...overrides,
+  })
+
+  it('turns per-minute energy into kW per 5 minutes over three hours and totals the energy', () => {
+    // 0.05 kWh every minute for the first five minutes = 0.25 kWh in 5 min = 3 kW.
+    const current = [0, 1, 2, 3, 4].map((m) => minute(START, m, 0.05))
+    const result = buildRecentUsage(input({ current }))
+
+    expect(result.points).toHaveLength(36)
+    expect(result.points[0].current).toBeCloseTo(3, 5)
+    expect(result.points[1].current).toBeNull()
+    expect(result.points[0].label).toBe('10:00')
+    expect(result.points[35].label).toBe('12:55')
+    expect(result.totalKwh).toBeCloseTo(0.25, 5)
+    expect(result.hasCurrent).toBe(true)
+    expect(result.hasPrevious).toBe(false)
+  })
+
+  it('compares energy with yesterday over the same elapsed time', () => {
+    const current = [0, 1].map((m) => minute(START, m, 0.1)) // 0.2 kWh in the first 2 minutes
+    const previous = [
+      minute(YESTERDAY, 0, 0.05),
+      minute(YESTERDAY, 1, 0.05), // 0.1 kWh in the same 2 minutes
+      minute(YESTERDAY, 150, 5), // later than "now" in the window, must not count
+    ]
+    const result = buildRecentUsage(input({ current, previous, now: new Date(START + 2 * 60_000) }))
+
+    expect(result.totalKwh).toBeCloseTo(0.2, 5)
+    expect(result.previousKwh).toBeCloseTo(0.1, 5)
+    expect(result.deltaPercent).toBeCloseTo(100, 5)
+    expect(result.hasPrevious).toBe(true)
+  })
+
+  it('prices each minute at the rate of the hour it falls in', () => {
+    // 1 kWh in the first hour at 0.50 and 2 kWh in the second hour at 1.00.
+    const current = [minute(START, 10, 1), minute(START, 70, 2)]
+    const result = buildRecentUsage(
+      input({ current, currentRates: [rate(START, 0, 0.5), rate(START, 1, 1)] }),
+    )
+
+    expect(result.cost.cost).toBeCloseTo(2.5, 5)
+    expect(result.cost.incomplete).toBe(false)
+  })
+
+  it('compares cost with yesterday', () => {
+    const current = [minute(START, 10, 1)]
+    const previous = [minute(YESTERDAY, 10, 1)]
+    const result = buildRecentUsage(
+      input({
+        current,
+        previous,
+        currentRates: [rate(START, 0, 1.5)],
+        previousRates: [rate(YESTERDAY, 0, 1)],
+      }),
+    )
+
+    expect(result.cost.cost).toBeCloseTo(1.5, 5)
+    expect(result.previousCost.cost).toBeCloseTo(1, 5)
+    expect(result.costDeltaPercent).toBeCloseTo(50, 5)
+  })
+
+  it('marks the cost incomplete when one hour has no price, and has none when nothing is priced', () => {
+    const current = [minute(START, 10, 1), minute(START, 70, 2)]
+    const partly = buildRecentUsage(
+      input({ current, currentRates: [rate(START, 0, 0.5), rate(START, 1, null)] }),
+    )
+    const nothing = buildRecentUsage(input({ current, currentRates: [rate(START, 0, null)] }))
+
+    expect(partly.cost.cost).toBeCloseTo(0.5, 5)
+    expect(partly.cost.incomplete).toBe(true)
+    expect(nothing.cost.cost).toBeNull()
+    expect(nothing.costDeltaPercent).toBeNull()
+  })
+
+  it('has no change when yesterday has no energy', () => {
+    const result = buildRecentUsage(input({ current: [minute(START, 0, 0.1)] }))
+
+    expect(result.deltaPercent).toBeNull()
+  })
+
+  it('ignores readings outside the three-hour window', () => {
+    const result = buildRecentUsage(
+      input({ current: [minute(START, -10, 9), minute(START, 190, 9)] }),
+    )
+
+    expect(result.hasCurrent).toBe(false)
+    expect(result.totalKwh).toBe(0)
   })
 })

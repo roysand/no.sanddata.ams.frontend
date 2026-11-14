@@ -25,9 +25,10 @@ export function getDailyCost(locationId: string) {
   return api.get<DailyCost>(`/api/electricity-cost/daily?${query({ locationId })}`)
 }
 
-export function getMinuteConsumption(locationId: string, fromUtc: string) {
+/** Per-minute consumption from `fromUtc` until `toUtc`, or until now when omitted. */
+export function getMinuteConsumption(locationId: string, fromUtc: string, toUtc?: string) {
   return api.get<Consumption>(
-    `/api/consumption?${query({ locationId, granularity: 'minute', from: fromUtc })}`,
+    `/api/consumption?${query({ locationId, granularity: 'minute', from: fromUtc, to: toUtc })}`,
   )
 }
 
