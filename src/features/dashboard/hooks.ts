@@ -9,7 +9,7 @@ import {
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
 import { periodPlan, type Period, type PeriodWindow } from './periods'
-import { rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
+import { RECENT_WINDOW_MS, rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
 import type { Consumption } from './types'
 
 const ONE_MINUTE = 60_000
@@ -141,4 +141,27 @@ export function useLocationSnapshots(locationIds: string[], period: 'day' | 'wee
     power: results[i * 3 + 1] as UseQueryResult<Consumption>,
     period: results[i * 3 + 2] as UseQueryResult<Awaited<ReturnType<typeof fetchPeriod>>>,
   }))
+}
+
+/** The last two hours of per-minute usage and the same two hours yesterday (same Oslo clock time). */
+export function useRecentUsage(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ['consumption', 'recent-2h', locationId],
+    queryFn: async () => {
+      const startMs = Math.floor((Date.now() - RECENT_WINDOW_MS) / ONE_MINUTE) * ONE_MINUTE
+      const previousStartMs = sameHourYesterday(new Date(startMs)).getTime()
+      const iso = (ms: number) => new Date(ms).toISOString()
+      const [current, previous] = await Promise.all([
+        getMinuteConsumption(locationId!, iso(startMs), iso(startMs + RECENT_WINDOW_MS)),
+        getMinuteConsumption(
+          locationId!,
+          iso(previousStartMs),
+          iso(previousStartMs + RECENT_WINDOW_MS),
+        ),
+      ])
+      return { current: current.items, previous: previous.items, startMs, previousStartMs }
+    },
+    enabled: !!locationId,
+    refetchInterval: ONE_MINUTE,
+  })
 }

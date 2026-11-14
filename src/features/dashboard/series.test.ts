@@ -1,4 +1,5 @@
 import {
+  buildRecentUsage,
   buildUsageSeries,
   currentPowerKw,
   hourTrend,
@@ -182,5 +183,67 @@ describe('row builders', () => {
       { key: '2026-10', kwh: 15, nok: 18 },
       { key: '2026-11', kwh: 7, nok: null },
     ])
+  })
+})
+
+describe('buildRecentUsage', () => {
+  const START = Date.UTC(2026, 10, 13, 10, 0)
+  const YESTERDAY = Date.UTC(2026, 10, 12, 10, 0)
+  const NOW_2H = new Date(START + 2 * 3_600_000)
+  const label = (ms: number) => new Date(ms).toISOString().slice(11, 16)
+  const minute = (base: number, offsetMin: number, kwh: number) => ({
+    periodStart: new Date(base + offsetMin * 60_000).toISOString(),
+    consumptionKwh: kwh,
+  })
+
+  it('turns per-minute energy into kW per 5 minutes and totals the energy', () => {
+    // 0.05 kWh every minute for the first five minutes = 0.25 kWh in 5 min = 3 kW.
+    const current = [0, 1, 2, 3, 4].map((m) => minute(START, m, 0.05))
+    const result = buildRecentUsage(current, [], START, YESTERDAY, NOW_2H, label)
+
+    expect(result.points).toHaveLength(24)
+    expect(result.points[0].current).toBeCloseTo(3, 5)
+    expect(result.points[1].current).toBeNull()
+    expect(result.points[0].label).toBe('10:00')
+    expect(result.points[1].label).toBe('10:05')
+    expect(result.totalKwh).toBeCloseTo(0.25, 5)
+    expect(result.hasCurrent).toBe(true)
+    expect(result.hasPrevious).toBe(false)
+  })
+
+  it('compares with yesterday over the same elapsed time', () => {
+    const current = [0, 1].map((m) => minute(START, m, 0.1)) // 0.2 kWh in the first 2 minutes
+    const previous = [
+      minute(YESTERDAY, 0, 0.05),
+      minute(YESTERDAY, 1, 0.05), // 0.1 kWh in the same 2 minutes
+      minute(YESTERDAY, 90, 5), // later than "now" in the window, must not count
+    ]
+    const now = new Date(START + 2 * 60_000)
+    const result = buildRecentUsage(current, previous, START, YESTERDAY, now, label)
+
+    expect(result.totalKwh).toBeCloseTo(0.2, 5)
+    expect(result.previousKwh).toBeCloseTo(0.1, 5)
+    expect(result.deltaPercent).toBeCloseTo(100, 5)
+    expect(result.hasPrevious).toBe(true)
+  })
+
+  it('has no change when yesterday has no energy', () => {
+    const result = buildRecentUsage([minute(START, 0, 0.1)], [], START, YESTERDAY, NOW_2H, label)
+
+    expect(result.deltaPercent).toBeNull()
+  })
+
+  it('ignores readings outside the two-hour window', () => {
+    const result = buildRecentUsage(
+      [minute(START, -10, 9), minute(START, 130, 9)],
+      [],
+      START,
+      YESTERDAY,
+      NOW_2H,
+      label,
+    )
+
+    expect(result.hasCurrent).toBe(false)
+    expect(result.totalKwh).toBe(0)
   })
 })

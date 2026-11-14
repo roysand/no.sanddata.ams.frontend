@@ -127,3 +127,74 @@ export function buildUsageSeries(
     hasPrevious: previous.some((value) => value !== null),
   }
 }
+
+const BUCKET_MS = 5 * MINUTE_MS
+export const RECENT_WINDOW_MS = 2 * 60 * MINUTE_MS
+export const RECENT_BUCKETS = RECENT_WINDOW_MS / BUCKET_MS
+
+export interface RecentPoint {
+  label: string
+  /** Average power in kW over the 5 minutes, null when there is no reading. */
+  current: number | null
+  previous: number | null
+}
+
+export interface RecentUsage {
+  points: RecentPoint[]
+  totalKwh: number
+  /** Yesterday over the same elapsed time, so the comparison is like for like. */
+  previousKwh: number
+  deltaPercent: number | null
+  hasCurrent: boolean
+  hasPrevious: boolean
+}
+
+function bucketKw(items: ConsumptionItem[], startMs: number): (number | null)[] {
+  const sums: (number | null)[] = Array(RECENT_BUCKETS).fill(null)
+  for (const item of items) {
+    const index = Math.floor((new Date(item.periodStart).getTime() - startMs) / BUCKET_MS)
+    if (index < 0 || index >= RECENT_BUCKETS) continue
+    sums[index] = (sums[index] ?? 0) + item.consumptionKwh
+  }
+  // kWh in 5 minutes is 12 times the average power in kW.
+  return sums.map((sum) => (sum === null ? null : sum * 12))
+}
+
+function totalKwh(items: ConsumptionItem[], startMs: number, endMs: number): number {
+  return items.reduce((sum, item) => {
+    const t = new Date(item.periodStart).getTime()
+    return t >= startMs && t < endMs ? sum + item.consumptionKwh : sum
+  }, 0)
+}
+
+/**
+ * The last two hours in 5-minute steps against the same two hours yesterday (same Oslo clock time).
+ * `label` turns the start of a step into the clock time shown on the axis.
+ */
+export function buildRecentUsage(
+  current: ConsumptionItem[],
+  previous: ConsumptionItem[],
+  startMs: number,
+  previousStartMs: number,
+  now: Date,
+  label: (ms: number) => string,
+): RecentUsage {
+  const currentKw = bucketKw(current, startMs)
+  const previousKw = bucketKw(previous, previousStartMs)
+  const elapsed = Math.min(Math.max(now.getTime() - startMs, 0), RECENT_WINDOW_MS)
+  const kwh = totalKwh(current, startMs, startMs + elapsed)
+  const previousKwh = totalKwh(previous, previousStartMs, previousStartMs + elapsed)
+
+  return {
+    points: currentKw.map((value, i) => ({
+      label: label(startMs + i * BUCKET_MS),
+      current: value,
+      previous: previousKw[i],
+    })),
+    totalKwh: kwh,
+    previousKwh,
+    deltaPercent: previousKwh > 0 ? ((kwh - previousKwh) / previousKwh) * 100 : null,
+    hasCurrent: currentKw.some((value) => value !== null),
+    hasPrevious: previousKw.some((value) => value !== null),
+  }
+}

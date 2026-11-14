@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { NowCard } from './NowCard'
 import { PriceTimeline } from './PriceTimeline'
+import { RecentUsage } from './RecentUsage'
 import { UsageChart } from './UsageChart'
 
 export function DashboardPage() {
@@ -56,8 +57,9 @@ export function DashboardPage() {
   return (
     <div className="flex flex-col gap-4">
       <NowCard locationId={selected.id} />
-      <PriceTimeline locationId={selected.id} />
+      <RecentUsage locationId={selected.id} />
       <UsageChart locationId={selected.id} />
+      <PriceTimeline locationId={selected.id} />
     </div>
   )
 }
