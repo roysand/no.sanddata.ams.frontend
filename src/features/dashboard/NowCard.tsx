@@ -95,43 +95,43 @@ export function NowCard({ locationId }: { locationId: string }) {
           <span>{modelLabel(data.pricingModel)}</span>
         </div>
 
-        <div className="mt-2.5 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-5xl leading-none font-extrabold tracking-tighter tabular-nums sm:text-6xl">
+        <dl className="mt-3 flex flex-wrap items-end gap-x-5 gap-y-3">
+          <div>
+            <dd className="text-4xl leading-none font-extrabold tracking-tighter tabular-nums">
               {powerKw === null ? '–' : kw.format(powerKw)}
-              <span className="ml-1.5 text-xl font-semibold tracking-normal text-muted-foreground">
+              <span className="ml-1 text-base font-semibold tracking-normal text-muted-foreground">
                 kW
               </span>
-            </p>
-            {powerKw === null && (
-              <p className="mt-1 text-sm text-muted-foreground">No recent reading</p>
-            )}
-
-            <p
-              className={`mt-4 inline-flex min-h-9 items-center gap-2 rounded-full px-3.5 text-sm font-bold ${pill.className}`}
-            >
-              <span aria-hidden="true" className="size-2 rounded-full bg-current" />
-              {pill.label}
-            </p>
+            </dd>
+            <dt className="mt-1 text-xs text-muted-foreground">
+              {powerKw === null ? 'No recent reading' : 'Power now'}
+            </dt>
           </div>
+          <div>
+            <dd className="text-xl leading-none font-extrabold tracking-tight tabular-nums">
+              {data.actual ? formatNok(data.actual.costSoFar) : '–'}
+            </dd>
+            <dt className="mt-1 text-xs text-muted-foreground">Cost this hour</dt>
+          </div>
+          <div>
+            <dd className="text-xl leading-none font-extrabold tracking-tight tabular-nums">
+              {spotRate === null ? '–' : kw.format(spotRate)}
+              <span className="ml-1 text-xs font-semibold tracking-normal text-muted-foreground">
+                kr/kWh
+              </span>
+            </dd>
+            <dt className="mt-1 text-xs text-muted-foreground">
+              {spotRate === null ? 'No spot price yet' : 'Spot price now'}
+            </dt>
+          </div>
+        </dl>
 
-          <dl className="grid shrink-0 gap-3 text-right">
-            <div>
-              <dd className="text-xl font-extrabold tracking-tight tabular-nums">
-                {data.actual ? formatNok(data.actual.costSoFar) : '–'}
-              </dd>
-              <dt className="text-sm text-muted-foreground">Cost this hour</dt>
-            </div>
-            <div>
-              <dd className="text-xl font-extrabold tracking-tight tabular-nums">
-                {spotRate === null ? '–' : formatRate(spotRate)}
-              </dd>
-              <dt className="text-sm text-muted-foreground">
-                {spotRate === null ? 'No spot price yet' : 'Spot price now'}
-              </dt>
-            </div>
-          </dl>
-        </div>
+        <p
+          className={`mt-4 inline-flex min-h-9 items-center gap-2 rounded-full px-3.5 text-sm font-bold ${pill.className}`}
+        >
+          <span aria-hidden="true" className="size-2 rounded-full bg-current" />
+          {pill.label}
+        </p>
 
         {data.pricingModel === 'NorgesPris' && data.actual && (
           <p className="mt-3 text-sm text-muted-foreground">
