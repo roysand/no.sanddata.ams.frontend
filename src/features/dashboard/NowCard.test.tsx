@@ -132,19 +132,27 @@ describe('NowCard', () => {
     expect(screen.getByText(/Cost and price level appear as soon as/)).toBeInTheDocument()
   })
 
-  it('shows the real (spot) price next to Norgespris for a Norgespris location', async () => {
-    renderNow({ pricingModel: 'NorgesPris', actual: { ratePerKwh: 0.5, costSoFar: 0.7 } })
-
-    expect(await screen.findByText('Norgespris per kWh')).toBeInTheDocument()
-    expect(screen.getByText('Spot price now (the market price)')).toBeInTheDocument()
-    expect(screen.getByText(/0,60/)).toBeInTheDocument()
-  })
-
-  it('does not repeat the spot price for a Spot location', async () => {
+  it('shows the cost this hour and the spot price now beside the power', async () => {
     renderNow()
 
-    await screen.findByText('Price per kWh')
-    expect(screen.queryByText(/Spot price now/)).not.toBeInTheDocument()
+    expect(await screen.findByText('Cost this hour')).toBeInTheDocument()
+    expect(screen.getByText('Spot price now')).toBeInTheDocument()
+    expect(screen.getByText(/0,49/)).toBeInTheDocument() // a Spot plan: its own rate is the spot price
+    expect(screen.queryByText(/Your plan: Norgespris/)).not.toBeInTheDocument()
+  })
+
+  it('shows the real spot price, not the flat Norgespris rate, for a Norgespris location', async () => {
+    renderNow({ pricingModel: 'NorgesPris', actual: { ratePerKwh: 0.5, costSoFar: 0.7 } })
+
+    expect(await screen.findByText('Spot price now')).toBeInTheDocument()
+    expect(screen.getByText(/0,60/)).toBeInTheDocument() // the market rate (the comparison)
+    expect(screen.getByText(/Your plan: Norgespris 0,50/)).toBeInTheDocument()
+  })
+
+  it('says the spot price is not available yet when it is unknown', async () => {
+    renderNow({ actual: null, prices: dayPrices(null, 1) })
+
+    expect(await screen.findByText('No spot price yet')).toBeInTheDocument()
   })
 
   it('shows an empty state when the location has no readings', async () => {
