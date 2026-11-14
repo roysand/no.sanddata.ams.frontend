@@ -63,7 +63,8 @@ src/
                   (edit location, edit meter comment), shared location/meter forms, one-time
                   sensor key notice, role helpers (owner or viewer)
     admin/        Administrator pages: users with their location roles, all locations with an
-                  access list (add viewers, change roles), add location or meter on behalf of a user
+                  access list (add viewers, change roles), add location or meter on behalf of a user,
+                  Norgespris rates with start dates (add a rate, delete one that has not started)
   components/     Shared components (e.g. ProtectedRoute, AdminRoute, Header) and ui/ primitives
   lib/            API client, auth token store, TanStack Query client
   test/           Test setup, shared MSW server and render helpers

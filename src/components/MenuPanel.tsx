@@ -14,6 +14,7 @@ const navItems = [
 const adminItems = [
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/locations', label: 'Locations' },
+  { to: '/admin/norgespris', label: 'Norgespris' },
 ]
 
 /** Extra pages, offered only to users who have some (administrators today). The server still enforces access. */

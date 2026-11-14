@@ -1,9 +1,12 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  addNorgesPrisRate,
   createLocationForUser,
   createUser,
+  deleteNorgesPrisRate,
   deleteUser,
   getAdminLocations,
+  getNorgesPrisRates,
   getUsers,
   resetPassword,
   setAdmin,
@@ -17,6 +20,7 @@ export const PAGE_SIZE = 10
 
 const USERS_KEY = ['admin', 'users']
 const ADMIN_LOCATIONS_KEY = ['admin', 'locations']
+const NORGESPRIS_KEY = ['admin', 'norgespris']
 
 export function useUsers(page: number, search: string) {
   return useQuery({
@@ -84,4 +88,27 @@ export function useUpdateLocationAsAdmin() {
         queryClient.invalidateQueries({ queryKey: USERS_KEY }),
       ]),
   })
+}
+
+export function useNorgesPrisRates() {
+  return useQuery({ queryKey: NORGESPRIS_KEY, queryFn: getNorgesPrisRates })
+}
+
+/**
+ * Adding or deleting a rate changes how hours are priced, and costs are calculated when shown, so the cost and price
+ * figures already loaded for the dashboard are refreshed too.
+ */
+export function useNorgesPrisActions() {
+  const queryClient = useQueryClient()
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: NORGESPRIS_KEY }),
+      queryClient.invalidateQueries({ queryKey: ['cost'] }),
+      queryClient.invalidateQueries({ queryKey: ['prices'] }),
+    ])
+
+  return {
+    add: useMutation({ mutationFn: addNorgesPrisRate, onSuccess: refresh }),
+    remove: useMutation({ mutationFn: deleteNorgesPrisRate, onSuccess: refresh }),
+  }
 }

@@ -75,6 +75,10 @@ describe('Header', () => {
     expect(within(menu).getByRole('link', { name: 'My locations' })).toBeInTheDocument()
     expect(within(menu).getByRole('link', { name: 'Users' })).toBeInTheDocument()
     expect(within(menu).getByRole('link', { name: 'Locations' })).toBeInTheDocument()
+    expect(within(menu).getByRole('link', { name: 'Norgespris' })).toHaveAttribute(
+      'href',
+      '/admin/norgespris',
+    )
   })
 
   it('opens the account panel from the user chip and signs out', async () => {
