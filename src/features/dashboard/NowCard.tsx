@@ -95,7 +95,7 @@ export function NowCard({ locationId }: { locationId: string }) {
           <span>{modelLabel(data.pricingModel)}</span>
         </div>
 
-        <dl className="mt-3 flex flex-wrap items-end gap-x-5 gap-y-3">
+        <dl className="mt-3 flex flex-wrap items-end justify-between gap-x-5 gap-y-3">
           <div>
             <dd className="text-4xl leading-none font-extrabold tracking-tighter tabular-nums">
               {powerKw === null ? '–' : kw.format(powerKw)}
@@ -113,7 +113,7 @@ export function NowCard({ locationId }: { locationId: string }) {
             </dd>
             <dt className="mt-1 text-xs text-muted-foreground">Cost this hour</dt>
           </div>
-          <div>
+          <div className="text-right">
             <dd className="text-xl leading-none font-extrabold tracking-tight tabular-nums">
               {spotRate === null ? '–' : kw.format(spotRate)}
               <span className="ml-1 text-xs font-semibold tracking-normal text-muted-foreground">
