@@ -83,6 +83,9 @@ export function NowCard({ locationId }: { locationId: string }) {
       : null
   const difference =
     data.actual && data.comparison ? data.actual.costSoFar - data.comparison.costSoFar : null
+  // The spot (market) price now: the plan's own rate on a Spot plan, the comparison rate on Norgespris.
+  const spot = data.pricingModel === 'NorgesPris' ? data.comparison : data.actual
+  const spotRate = spot?.ratePerKwh ?? null
 
   return (
     <Card aria-label="Right now">
@@ -92,51 +95,49 @@ export function NowCard({ locationId }: { locationId: string }) {
           <span>{modelLabel(data.pricingModel)}</span>
         </div>
 
-        <p className="mt-2.5 text-6xl leading-none font-extrabold tracking-tighter tabular-nums">
-          {powerKw === null ? '–' : kw.format(powerKw)}
-          <span className="ml-1.5 text-xl font-semibold tracking-normal text-muted-foreground">
-            kW
-          </span>
-        </p>
-        {powerKw === null && (
-          <p className="mt-1 text-sm text-muted-foreground">No recent reading</p>
-        )}
+        <div className="mt-2.5 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-5xl leading-none font-extrabold tracking-tighter tabular-nums sm:text-6xl">
+              {powerKw === null ? '–' : kw.format(powerKw)}
+              <span className="ml-1.5 text-xl font-semibold tracking-normal text-muted-foreground">
+                kW
+              </span>
+            </p>
+            {powerKw === null && (
+              <p className="mt-1 text-sm text-muted-foreground">No recent reading</p>
+            )}
 
-        <p
-          className={`mt-4 inline-flex min-h-9 items-center gap-2 rounded-full px-3.5 text-sm font-bold ${pill.className}`}
-        >
-          <span aria-hidden="true" className="size-2 rounded-full bg-current" />
-          {pill.label}
-        </p>
+            <p
+              className={`mt-4 inline-flex min-h-9 items-center gap-2 rounded-full px-3.5 text-sm font-bold ${pill.className}`}
+            >
+              <span aria-hidden="true" className="size-2 rounded-full bg-current" />
+              {pill.label}
+            </p>
+          </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-3.5">
-          <div>
-            <dd className="text-xl font-extrabold tracking-tight tabular-nums">
-              {data.actual ? formatNok(data.actual.costSoFar) : '–'}
-            </dd>
-            <dt className="text-sm text-muted-foreground">Cost so far this hour</dt>
-          </div>
-          <div>
-            <dd className="text-xl font-extrabold tracking-tight tabular-nums">
-              {data.actual ? formatRate(data.actual.ratePerKwh) : '–'}
-            </dd>
-            <dt className="text-sm text-muted-foreground">
-              {data.pricingModel === 'NorgesPris' ? 'Norgespris per kWh' : 'Price per kWh'}
-            </dt>
-          </div>
-          {data.pricingModel === 'NorgesPris' && (
-            <div className="col-span-2">
+          <dl className="grid shrink-0 gap-3 text-right">
+            <div>
               <dd className="text-xl font-extrabold tracking-tight tabular-nums">
-                {data.comparison ? formatRate(data.comparison.ratePerKwh) : '–'}
+                {data.actual ? formatNok(data.actual.costSoFar) : '–'}
+              </dd>
+              <dt className="text-sm text-muted-foreground">Cost this hour</dt>
+            </div>
+            <div>
+              <dd className="text-xl font-extrabold tracking-tight tabular-nums">
+                {spotRate === null ? '–' : formatRate(spotRate)}
               </dd>
               <dt className="text-sm text-muted-foreground">
-                {data.comparison
-                  ? 'Spot price now (the market price)'
-                  : 'Spot price not available yet'}
+                {spotRate === null ? 'No spot price yet' : 'Spot price now'}
               </dt>
             </div>
-          )}
-        </dl>
+          </dl>
+        </div>
+
+        {data.pricingModel === 'NorgesPris' && data.actual && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Your plan: Norgespris {formatRate(data.actual.ratePerKwh)}
+          </p>
+        )}
 
         {!hasPrice && (
           <p className="mt-2 text-sm text-muted-foreground">
