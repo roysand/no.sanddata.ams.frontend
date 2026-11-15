@@ -18,6 +18,17 @@ export const formatRate = (value: number) => `${rate.format(value)} kr/kWh`
 /** "14:00" in Oslo time for a UTC ISO timestamp. */
 export const formatClock = (isoUtc: string) => hourFormat.format(new Date(isoUtc))
 
+const secondsFormat = new Intl.DateTimeFormat('nb-NO', {
+  timeZone: OSLO,
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+})
+
+/** "14:03:27" in Oslo time for a UTC ISO timestamp. */
+export const formatClockSeconds = (isoUtc: string) => secondsFormat.format(new Date(isoUtc))
+
 /** "2026-10-03" -> "03.10." */
 export const formatDay = (isoDate: string) => `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.`
 
