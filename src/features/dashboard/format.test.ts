@@ -1,4 +1,4 @@
-import { sameHourYesterday } from './format'
+import { formatClockSeconds, sameHourYesterday } from './format'
 
 describe('sameHourYesterday', () => {
   it('is 24 hours earlier on an ordinary day', () => {
@@ -19,5 +19,16 @@ describe('sameHourYesterday', () => {
     const result = sameHourYesterday(new Date('2026-03-30T10:00:00Z'))
 
     expect(result.toISOString()).toBe('2026-03-29T10:00:00.000Z')
+  })
+})
+
+describe('formatClockSeconds', () => {
+  it('shows hours, minutes and seconds in Oslo time', () => {
+    expect(formatClockSeconds('2026-11-13T11:34:56Z')).toBe('12:34:56') // winter, UTC+1
+    expect(formatClockSeconds('2026-07-13T11:04:05Z')).toBe('13:04:05') // summer, UTC+2
+  })
+
+  it('shows midnight as 00 and not 24', () => {
+    expect(formatClockSeconds('2026-11-12T23:00:09Z')).toBe('00:00:09')
   })
 })

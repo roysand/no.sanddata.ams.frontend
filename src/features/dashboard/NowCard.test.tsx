@@ -38,6 +38,8 @@ interface Setup {
   yesterdayCost?: number | null
   withReading?: boolean
   stale?: boolean
+  /** ISO time of the latest reading; defaults to a few seconds ago. */
+  measuredAt?: string
 }
 
 function renderNow({
@@ -48,6 +50,7 @@ function renderNow({
   yesterdayCost = 100,
   withReading = true,
   stale = false,
+  measuredAt,
 }: Setup = {}) {
   server.use(
     http.get('*/api/electricity-cost/current', () =>
@@ -59,7 +62,17 @@ function renderNow({
         comparison: actual ? { ratePerKwh: 0.6, costSoFar: 0.9 } : null,
       }),
     ),
-http.get('*/api/measurements/latest', () =>      withReading        ? HttpResponse.json({            timestamp: new Date(Date.now() - (stale ? 5 * 60_000 : 5_000)).toISOString(),            meterId: 'm1',            powerWatts: 3420,            isStale: stale,          })        : new HttpResponse(null, { status: 204 }),    ),
+    http.get('*/api/measurements/latest', () =>
+      withReading
+        ? HttpResponse.json({
+            timestamp:
+              measuredAt ?? new Date(Date.now() - (stale ? 5 * 60_000 : 5_000)).toISOString(),
+            meterId: 'm1',
+            powerWatts: 3420,
+            isStale: stale,
+          })
+        : new HttpResponse(null, { status: 204 }),
+    ),
     http.get('*/api/electricity-cost/prices', () => HttpResponse.json(prices)),
     http.get('*/api/electricity-cost/hourly', () =>
       HttpResponse.json({
@@ -126,6 +139,12 @@ describe('NowCard', () => {
     expect(await screen.findByText('3,42')).toBeInTheDocument()
     expect(screen.getByText('Price not available yet')).toBeInTheDocument()
     expect(screen.getByText(/Cost and price level appear as soon as/)).toBeInTheDocument()
+  })
+
+  it('shows the time of the latest reading with seconds', async () => {
+    renderNow({ measuredAt: '2026-11-13T11:34:56Z' }) // 12:34:56 in Oslo (winter time)
+
+    expect(await screen.findByText(/Right now · 12:34:56/)).toBeInTheDocument()
   })
 
   it('shows the cost this hour and the spot price now beside the power', async () => {

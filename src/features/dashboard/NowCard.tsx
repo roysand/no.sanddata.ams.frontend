@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentHourCost, useDayPrices, useLatestMeasurement, useYesterdayHour } from './hooks'
 import {
   formatClock,
+  formatClockSeconds,
   formatNok,
   formatRate,
   modelLabel,
@@ -93,7 +94,10 @@ export function NowCard({ locationId }: { locationId: string }) {
     <Card aria-label="Right now">
       <CardContent>
         <div className="flex items-center justify-between gap-3 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-          <span>Right now · {formatClock(now.toISOString())}</span>
+          {/* The time of the reading the power is from, with seconds; the clock time when there is no reading. */}
+          <span>
+            Right now · {formatClockSeconds(reading ? reading.timestamp : now.toISOString())}
+          </span>
           <span>{modelLabel(data.pricingModel)}</span>
         </div>
 
