@@ -5,6 +5,7 @@ import {
   getDailyCostRange,
   getDayPrices,
   getHourlyCost,
+  getLatestMeasurement,
   getMinuteConsumption,
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
@@ -173,5 +174,17 @@ export function useRecentUsage(locationId: string | undefined) {
     },
     enabled: !!locationId,
     refetchInterval: ONE_MINUTE,
+  })
+}
+
+const TEN_SECONDS = 10_000
+
+/** The newest reading for the "right now" card. The forwarder uploads about every 10 s, so poll at that pace. */
+export function useLatestMeasurement(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ['measurement', 'latest', locationId],
+    queryFn: () => getLatestMeasurement(locationId!),
+    enabled: !!locationId,
+    refetchInterval: TEN_SECONDS,
   })
 }

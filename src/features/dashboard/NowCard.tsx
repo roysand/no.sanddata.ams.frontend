@@ -1,7 +1,7 @@
 import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCurrentHourCost, useDayPrices, useLastHourPower, useYesterdayHour } from './hooks'
+import { useCurrentHourCost, useDayPrices, useLatestMeasurement, useYesterdayHour } from './hooks'
 import {
   formatClock,
   formatNok,
@@ -11,7 +11,7 @@ import {
   sameHourYesterday,
 } from './format'
 import { buildPriceDay, priceRank, ratedHourCount, type PriceLevel } from './priceLevel'
-import { currentPowerKw, hourTrend } from './series'
+import { hourTrend } from './series'
 
 const PILL: Record<PriceLevel | 'none', { label: string; className: string }> = {
   cheap: { label: 'Cheap now', className: 'bg-price-cheap-soft text-price-cheap' },
@@ -30,7 +30,7 @@ function ordinal(n: number): string {
 
 export function NowCard({ locationId }: { locationId: string }) {
   const current = useCurrentHourCost(locationId)
-  const power = useLastHourPower(locationId)
+  const latest = useLatestMeasurement(locationId)
   const prices = useDayPrices(locationId)
   const yesterday = useYesterdayHour(locationId, current.data?.hourStart)
 
@@ -57,7 +57,9 @@ export function NowCard({ locationId }: { locationId: string }) {
 
   const data = current.data
   const now = new Date()
-  const powerKw = currentPowerKw(power.data?.items ?? [], now)
+  // The API decides when a reading is too old to be "now" (isStale); a stale or missing one shows as no power.
+  const reading = latest.data ?? null
+  const powerKw = reading && !reading.isStale ? reading.powerWatts / 1000 : null
   if (!data || (powerKw === null && data.consumptionKwhSoFar === 0 && !data.actual)) {
     return (
       <Card>
@@ -104,7 +106,11 @@ export function NowCard({ locationId }: { locationId: string }) {
               </span>
             </dd>
             <dt className="mt-1 text-xs text-muted-foreground">
-              {powerKw === null ? 'No recent reading' : 'Power now'}
+              {powerKw !== null
+                ? 'Power now'
+                : reading
+                  ? `Offline · last reading ${formatClock(reading.timestamp)}`
+                  : 'No recent reading'}
             </dt>
           </div>
           <div>
