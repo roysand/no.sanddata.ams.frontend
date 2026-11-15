@@ -59,6 +59,14 @@ export interface ConsumptionItem {
   consumptionKwh: number
 }
 
+/** The newest reading for a location. `isStale` is decided by the API (Measurements:StaleAfterSeconds). */
+export interface LatestMeasurement {
+  timestamp: string
+  meterId: string
+  powerWatts: number
+  isStale: boolean
+}
+
 export interface Consumption {
   granularity: 'minute' | 'hour'
   items: ConsumptionItem[]

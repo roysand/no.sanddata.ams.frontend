@@ -1,5 +1,12 @@
 import { api } from '../../lib/apiClient'
-import type { Consumption, CurrentHourCost, DailyCost, DayPrices, PagedHourlyCost } from './types'
+import type {
+  Consumption,
+  CurrentHourCost,
+  DailyCost,
+  DayPrices,
+  LatestMeasurement,
+  PagedHourlyCost,
+} from './types'
 
 function query(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()
@@ -42,4 +49,12 @@ export function getDailyCostRange(locationId: string, fromDate: string, toDate: 
   return api.get<DailyCost>(
     `/api/electricity-cost/daily?${query({ locationId, from: fromDate, to: toDate })}`,
   )
+}
+
+/** The newest reading for a location, or null when it has none yet (the API answers 204). */
+export async function getLatestMeasurement(locationId: string) {
+  const latest = await api.get<LatestMeasurement | undefined>(
+    `/api/measurements/latest?${query({ locationId })}`,
+  )
+  return latest ?? null
 }

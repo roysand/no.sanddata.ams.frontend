@@ -37,6 +37,7 @@ interface Setup {
   prices?: ReturnType<typeof dayPrices>
   yesterdayCost?: number | null
   withReading?: boolean
+  stale?: boolean
 }
 
 function renderNow({
@@ -46,8 +47,8 @@ function renderNow({
   prices = dayPrices(0.4, 1),
   yesterdayCost = 100,
   withReading = true,
+  stale = false,
 }: Setup = {}) {
-  const minute = new Date(Math.floor(Date.now() / 60_000) * 60_000 - 60_000)
   server.use(
     http.get('*/api/electricity-cost/current', () =>
       HttpResponse.json({
@@ -58,12 +59,7 @@ function renderNow({
         comparison: actual ? { ratePerKwh: 0.6, costSoFar: 0.9 } : null,
       }),
     ),
-    http.get('*/api/consumption', () =>
-      HttpResponse.json({
-        granularity: 'minute',
-        items: withReading ? [{ periodStart: minute.toISOString(), consumptionKwh: 0.057 }] : [],
-      }),
-    ),
+http.get('*/api/measurements/latest', () =>      withReading        ? HttpResponse.json({            timestamp: new Date(Date.now() - (stale ? 5 * 60_000 : 5_000)).toISOString(),            meterId: 'm1',            powerWatts: 3420,            isStale: stale,          })        : new HttpResponse(null, { status: 204 }),    ),
     http.get('*/api/electricity-cost/prices', () => HttpResponse.json(prices)),
     http.get('*/api/electricity-cost/hourly', () =>
       HttpResponse.json({
@@ -153,6 +149,13 @@ describe('NowCard', () => {
     renderNow({ actual: null, prices: dayPrices(null, 1) })
 
     expect(await screen.findByText('No spot price yet')).toBeInTheDocument()
+  })
+
+  it('shows the card as offline when the API says the latest reading is stale', async () => {
+    renderNow({ stale: true })
+
+    expect(await screen.findByText(/Offline · last reading/)).toBeInTheDocument()
+    expect(screen.queryByText('3,42')).not.toBeInTheDocument()
   })
 
   it('shows an empty state when the location has no readings', async () => {
