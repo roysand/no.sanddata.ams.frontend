@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ApiError } from '../../lib/apiClient'
 import { lastOsloDays } from '../dashboard/format'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useNorgesPrisActions } from './hooks'
 import { amountOf } from './norgesPris'
+import { PastDateConfirm } from './PastDateConfirm'
 import { createNorgesPrisRateSchema, type NorgesPrisRateFormValues } from './schema'
 
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/
@@ -35,7 +35,7 @@ export function AddNorgesPrisRateDialog({ onClose }: { onClose: () => void }) {
     formState: { errors, isSubmitting },
   } = useForm<NorgesPrisRateFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { validFrom: '', ratePerKwh: '', taxPerKwh: '', confirmPast: false },
+    defaultValues: { validFrom: '', ratePerKwh: '', confirmPast: false },
   })
 
   const validFrom = useWatch({ control, name: 'validFrom' })
@@ -47,7 +47,8 @@ export function AddNorgesPrisRateDialog({ onClose }: { onClose: () => void }) {
       await add.mutateAsync({
         validFrom: values.validFrom,
         ratePerKwh: amountOf(values.ratePerKwh),
-        taxPerKwh: amountOf(values.taxPerKwh),
+        // The price calculation adds the electricity tax and the Enova fee itself; the API no longer uses this field.
+        taxPerKwh: 0,
         // Only meaningful for a past date; a box ticked before the date was changed must not leak through.
         confirmPastDate: startsInThePast && values.confirmPast,
       })
@@ -63,8 +64,8 @@ export function AddNorgesPrisRateDialog({ onClose }: { onClose: () => void }) {
         <DialogHeader>
           <DialogTitle>Add rate</DialogTitle>
           <DialogDescription>
-            The rate applies from the start date until a later rate takes over. Rates are in NOK per
-            kWh.
+            The rate applies from the start date until a later rate takes over. It is the energy
+            price in NOK per kWh excluding VAT; the taxes and VAT are added separately.
           </DialogDescription>
         </DialogHeader>
 
@@ -77,61 +78,26 @@ export function AddNorgesPrisRateDialog({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="ratePerKwh">Rate (kr/kWh)</Label>
-              <Input
-                id="ratePerKwh"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="0,50"
-                {...register('ratePerKwh')}
-              />
-              {errors.ratePerKwh && (
-                <p className="text-sm text-destructive">{errors.ratePerKwh.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="taxPerKwh">Tax (kr/kWh)</Label>
-              <Input
-                id="taxPerKwh"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="0"
-                {...register('taxPerKwh')}
-              />
-              {errors.taxPerKwh && (
-                <p className="text-sm text-destructive">{errors.taxPerKwh.message}</p>
-              )}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="ratePerKwh">Rate (kr/kWh)</Label>
+            <Input
+              id="ratePerKwh"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0,40"
+              {...register('ratePerKwh')}
+            />
+            {errors.ratePerKwh && (
+              <p className="text-sm text-destructive">{errors.ratePerKwh.message}</p>
+            )}
           </div>
 
           {startsInThePast && (
-            <div role="alert" className="space-y-3 rounded-lg border border-destructive/40 p-3">
-              <p className="text-sm font-medium">
-                This start date is today or earlier. Costs shown for past hours will be
-                recalculated.
-              </p>
-              <div className="flex items-start gap-2">
-                <Controller
-                  control={control}
-                  name="confirmPast"
-                  render={({ field }) => (
-                    <Checkbox
-                      id="confirmPast"
-                      checked={field.value}
-                      onCheckedChange={(checked) => field.onChange(checked === true)}
-                    />
-                  )}
-                />
-                <Label htmlFor="confirmPast" className="leading-snug">
-                  I understand that costs shown for past hours will be recalculated
-                </Label>
-              </div>
-              {errors.confirmPast && (
-                <p className="text-sm text-destructive">{errors.confirmPast.message}</p>
-              )}
-            </div>
+            <PastDateConfirm
+              control={control}
+              name="confirmPast"
+              error={errors.confirmPast?.message}
+            />
           )}
 
           {serverError && <p className="text-sm text-destructive">{serverError}</p>}

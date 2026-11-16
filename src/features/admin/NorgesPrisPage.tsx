@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Trash2Icon } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -15,15 +14,10 @@ import { AddNorgesPrisRateDialog } from './AddNorgesPrisRateDialog'
 import { DeleteNorgesPrisRateDialog } from './DeleteNorgesPrisRateDialog'
 import { useNorgesPrisRates } from './hooks'
 import { formatAmount, formatRateDate } from './norgesPris'
-import type { NorgesPrisRate, NorgesPrisStatus } from './types'
+import { RateStatusBadge } from './RateStatusBadge'
+import type { NorgesPrisRate } from './types'
 
 type DialogState = { kind: 'add' } | { kind: 'delete'; rate: NorgesPrisRate } | null
-
-function StatusBadge({ status }: { status: NorgesPrisStatus }) {
-  if (status === 'InEffect') return <Badge>In effect</Badge>
-  if (status === 'Upcoming') return <Badge variant="outline">Upcoming</Badge>
-  return <Badge variant="secondary">Superseded</Badge>
-}
 
 /** The Norgespris rates and when each starts, for administrators. */
 export function NorgesPrisPage() {
@@ -57,8 +51,6 @@ export function NorgesPrisPage() {
                 <TableRow>
                   <TableHead>Valid from</TableHead>
                   <TableHead>Rate</TableHead>
-                  <TableHead>Tax</TableHead>
-                  <TableHead>Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-16" />
                 </TableRow>
@@ -72,10 +64,8 @@ export function NorgesPrisPage() {
                   >
                     <TableCell>{formatRateDate(rate.validFrom)}</TableCell>
                     <TableCell>{formatAmount(rate.ratePerKwh)}</TableCell>
-                    <TableCell>{formatAmount(rate.taxPerKwh)}</TableCell>
-                    <TableCell>{formatAmount(rate.totalPerKwh)}</TableCell>
                     <TableCell>
-                      <StatusBadge status={rate.status} />
+                      <RateStatusBadge status={rate.status} />
                     </TableCell>
                     <TableCell>
                       {rate.status === 'Upcoming' && (

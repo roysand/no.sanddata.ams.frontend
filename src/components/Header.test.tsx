@@ -79,6 +79,18 @@ describe('Header', () => {
       'href',
       '/admin/norgespris',
     )
+    expect(within(menu).getByRole('link', { name: 'Taxes and VAT' })).toHaveAttribute(
+      'href',
+      '/admin/price-rates',
+    )
+    expect(within(menu).getByRole('link', { name: 'Grid tariffs' })).toHaveAttribute(
+      'href',
+      '/admin/grid-tariffs',
+    )
+    expect(within(menu).getByRole('link', { name: 'Location pricing' })).toHaveAttribute(
+      'href',
+      '/admin/location-pricing',
+    )
   })
 
   it('opens the account panel from the user chip and signs out', async () => {

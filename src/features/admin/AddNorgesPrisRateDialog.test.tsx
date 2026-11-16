@@ -37,10 +37,9 @@ function setup() {
   return { onClose }
 }
 
-function fill(date: string, rate: string, tax: string) {
+function fill(date: string, rate: string) {
   fireEvent.change(screen.getByLabelText('Start date'), { target: { value: date } })
   fireEvent.change(screen.getByLabelText('Rate (kr/kWh)'), { target: { value: rate } })
-  fireEvent.change(screen.getByLabelText('Tax (kr/kWh)'), { target: { value: tax } })
 }
 
 const save = () => userEvent.click(screen.getByRole('button', { name: 'Add rate' }))
@@ -50,7 +49,7 @@ describe('AddNorgesPrisRateDialog', () => {
     const posted = serveAdd()
     const { onClose } = setup()
 
-    fill(osloDate(30), '0,50', '0')
+    fill(osloDate(30), '0,50')
     await save()
 
     await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
@@ -63,23 +62,22 @@ describe('AddNorgesPrisRateDialog', () => {
     const posted = serveAdd()
     const { onClose } = setup()
 
-    fill(osloDate(30), '0,4567', '0,01')
+    fill(osloDate(30), '0,4567')
     await save()
 
     await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
-    expect(posted[0]).toMatchObject({ ratePerKwh: 0.4567, taxPerKwh: 0.01 })
+    expect(posted[0]).toMatchObject({ ratePerKwh: 0.4567, taxPerKwh: 0 })
   })
 
   it('shows what is wrong under each field and sends nothing', async () => {
     const posted = serveAdd()
     setup()
 
-    fill('', '-1', '0,12345')
+    fill('', '-1')
     await save()
 
     expect(await screen.findByText('Pick a start date')).toBeInTheDocument()
     expect(screen.getByText('Rate cannot be negative')).toBeInTheDocument()
-    expect(screen.getByText('Tax can have at most 4 decimals')).toBeInTheDocument()
     expect(posted).toHaveLength(0)
   })
 
@@ -89,7 +87,7 @@ describe('AddNorgesPrisRateDialog', () => {
     })
     const { onClose } = setup()
 
-    fill(osloDate(30), '0,50', '0')
+    fill(osloDate(30), '0,50')
     await save()
 
     expect(
@@ -108,7 +106,7 @@ describe('AddNorgesPrisRateDialog', () => {
       const posted = serveAdd()
       const { onClose } = setup()
 
-      fill(osloDate(offset), '0,50', '0')
+      fill(osloDate(offset), '0,50')
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Costs shown for past hours will be recalculated',
@@ -141,7 +139,7 @@ describe('AddNorgesPrisRateDialog', () => {
       })
       const { onClose } = setup()
 
-      fill(osloDate(-400), '0,50', '0')
+      fill(osloDate(-400), '0,50')
       await u.click(await screen.findByRole('checkbox'))
       await u.click(screen.getByRole('button', { name: 'Add rate' }))
 
@@ -157,7 +155,7 @@ describe('AddNorgesPrisRateDialog', () => {
   it('shows no warning for tomorrow', async () => {
     setup()
 
-    fill(osloDate(1), '0,50', '0')
+    fill(osloDate(1), '0,50')
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
@@ -168,7 +166,7 @@ describe('AddNorgesPrisRateDialog', () => {
     const posted = serveAdd()
     const { onClose } = setup()
 
-    fill(osloDate(-1), '0,50', '0')
+    fill(osloDate(-1), '0,50')
     await u.click(await screen.findByRole('checkbox'))
     fireEvent.change(screen.getByLabelText('Start date'), { target: { value: osloDate(10) } })
     await u.click(screen.getByRole('button', { name: 'Add rate' }))

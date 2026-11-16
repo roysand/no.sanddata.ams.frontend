@@ -1,4 +1,7 @@
-const amount = new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+const amount = new Intl.NumberFormat('nb-NO', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+})
 
 /** "2027-01-01" -> "01.01.2027" */
 export const formatRateDate = (isoDate: string) =>

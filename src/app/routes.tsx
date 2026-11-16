@@ -8,6 +8,9 @@ import { HistoryPage } from '../features/dashboard/HistoryPage'
 import { UsersPage } from '../features/admin/UsersPage'
 import { AdminLocationsPage } from '../features/admin/AdminLocationsPage'
 import { NorgesPrisPage } from '../features/admin/NorgesPrisPage'
+import { LocationPricingPage } from '../features/admin/LocationPricingPage'
+import { GridTariffsPage } from '../features/admin/GridTariffsPage'
+import { PriceRatesPage } from '../features/admin/PriceRatesPage'
 import { LocationsPage, SetupPage } from '../features/locations'
 import { LocationsEntry } from '../features/overview/LocationsEntry'
 
@@ -30,6 +33,9 @@ export const router = createBrowserRouter([
               { path: '/admin/users', element: <UsersPage /> },
               { path: '/admin/locations', element: <AdminLocationsPage /> },
               { path: '/admin/norgespris', element: <NorgesPrisPage /> },
+              { path: '/admin/location-pricing', element: <LocationPricingPage /> },
+              { path: '/admin/grid-tariffs', element: <GridTariffsPage /> },
+              { path: '/admin/price-rates', element: <PriceRatesPage /> },
             ],
           },
         ],

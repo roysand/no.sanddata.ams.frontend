@@ -9,8 +9,15 @@ import {
 import type {
   AdminUser,
   CreateUserInput,
+  GridTariff,
+  GridTariffRate,
+  GridTariffRateInput,
+  LocationPricing,
+  LocationPricingInput,
   NorgesPrisRate,
   NorgesPrisRateInput,
+  PriceRate,
+  PriceRateInput,
   PagedUsers,
 } from './types'
 
@@ -107,4 +114,44 @@ export function addNorgesPrisRate(input: NorgesPrisRateInput) {
 /** Only a rate that has not started can be deleted; the API answers 409 otherwise. */
 export function deleteNorgesPrisRate(id: string) {
   return api.delete<void>(`/api/admin/norgespris/${id}`)
+}
+
+/** Every location with its grid tariff and supplier markup, including ones the caller is not linked to. */
+export function getLocationPricing() {
+  return api.get<LocationPricing[]>('/api/admin/location-pricing')
+}
+
+/** Changing these recalculates every past hour of the location. */
+export function setLocationPricing(locationId: string, input: LocationPricingInput) {
+  return api.put<LocationPricing>(`/api/admin/location-pricing/${locationId}`, input)
+}
+
+export function getGridTariffs() {
+  return api.get<GridTariff[]>('/api/admin/grid-tariffs')
+}
+
+export function createGridTariff(name: string) {
+  return api.post<GridTariff>('/api/admin/grid-tariffs', { name })
+}
+
+export function addGridTariffRate(tariffId: string, input: GridTariffRateInput) {
+  return api.post<GridTariffRate>(`/api/admin/grid-tariffs/${tariffId}/rates`, input)
+}
+
+/** Only a rate that has not started can be deleted; the API answers 409 otherwise. */
+export function deleteGridTariffRate(tariffId: string, rateId: string) {
+  return api.delete<void>(`/api/admin/grid-tariffs/${tariffId}/rates/${rateId}`)
+}
+
+export function getPriceRates() {
+  return api.get<PriceRate[]>('/api/admin/price-rates')
+}
+
+export function addPriceRate(input: PriceRateInput) {
+  return api.post<PriceRate>('/api/admin/price-rates', input)
+}
+
+/** Only a row that has not started can be deleted; the API answers 409 otherwise. */
+export function deletePriceRate(id: string) {
+  return api.delete<void>(`/api/admin/price-rates/${id}`)
 }

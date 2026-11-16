@@ -45,11 +45,20 @@ describe('NorgesPrisPage', () => {
     await screen.findByText('05.10.2026')
     const currentRow = rowFor('05.10.2026')
     expect(within(currentRow).getByText(/0,45 kr\/kWh/)).toBeInTheDocument()
-    expect(within(currentRow).getByText(/0,0123 kr\/kWh/)).toBeInTheDocument()
-    expect(within(currentRow).getByText(/0,4623 kr\/kWh/)).toBeInTheDocument()
     expect(within(currentRow).getByText('In effect')).toBeInTheDocument()
     expect(within(rowFor('01.01.2020')).getByText('Superseded')).toBeInTheDocument()
     expect(within(rowFor('01.01.2027')).getByText('Upcoming')).toBeInTheDocument()
+  })
+
+  it('shows only the rate: the tax and the total are no longer part of the price', async () => {
+    serveRates([old, current, upcoming])
+    renderWithQuery(<NorgesPrisPage />)
+
+    await screen.findByText('05.10.2026')
+
+    expect(screen.queryByRole('columnheader', { name: 'Tax' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Total' })).not.toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Rate' })).toBeInTheDocument()
   })
 
   it('highlights exactly one row, the rate in effect', async () => {

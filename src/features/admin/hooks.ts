@@ -1,26 +1,39 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  addGridTariffRate,
   addNorgesPrisRate,
+  addPriceRate,
+  createGridTariff,
   createLocationForUser,
   createUser,
+  deleteGridTariffRate,
   deleteNorgesPrisRate,
+  deletePriceRate,
   deleteUser,
   getAdminLocations,
+  getGridTariffs,
+  getLocationPricing,
   getNorgesPrisRates,
+  getPriceRates,
   getUsers,
   resetPassword,
   setAdmin,
   setLocationLink,
+  setLocationPricing,
   setUserActive,
   updateLocationAsAdmin,
 } from './api'
 import type { LocationInput, LocationRole } from '../locations'
+import type { LocationPricingInput } from './types'
 
 export const PAGE_SIZE = 10
 
 const USERS_KEY = ['admin', 'users']
 const ADMIN_LOCATIONS_KEY = ['admin', 'locations']
 const NORGESPRIS_KEY = ['admin', 'norgespris']
+const LOCATION_PRICING_KEY = ['admin', 'location-pricing']
+const GRID_TARIFFS_KEY = ['admin', 'grid-tariffs']
+const PRICE_RATES_KEY = ['admin', 'price-rates']
 
 export function useUsers(page: number, search: string) {
   return useQuery({
@@ -110,5 +123,66 @@ export function useNorgesPrisActions() {
   return {
     add: useMutation({ mutationFn: addNorgesPrisRate, onSuccess: refresh }),
     remove: useMutation({ mutationFn: deleteNorgesPrisRate, onSuccess: refresh }),
+  }
+}
+
+export function useLocationPricing() {
+  return useQuery({ queryKey: LOCATION_PRICING_KEY, queryFn: getLocationPricing })
+}
+
+export function useGridTariffs() {
+  return useQuery({ queryKey: GRID_TARIFFS_KEY, queryFn: getGridTariffs })
+}
+
+export function usePriceRates() {
+  return useQuery({ queryKey: PRICE_RATES_KEY, queryFn: getPriceRates })
+}
+
+/**
+ * Every change here alters how hours are priced, and costs are calculated when shown, so the cost and price figures
+ * already loaded for the dashboard are refreshed too.
+ */
+function useRefreshAfterPricingChange(...keys: readonly (readonly string[])[]) {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      ...keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      queryClient.invalidateQueries({ queryKey: ['cost'] }),
+      queryClient.invalidateQueries({ queryKey: ['prices'] }),
+    ])
+}
+
+export function useSetLocationPricing() {
+  const refresh = useRefreshAfterPricingChange(LOCATION_PRICING_KEY)
+  return useMutation({
+    mutationFn: (v: { locationId: string; input: LocationPricingInput }) =>
+      setLocationPricing(v.locationId, v.input),
+    onSuccess: refresh,
+  })
+}
+
+/** Tariff and rate changes; the location list shows tariff names, so it is refreshed too. */
+export function useGridTariffActions() {
+  const refresh = useRefreshAfterPricingChange(GRID_TARIFFS_KEY, LOCATION_PRICING_KEY)
+  return {
+    create: useMutation({ mutationFn: createGridTariff, onSuccess: refresh }),
+    addRate: useMutation({
+      mutationFn: (v: { tariffId: string; input: Parameters<typeof addGridTariffRate>[1] }) =>
+        addGridTariffRate(v.tariffId, v.input),
+      onSuccess: refresh,
+    }),
+    removeRate: useMutation({
+      mutationFn: (v: { tariffId: string; rateId: string }) =>
+        deleteGridTariffRate(v.tariffId, v.rateId),
+      onSuccess: refresh,
+    }),
+  }
+}
+
+export function usePriceRateActions() {
+  const refresh = useRefreshAfterPricingChange(PRICE_RATES_KEY)
+  return {
+    add: useMutation({ mutationFn: addPriceRate, onSuccess: refresh }),
+    remove: useMutation({ mutationFn: deletePriceRate, onSuccess: refresh }),
   }
 }
