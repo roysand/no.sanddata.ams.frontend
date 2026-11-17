@@ -3,7 +3,7 @@ import { createNorgesPrisRateSchema } from './schema'
 const TODAY = '2026-11-13'
 const schema = createNorgesPrisRateSchema(TODAY)
 
-const valid = { validFrom: '2027-01-01', ratePerKwh: '0,50', taxPerKwh: '0', confirmPast: false }
+const valid = { validFrom: '2027-01-01', ratePerKwh: '0,50', confirmPast: false }
 
 function messagesFor(values: typeof valid) {
   const result = schema.safeParse(values)
@@ -16,7 +16,8 @@ describe('createNorgesPrisRateSchema', () => {
   })
 
   it('accepts the boundary amounts', () => {
-    expect(schema.safeParse({ ...valid, ratePerKwh: '0', taxPerKwh: '100' }).success).toBe(true)
+    expect(schema.safeParse({ ...valid, ratePerKwh: '0' }).success).toBe(true)
+    expect(schema.safeParse({ ...valid, ratePerKwh: '100' }).success).toBe(true)
     expect(schema.safeParse({ ...valid, ratePerKwh: '0.4567' }).success).toBe(true)
   })
 
@@ -24,9 +25,8 @@ describe('createNorgesPrisRateSchema', () => {
     expect(messagesFor({ ...valid, validFrom: '' })).toContain('Pick a start date')
   })
 
-  it('needs both amounts', () => {
+  it('needs the rate', () => {
     expect(messagesFor({ ...valid, ratePerKwh: '' })).toContain('Rate is required')
-    expect(messagesFor({ ...valid, taxPerKwh: ' ' })).toContain('Tax is required')
   })
 
   it('rejects a negative amount with its own message', () => {
@@ -34,8 +34,8 @@ describe('createNorgesPrisRateSchema', () => {
   })
 
   it('rejects text that is not a number', () => {
-    expect(messagesFor({ ...valid, taxPerKwh: 'abc' })).toContain(
-      'Tax must be a number, for example 0,50',
+    expect(messagesFor({ ...valid, ratePerKwh: 'abc' })).toContain(
+      'Rate must be a number, for example 0,50',
     )
   })
 

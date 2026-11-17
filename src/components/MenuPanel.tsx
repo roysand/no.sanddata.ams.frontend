@@ -15,6 +15,9 @@ const adminItems = [
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/locations', label: 'Locations' },
   { to: '/admin/norgespris', label: 'Norgespris' },
+  { to: '/admin/price-rates', label: 'Taxes and VAT' },
+  { to: '/admin/grid-tariffs', label: 'Grid tariffs' },
+  { to: '/admin/location-pricing', label: 'Location pricing' },
 ]
 
 /** Extra pages, offered only to users who have some (administrators today). The server still enforces access. */
