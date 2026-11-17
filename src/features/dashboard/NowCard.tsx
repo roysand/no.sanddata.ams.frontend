@@ -12,6 +12,7 @@ import {
   sameHourYesterday,
 } from './format'
 import { buildPriceDay, priceRank, ratedHourCount, type PriceLevel } from './priceLevel'
+import { PriceBreakdownButton } from './PriceBreakdownDialog'
 import { hourTrend } from './series'
 
 const PILL: Record<PriceLevel | 'none', { label: string; className: string }> = {
@@ -138,6 +139,11 @@ export function NowCard({ locationId }: { locationId: string }) {
             </dt>
           </div>
         </dl>
+
+        <p className="mt-3 text-xs text-muted-foreground">
+          Prices include VAT, the grid charge and taxes. Monthly charges are not included.
+        </p>
+        <PriceBreakdownButton current={data} />
 
         <p
           className={`mt-4 inline-flex min-h-9 items-center gap-2 rounded-full px-3.5 text-sm font-bold ${pill.className}`}

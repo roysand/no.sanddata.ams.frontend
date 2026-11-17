@@ -85,6 +85,30 @@ describe('UsageChart', () => {
     expect(await screen.findByText(/6,00/)).toBeInTheDocument() // 3 hours x 2 kr
   })
 
+  it('says in cost mode that the cost includes VAT, the grid charge and taxes', async () => {
+    useApi({ cost: 2 })
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await screen.findByText(/Today so far/)
+    await user.click(screen.getByRole('button', { name: 'NOK' }))
+
+    expect(
+      await screen.findByText(
+        'Cost includes VAT, the grid charge and taxes. Monthly charges are not included.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('adds nothing about VAT in kWh mode, which shows energy and not money', async () => {
+    useApi({ cost: 2 })
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await screen.findByText(/Today so far/)
+
+    expect(screen.queryByText(/Cost includes VAT/)).not.toBeInTheDocument()
+  })
+
   it('switches to the week view and loads daily data', async () => {
     useApi()
     const user = userEvent.setup()

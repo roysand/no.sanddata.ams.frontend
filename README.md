@@ -58,7 +58,8 @@ src/
   app/            Router setup and top-level providers (App.tsx, routes.tsx)
   features/
     auth/         Login form, auth context/hook, API calls, session restore
-    dashboard/    Location picker, current hour, power and cost charts
+    dashboard/    Location picker, current hour (with what is in the price), power and cost charts,
+                  what Norgespris has saved
     locations/    A user's locations and meters: setup wizard, "My locations" page, owner dialogs
                   (edit location, edit meter comment), shared location/meter forms, one-time
                   sensor key notice, role helpers (owner or viewer)

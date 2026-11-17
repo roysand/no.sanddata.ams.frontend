@@ -62,7 +62,7 @@ describe('RecentUsage', () => {
     expect(await screen.findByText('Last 3 hours')).toBeInTheDocument()
     expect(await screen.findByText(/▼ 50% vs yesterday/)).toBeInTheDocument() // 0,5 against 1 kWh
     expect(screen.getByText(/▼ 75% vs yesterday/)).toBeInTheDocument() // 0,50 against 2,00 kr
-    expect(screen.getByText('Cost')).toBeInTheDocument()
+    expect(screen.getByText('Cost incl. VAT')).toBeInTheDocument()
     expect(screen.getByText('Power')).toBeInTheDocument()
     expect(screen.getByText(/Yesterday, same 3 hours: 1 kWh/)).toBeInTheDocument()
   })

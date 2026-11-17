@@ -1,11 +1,43 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
 import { renderWithQuery } from '../../test/render'
+import { AuthContext, type AuthContextValue } from '../auth/context'
 import { osloDayStartUtc } from './format'
 import { NowCard } from './NowCard'
 
 const HOUR = 3_600_000
+
+const USER: AuthContextValue = {
+  isAuthenticated: true,
+  isLoading: false,
+  email: 'someone@sanddata.no',
+  roles: ['User'],
+  login: async () => {},
+  logout: () => {},
+}
+
+// A plan at 0,49 kr/kWh: (0.20 + 0.02 + 0.09 + 0.082) x 1.25 = 0.49 and the other at 0,60: (0.2 + 0.09 + 0.082 + 0.108) x 1.25.
+const PARTS = {
+  energy: 0.2,
+  markup: 0.02,
+  grid: 0.09,
+  taxes: 0.082,
+  vat: 0.098,
+  total: 0.49,
+  gridSet: true,
+}
+const OTHER_PARTS = {
+  energy: 0.3,
+  markup: 0,
+  grid: 0.09,
+  taxes: 0.082,
+  vat: 0.1,
+  total: 0.6,
+  gridSet: true,
+}
 
 function currentHourStart() {
   return new Date(Math.floor(Date.now() / HOUR) * HOUR)
@@ -40,6 +72,8 @@ interface Setup {
   stale?: boolean
   /** ISO time of the latest reading; defaults to a few seconds ago. */
   measuredAt?: string
+  /** The API sends the parts of the price (the full-price calculation). */
+  withParts?: boolean
 }
 
 function renderNow({
@@ -51,6 +85,7 @@ function renderNow({
   withReading = true,
   stale = false,
   measuredAt,
+  withParts = false,
 }: Setup = {}) {
   server.use(
     http.get('*/api/electricity-cost/current', () =>
@@ -58,8 +93,10 @@ function renderNow({
         hourStart: currentHourStart().toISOString(),
         consumptionKwhSoFar: kwh,
         pricingModel,
-        actual,
-        comparison: actual ? { ratePerKwh: 0.6, costSoFar: 0.9 } : null,
+        actual: actual && withParts ? { ...actual, parts: PARTS } : actual,
+        comparison: actual
+          ? { ratePerKwh: 0.6, costSoFar: 0.9, ...(withParts ? { parts: OTHER_PARTS } : {}) }
+          : null,
       }),
     ),
     http.get('*/api/measurements/latest', () =>
@@ -94,7 +131,13 @@ function renderNow({
       }),
     ),
   )
-  return renderWithQuery(<NowCard locationId="l1" />)
+  return renderWithQuery(
+    <AuthContext.Provider value={USER}>
+      <MemoryRouter>
+        <NowCard locationId="l1" />
+      </MemoryRouter>
+    </AuthContext.Provider>,
+  )
 }
 
 describe('NowCard', () => {
@@ -145,6 +188,42 @@ describe('NowCard', () => {
     renderNow({ measuredAt: '2026-11-13T11:34:56Z' }) // 12:34:56 in Oslo (winter time)
 
     expect(await screen.findByText(/Right now · 12:34:56/)).toBeInTheDocument()
+  })
+
+  it('says that the prices include VAT, the grid charge and taxes, and that monthly charges are not included', async () => {
+    renderNow()
+
+    expect(
+      await screen.findByText(
+        'Prices include VAT, the grid charge and taxes. Monthly charges are not included.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('offers no "What is in the price" button when the API sent no parts', async () => {
+    renderNow()
+    await screen.findByText('Cost this hour')
+
+    expect(screen.queryByRole('button', { name: 'What is in the price' })).not.toBeInTheDocument()
+  })
+
+  it('offers the button when the API sent the parts, and the total matches the rate on the card', async () => {
+    const u = userEvent.setup()
+    renderNow({ withParts: true })
+
+    await u.click(await screen.findByRole('button', { name: 'What is in the price' }))
+    const dialog = await screen.findByRole('dialog', { name: 'What is in the price' })
+
+    const total = within(dialog).getByText('Total, incl. VAT').closest('tr')!
+    expect(total).toHaveTextContent('0,49 kr/kWh') // the rate under the plan, as on the card
+    expect(screen.getAllByText(/0,49/).length).toBeGreaterThan(1)
+  })
+
+  it('shows no button while the price is unknown, even with parts', async () => {
+    renderNow({ actual: null, prices: dayPrices(null, 1), withParts: true })
+    await screen.findByText('Price not available yet')
+
+    expect(screen.queryByRole('button', { name: 'What is in the price' })).not.toBeInTheDocument()
   })
 
   it('shows the cost this hour and the spot price now beside the power', async () => {
