@@ -48,7 +48,7 @@ export function PriceTimeline({ locationId }: { locationId: string }) {
       <div className="flex items-center justify-between gap-3">
         <CardTitle className="text-base font-extrabold">Today&apos;s spot price by hour</CardTitle>
         <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-          kr / kWh
+          kr / kWh incl. VAT
         </span>
       </div>
     </CardHeader>

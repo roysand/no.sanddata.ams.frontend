@@ -49,6 +49,12 @@ function renderTimeline(
 }
 
 describe('PriceTimeline', () => {
+  it('labels the unit as including VAT', async () => {
+    renderTimeline(prices((i) => 0.5 + i * 0.05))
+
+    expect(await screen.findByText('kr / kWh incl. VAT')).toBeInTheDocument()
+  })
+
   it('lists every hour of the day with its price and level', async () => {
     renderTimeline(prices((i) => 0.5 + i * 0.05))
 

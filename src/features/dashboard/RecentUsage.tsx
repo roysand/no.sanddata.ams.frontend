@@ -116,8 +116,8 @@ export function RecentUsage({ locationId }: { locationId: string }) {
               {usage.cost.cost === null
                 ? 'Price not available yet'
                 : usage.cost.incomplete
-                  ? 'Cost, some hours have no price'
-                  : 'Cost'}
+                  ? 'Cost incl. VAT, some hours have no price'
+                  : 'Cost incl. VAT'}
             </dt>
             <Delta percent={usage.costDeltaPercent} />
           </div>

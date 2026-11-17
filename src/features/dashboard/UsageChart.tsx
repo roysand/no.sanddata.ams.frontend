@@ -194,6 +194,12 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
           )}
         </div>
 
+        {unit === 'nok' && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Cost includes VAT, the grid charge and taxes. Monthly charges are not included.
+          </p>
+        )}
+
         <div
           role="group"
           aria-label={`${unit === 'kwh' ? 'Energy use' : 'Cost'}, ${plan.current.title} compared with ${plan.previous.title}. Use the arrow keys to move between points.`}

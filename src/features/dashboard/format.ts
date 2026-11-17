@@ -109,3 +109,36 @@ export function sameHourYesterday(hourStartUtc: Date): Date {
   const first = wall - osloOffsetMs(new Date(wall))
   return new Date(wall - osloOffsetMs(new Date(first)))
 }
+
+const krPerKwh = new Intl.NumberFormat('nb-NO', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+})
+
+/** 0.0813 -> "0,0813 kr/kWh"; the parts of a price need up to four decimals, the precision of the API. */
+export const formatKrPerKwh = (value: number) => `${krPerKwh.format(value)} kr/kWh`
+
+const whole = new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/**
+ * How to say a Norgespris saving: positive is "Saved", negative is an "Extra cost" (shown without the minus sign, the
+ * word carries it), and a difference that rounds to nothing is "No difference".
+ */
+export function formatSaving(saving: number): {
+  label: 'Saved' | 'Extra cost' | 'No difference'
+  amount: string
+} {
+  const rounded = Math.round(saving * 100) / 100
+  if (rounded === 0) return { label: 'No difference', amount: whole.format(0) }
+  return {
+    label: rounded > 0 ? 'Saved' : 'Extra cost',
+    amount: whole.format(Math.abs(rounded)),
+  }
+}
+
+export const SAVING_PERIOD_LABELS = {
+  Today: 'Today',
+  Last7Days: 'Last 7 days',
+  MonthToDate: 'This month',
+  YearToDate: 'This year',
+} as const

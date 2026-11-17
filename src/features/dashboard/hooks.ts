@@ -7,6 +7,7 @@ import {
   getHourlyCost,
   getLatestMeasurement,
   getMinuteConsumption,
+  getNorgesPrisSaving,
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
 import { periodPlan, type Period, type PeriodWindow } from './periods'
@@ -186,5 +187,15 @@ export function useLatestMeasurement(locationId: string | undefined) {
     queryFn: () => getLatestMeasurement(locationId!),
     enabled: !!locationId,
     refetchInterval: TEN_SECONDS,
+  })
+}
+
+/** What Norgespris has saved. The key starts with `cost`, so a change to the price data refreshes it. */
+export function useNorgesPrisSaving(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ['cost', 'saving', locationId],
+    queryFn: () => getNorgesPrisSaving(locationId!),
+    enabled: !!locationId,
+    refetchInterval: 15 * ONE_MINUTE,
   })
 }

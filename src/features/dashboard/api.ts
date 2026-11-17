@@ -5,6 +5,7 @@ import type {
   DailyCost,
   DayPrices,
   LatestMeasurement,
+  NorgesPrisSaving,
   PagedHourlyCost,
 } from './types'
 
@@ -57,4 +58,9 @@ export async function getLatestMeasurement(locationId: string) {
     `/api/measurements/latest?${query({ locationId })}`,
   )
   return latest ?? null
+}
+
+/** What Norgespris saves compared with spot terms: today, the last 7 days, the month and the year so far. */
+export function getNorgesPrisSaving(locationId: string) {
+  return api.get<NorgesPrisSaving>(`/api/electricity-cost/saving?${query({ locationId })}`)
 }

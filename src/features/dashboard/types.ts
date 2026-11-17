@@ -3,9 +3,25 @@ export type { LocationSummary, MeterSummary } from '../locations/types'
 /** "Spot" or "NorgesPris": the location's enrolled pricing model (actual) or the other one (comparison). */
 export type PricingModel = 'Spot' | 'NorgesPris'
 
+/**
+ * The parts of the price of one kWh in NOK; the total includes VAT, the parts above it do not. `grid` is null (and
+ * `gridSet` false) when the location has no grid tariff yet. The parts add up exactly to `total`.
+ */
+export interface PriceParts {
+  energy: number
+  markup: number
+  grid: number | null
+  taxes: number
+  vat: number
+  total: number
+  gridSet: boolean
+}
+
 export interface CurrentRateCost {
   ratePerKwh: number
   costSoFar: number
+  /** Absent when the API is older than the full-price calculation. */
+  parts?: PriceParts
 }
 
 export interface CurrentHourCost {
@@ -20,6 +36,7 @@ export interface CurrentHourCost {
 export interface HourRateCost {
   ratePerKwh: number
   cost: number
+  parts?: PriceParts
 }
 
 export interface HourlyCostItem {
@@ -88,4 +105,24 @@ export interface DayPrices {
   pricingModel: PricingModel
   /** One item per real hour of the day: 23, 24 or 25 on the daylight-saving days. */
   items: HourPrice[]
+}
+
+export type SavingPeriodName = 'Today' | 'Last7Days' | 'MonthToDate' | 'YearToDate'
+
+/**
+ * What Norgespris saves compared with spot terms over a period of Oslo days: the cost on spot terms minus the cost on
+ * Norgespris terms, in NOK including VAT. Negative means Norgespris cost more. Hours where either side could not be
+ * priced are left out, so `hoursCounted` can be less than `hoursWithConsumption`.
+ */
+export interface SavingPeriod {
+  period: SavingPeriodName
+  from: string
+  to: string
+  saving: number
+  hoursCounted: number
+  hoursWithConsumption: number
+}
+
+export interface NorgesPrisSaving {
+  periods: SavingPeriod[]
 }
