@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { decimalsOf, parseAmount } from './norgesPris'
 import { percentDecimals, percentToFraction } from './pricing'
-import type { PriceRateKind } from './types'
+import type { CapacityStepTableInput, PriceRateKind } from './types'
 
 // Same rules as the API's password validator, so mistakes are caught before the request.
 const password = z
@@ -86,6 +86,9 @@ export const NO_TARIFF = 'none'
 export const locationPricingSchema = z.object({
   gridTariffId: z.string().min(1, 'Choose a tariff or None'),
   supplierMarkupPerKwh: amountField('Markup'),
+  electricityTaxExempt: z.boolean(),
+  vatExempt: z.boolean(),
+  isHolidayHome: z.boolean(),
 })
 
 export type LocationPricingFormValues = z.infer<typeof locationPricingSchema>
@@ -143,15 +146,101 @@ const vatPercentField = z
     }
   })
 
-/** The electricity tax and the Enova fee are NOK per kWh; VAT is a percentage. */
+// Same limit as the API's MaxCapKwh: a Norgespris monthly limit is above 0 and at most 99 999 kWh.
+const CAP_MAX_KWH = 99_999
+
+export const isCapKind = (kind: PriceRateKind) =>
+  kind === 'NorgesPrisCapHome' || kind === 'NorgesPrisCapHolidayHome'
+
+const capField = amountField('Limit', CAP_MAX_KWH).refine((text) => parseAmount(text) !== 0, {
+  message: 'Limit must be above 0',
+})
+
+/** The electricity tax and the Enova fee are NOK per kWh; VAT is a percentage; the limits are kWh per month. */
 export function createPriceRateSchema(today: string, kind: PriceRateKind) {
   return z
     .object({
       validFrom: START_DATE,
-      value: kind === 'Vat' ? vatPercentField : amountField('Value'),
+      value: kind === 'Vat' ? vatPercentField : isCapKind(kind) ? capField : amountField('Value'),
       confirmPast: z.boolean(),
     })
     .refine(isConfirmedWhenPast(today), CONFIRM_PAST_ERROR)
 }
 
 export type PriceRateFormValues = z.infer<ReturnType<typeof createPriceRateSchema>>
+
+// ---- capacity steps (same rules as the API's AddCapacityStepsValidator) -----------------------------------------
+
+const STEP_MAX = 99_999
+const MAX_STEPS = 50
+/** Grid companies publish the amounts including 25 % VAT; the API takes them excluding VAT. */
+const VAT_FACTOR = 1.25
+
+/**
+ * The step rows hold only the upper kW and the amount: each row starts where the previous one ends (0 for the first)
+ * and the last row has no upper limit, so a table always starts at 0, has no gaps and ends open, as the API requires.
+ * The last row's `upperKw` is ignored.
+ */
+export function createCapacityStepsSchema(today: string) {
+  return z
+    .object({
+      validFrom: START_DATE,
+      confirmPast: z.boolean(),
+      amountsIncludeVat: z.boolean(),
+      rows: z
+        .array(z.object({ upperKw: z.string(), amount: amountField('Amount', STEP_MAX) }))
+        .min(1, 'Add at least one step')
+        .max(MAX_STEPS, `A table can have at most ${MAX_STEPS} steps`),
+    })
+    .superRefine((values, ctx) => {
+      let lower = 0
+      values.rows.slice(0, -1).forEach((row, i) => {
+        const path = ['rows', i, 'upperKw']
+        const upper = parseAmount(row.upperKw)
+        if (row.upperKw.trim() === '') {
+          ctx.addIssue({ code: 'custom', path, message: 'Up to (kW) is required' })
+        } else if (upper === null) {
+          ctx.addIssue({ code: 'custom', path, message: 'Up to (kW) must be a number' })
+        } else if (upper <= lower) {
+          ctx.addIssue({ code: 'custom', path, message: 'Must be above where the step starts' })
+        } else if (upper > STEP_MAX) {
+          ctx.addIssue({ code: 'custom', path, message: `Can be at most ${STEP_MAX}` })
+        } else if (decimalsOf(row.upperKw) > AMOUNT_DECIMALS) {
+          ctx.addIssue({ code: 'custom', path, message: 'Can have at most 4 decimals' })
+        }
+        lower = upper ?? lower
+      })
+    })
+    .refine(isConfirmedWhenPast(today), CONFIRM_PAST_ERROR)
+}
+
+export type CapacityStepsFormValues = z.infer<ReturnType<typeof createCapacityStepsSchema>>
+
+/** An amount as the API takes it: excluding VAT, at most 4 decimals. */
+export function amountExclVat(text: string, includesVat: boolean): number {
+  const value = Number(text.trim().replace(',', '.'))
+  return includesVat ? Math.round((value / VAT_FACTOR) * 10_000) / 10_000 : value
+}
+
+/** The lower kW of each row: 0 for the first, the previous row's upper kW after that. */
+export function lowerBounds(rows: { upperKw: string }[]): number[] {
+  return rows.map((_, i) => (i === 0 ? 0 : (parseAmount(rows[i - 1].upperKw) ?? 0)))
+}
+
+/** The request for form values that passed the schema. */
+export function toCapacityStepTableInput(
+  values: CapacityStepsFormValues,
+  startsInThePast: boolean,
+): CapacityStepTableInput {
+  const lowers = lowerBounds(values.rows)
+  const last = values.rows.length - 1
+  return {
+    validFrom: values.validFrom,
+    steps: values.rows.map((row, i) => ({
+      lowerKw: lowers[i],
+      upperKw: i === last ? null : Number(row.upperKw.trim().replace(',', '.')),
+      monthlyAmount: amountExclVat(row.amount, values.amountsIncludeVat),
+    })),
+    confirmPastDate: startsInThePast && values.confirmPast,
+  }
+}

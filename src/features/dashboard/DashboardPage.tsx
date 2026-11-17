@@ -2,6 +2,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { SELF_SERVICE_ENABLED, useSelectedLocation } from '../locations'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CapacityCard } from './CapacityCard'
 import { NowCard } from './NowCard'
 import { PriceTimeline } from './PriceTimeline'
 import { RecentUsage } from './RecentUsage'
@@ -63,6 +64,7 @@ export function DashboardPage() {
         locationId={selected.id}
         hasNorgesPriceAgreement={selected.hasNorgesPriceAgreement}
       />
+      <CapacityCard locationId={selected.id} />
       <UsageChart locationId={selected.id} />
       <PriceTimeline locationId={selected.id} />
     </div>

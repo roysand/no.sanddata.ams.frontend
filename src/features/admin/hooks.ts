@@ -1,16 +1,19 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  addCapacitySteps,
   addGridTariffRate,
   addNorgesPrisRate,
   addPriceRate,
   createGridTariff,
   createLocationForUser,
   createUser,
+  deleteCapacitySteps,
   deleteGridTariffRate,
   deleteNorgesPrisRate,
   deletePriceRate,
   deleteUser,
   getAdminLocations,
+  getCapacitySteps,
   getGridTariffs,
   getLocationPricing,
   getNorgesPrisRates,
@@ -24,7 +27,7 @@ import {
   updateLocationAsAdmin,
 } from './api'
 import type { LocationInput, LocationRole } from '../locations'
-import type { LocationPricingInput } from './types'
+import type { CapacityStepTableInput, LocationPricingInput } from './types'
 
 export const PAGE_SIZE = 10
 
@@ -184,5 +187,29 @@ export function usePriceRateActions() {
   return {
     add: useMutation({ mutationFn: addPriceRate, onSuccess: refresh }),
     remove: useMutation({ mutationFn: deletePriceRate, onSuccess: refresh }),
+  }
+}
+
+const capacityStepsKey = (tariffId: string) => [...GRID_TARIFFS_KEY, tariffId, 'capacity-steps']
+
+export function useCapacitySteps(tariffId: string) {
+  return useQuery({
+    queryKey: capacityStepsKey(tariffId),
+    queryFn: () => getCapacitySteps(tariffId),
+  })
+}
+
+/** Adding or deleting a table changes the capacity charge of the months it covers, so cost figures are refreshed. */
+export function useCapacityStepActions(tariffId: string) {
+  const refresh = useRefreshAfterPricingChange(capacityStepsKey(tariffId))
+  return {
+    add: useMutation({
+      mutationFn: (input: CapacityStepTableInput) => addCapacitySteps(tariffId, input),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({
+      mutationFn: (validFrom: string) => deleteCapacitySteps(tariffId, validFrom),
+      onSuccess: refresh,
+    }),
   }
 }

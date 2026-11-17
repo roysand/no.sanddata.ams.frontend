@@ -34,7 +34,7 @@ function setup(kind: PriceRateKind) {
 
 function fill(date: string, value: string) {
   fireEvent.change(screen.getByLabelText('Start date'), { target: { value: date } })
-  fireEvent.change(screen.getByLabelText(/^(Value|VAT)/), { target: { value } })
+  fireEvent.change(screen.getByLabelText(/^(Value|VAT|Limit)/), { target: { value } })
 }
 
 const save = () => userEvent.click(screen.getByRole('button', { name: 'Add rate' }))
@@ -44,6 +44,12 @@ describe('AddPriceRateDialog', () => {
     ['ElectricityTax', 'Add Electricity tax rate', 'Value (kr/kWh)'],
     ['EnovaFee', 'Add Enova fee rate', 'Value (kr/kWh)'],
     ['Vat', 'Add VAT rate', 'VAT (%)'],
+    ['NorgesPrisCapHome', 'Add Norgespris monthly limit (home) rate', 'Limit (kWh per month)'],
+    [
+      'NorgesPrisCapHolidayHome',
+      'Add Norgespris monthly limit (holiday home) rate',
+      'Limit (kWh per month)',
+    ],
   ] as const)('is titled and labelled for %s', (kind, title, label) => {
     setup(kind)
 
@@ -213,5 +219,39 @@ describe('AddPriceRateDialog', () => {
 
     await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
     expect(posted[0].confirmPastDate).toBe(false)
+  })
+
+  describe('a Norgespris monthly limit', () => {
+    it('posts the limit in kWh per month with its kind', async () => {
+      const posted = serveAdd()
+      const { onClose } = setup('NorgesPrisCapHolidayHome')
+
+      fill(osloDate(30), '1000')
+      await save()
+
+      await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+      expect(posted).toEqual([
+        {
+          kind: 'NorgesPrisCapHolidayHome',
+          validFrom: osloDate(30),
+          value: 1000,
+          confirmPastDate: false,
+        },
+      ])
+    })
+
+    it.each([
+      ['0', 'Limit must be above 0'],
+      ['100000', 'Limit can be at most 99999'],
+    ])('refuses %s and sends nothing', async (value, message) => {
+      const posted = serveAdd()
+      setup('NorgesPrisCapHome')
+
+      fill(osloDate(30), value)
+      await save()
+
+      expect(await screen.findByText(message)).toBeInTheDocument()
+      expect(posted).toHaveLength(0)
+    })
   })
 })

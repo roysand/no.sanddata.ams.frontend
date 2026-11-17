@@ -18,7 +18,7 @@ import { usePriceRateActions } from './hooks'
 import { amountOf } from './norgesPris'
 import { PastDateConfirm } from './PastDateConfirm'
 import { kindLabel, percentToFraction } from './pricing'
-import { createPriceRateSchema, type PriceRateFormValues } from './schema'
+import { createPriceRateSchema, isCapKind, type PriceRateFormValues } from './schema'
 import type { PriceRateKind } from './types'
 
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/
@@ -36,6 +36,7 @@ export function AddPriceRateDialog({
   const [today] = useState(() => lastOsloDays(new Date(), 1)[0])
   const schema = useMemo(() => createPriceRateSchema(today, priceKind), [today, priceKind])
   const isVat = priceKind === 'Vat'
+  const isCap = isCapKind(priceKind)
 
   const {
     register,
@@ -77,7 +78,11 @@ export function AddPriceRateDialog({
           <DialogTitle>Add {kindLabel(priceKind)} rate</DialogTitle>
           <DialogDescription>
             The value applies from the start date until a later row takes over.
-            {isVat ? ' VAT is a percentage.' : ' It is in NOK per kWh.'}
+            {isVat
+              ? ' VAT is a percentage.'
+              : isCap
+                ? ' It is in kWh per month: consumption above it is priced at spot.'
+                : ' It is in NOK per kWh.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -91,12 +96,14 @@ export function AddPriceRateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="value">{isVat ? 'VAT (%)' : 'Value (kr/kWh)'}</Label>
+            <Label htmlFor="value">
+              {isVat ? 'VAT (%)' : isCap ? 'Limit (kWh per month)' : 'Value (kr/kWh)'}
+            </Label>
             <Input
               id="value"
               inputMode="decimal"
               autoComplete="off"
-              placeholder={isVat ? '25' : '0,0713'}
+              placeholder={isVat ? '25' : isCap ? '5000' : '0,0713'}
               {...register('value')}
             />
             {errors.value && <p className="text-sm text-destructive">{errors.value.message}</p>}

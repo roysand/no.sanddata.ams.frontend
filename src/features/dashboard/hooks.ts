@@ -1,5 +1,6 @@
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query'
 import {
+  getCapacityCharge,
   getCurrentHourCost,
   getDailyCost,
   getDailyCostRange,
@@ -197,5 +198,22 @@ export function useNorgesPrisSaving(locationId: string | undefined) {
     queryFn: () => getNorgesPrisSaving(locationId!),
     enabled: !!locationId,
     refetchInterval: 15 * ONE_MINUTE,
+  })
+}
+
+/**
+ * The capacity charge of a month. Only the current month can still change, so only it is refreshed; the key starts
+ * with `cost`, so a change to the price data refreshes it too.
+ */
+export function useCapacityCharge(
+  locationId: string | undefined,
+  month: string,
+  isCurrent: boolean,
+) {
+  return useQuery({
+    queryKey: ['cost', 'capacity', locationId, month],
+    queryFn: () => getCapacityCharge(locationId!, month),
+    enabled: !!locationId,
+    refetchInterval: isCurrent ? 15 * ONE_MINUTE : false,
   })
 }

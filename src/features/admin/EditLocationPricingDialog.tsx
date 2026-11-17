@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../lib/apiClient'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,20 @@ import { useGridTariffs, useSetLocationPricing } from './hooks'
 import { amountOf } from './norgesPris'
 import { locationPricingSchema, NO_TARIFF, type LocationPricingFormValues } from './schema'
 import type { LocationPricing } from './types'
+
+const FLAGS = [
+  {
+    name: 'electricityTaxExempt',
+    label: 'Exempt from electricity tax',
+    hint: 'No electricity tax; the Enova fee still applies.',
+  },
+  { name: 'vatExempt', label: 'Exempt from VAT', hint: 'No VAT on any part of the price.' },
+  {
+    name: 'isHolidayHome',
+    label: 'Holiday home',
+    hint: 'Lower Norgespris monthly limit (1 000 kWh instead of 5 000).',
+  },
+] as const
 
 /** 0.02 -> "0,02": the way a Norwegian types it. */
 const asInput = (value: number) => String(value).replace('.', ',')
@@ -50,6 +65,9 @@ export function EditLocationPricingDialog({
     defaultValues: {
       gridTariffId: location.gridTariffId ?? NO_TARIFF,
       supplierMarkupPerKwh: asInput(location.supplierMarkupPerKwh),
+      electricityTaxExempt: location.electricityTaxExempt,
+      vatExempt: location.vatExempt,
+      isHolidayHome: location.isHolidayHome,
     },
   })
 
@@ -61,6 +79,9 @@ export function EditLocationPricingDialog({
         input: {
           gridTariffId: values.gridTariffId === NO_TARIFF ? null : values.gridTariffId,
           supplierMarkupPerKwh: amountOf(values.supplierMarkupPerKwh),
+          electricityTaxExempt: values.electricityTaxExempt,
+          vatExempt: values.vatExempt,
+          isHolidayHome: values.isHolidayHome,
         },
       })
       onClose()
@@ -133,6 +154,29 @@ export function EditLocationPricingDialog({
               <p className="text-sm text-destructive">{errors.supplierMarkupPerKwh.message}</p>
             )}
           </div>
+
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium">Exemptions and type</legend>
+            {FLAGS.map((flag) => (
+              <div key={flag.name} className="flex items-start gap-2">
+                <Controller
+                  control={control}
+                  name={flag.name}
+                  render={({ field }) => (
+                    <Checkbox
+                      id={flag.name}
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                    />
+                  )}
+                />
+                <div className="grid gap-0.5">
+                  <Label htmlFor={flag.name}>{flag.label}</Label>
+                  <p className="text-xs text-muted-foreground">{flag.hint}</p>
+                </div>
+              </div>
+            ))}
+          </fieldset>
 
           {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 

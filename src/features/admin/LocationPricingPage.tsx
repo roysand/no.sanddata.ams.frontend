@@ -49,6 +49,7 @@ export function LocationPricingPage() {
                   <TableHead>Location</TableHead>
                   <TableHead>Grid tariff</TableHead>
                   <TableHead>Supplier markup</TableHead>
+                  <TableHead>Exemptions and type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-20" />
                 </TableRow>
@@ -61,6 +62,15 @@ export function LocationPricingPage() {
                       {location.gridTariffName ?? <Badge variant="outline">Not set</Badge>}
                     </TableCell>
                     <TableCell>{formatAmount(location.supplierMarkupPerKwh)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {location.electricityTaxExempt && (
+                          <Badge variant="outline">Tax exempt</Badge>
+                        )}
+                        {location.vatExempt && <Badge variant="outline">VAT exempt</Badge>}
+                        {location.isHolidayHome && <Badge variant="outline">Holiday home</Badge>}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {location.isComplete ? (
                         <Badge variant="secondary">Complete</Badge>

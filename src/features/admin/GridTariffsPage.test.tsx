@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
 import { GridTariffsPage } from './GridTariffsPage'
-import type { GridTariff, GridTariffRate } from './types'
+import type { CapacityStepTable, GridTariff, GridTariffRate } from './types'
 
 const rate = (
   id: string,
@@ -25,8 +25,28 @@ const elvia: GridTariff = {
 }
 const bkk: GridTariff = { id: 'tariff-bkk', name: 'BKK', rates: [] }
 
-function setup(tariffs: GridTariff[] = [elvia, bkk]) {
-  server.use(http.get('*/api/admin/grid-tariffs', () => HttpResponse.json(tariffs)))
+// Elvia's steps from 2026-07-01, excluding VAT (the published amounts divided by 1,25), shortened to four steps.
+const ELVIA_STEPS = [
+  { lowerKw: 0, upperKw: 2, monthlyAmount: 120 },
+  { lowerKw: 2, upperKw: 5, monthlyAmount: 200 },
+  { lowerKw: 5, upperKw: 10, monthlyAmount: 336 },
+  { lowerKw: 10, upperKw: null, monthlyAmount: 540 },
+]
+const stepTables: CapacityStepTable[] = [
+  { validFrom: '2026-07-01', status: 'InEffect', steps: ELVIA_STEPS },
+  { validFrom: '2027-01-01', status: 'Upcoming', steps: ELVIA_STEPS },
+]
+
+function setup(
+  tariffs: GridTariff[] = [elvia, bkk],
+  steps: Record<string, CapacityStepTable[]> = { 'tariff-elvia': stepTables },
+) {
+  server.use(
+    http.get('*/api/admin/grid-tariffs', () => HttpResponse.json(tariffs)),
+    http.get('*/api/admin/grid-tariffs/:id/capacity-steps', ({ params }) =>
+      HttpResponse.json(steps[String(params.id)] ?? []),
+    ),
+  )
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
@@ -266,5 +286,82 @@ describe('GridTariffsPage', () => {
     await u.click(await screen.findByRole('button', { name: 'Add rate to BKK' }))
 
     expect(await screen.findByRole('dialog', { name: 'Add rate to BKK' })).toBeInTheDocument()
+  })
+
+  describe('capacity steps', () => {
+    const stepsOf = async (tariff: string) =>
+      within(await screen.findByRole('region', { name: `Capacity steps of ${tariff}` }))
+
+    it('lists each table with its start date, status and steps', async () => {
+      setup()
+      const section = await stepsOf('Elvia, household')
+
+      const july = within(
+        await section.findByRole('group', { name: 'Capacity steps from 01.07.2026' }),
+      )
+      expect(july.getByText('In effect')).toBeInTheDocument()
+      expect(july.getByText('5–10 kW')).toBeInTheDocument()
+      expect(july.getByText('336,00 kr/month')).toBeInTheDocument()
+      expect(july.getByText('10 kW and above')).toBeInTheDocument()
+      expect(
+        section.getByRole('group', { name: 'Capacity steps from 01.01.2027' }),
+      ).toHaveTextContent('Upcoming')
+    })
+
+    it('says so for a tariff without steps', async () => {
+      setup()
+      const section = await stepsOf('BKK')
+
+      expect(await section.findByText('No capacity steps yet')).toBeInTheDocument()
+    })
+
+    it('offers delete only on the upcoming table and deletes it by its start date', async () => {
+      const deleted: string[] = []
+      server.use(
+        http.delete('*/api/admin/grid-tariffs/:id/capacity-steps/:validFrom', ({ params }) => {
+          deleted.push(`${String(params.id)} ${String(params.validFrom)}`)
+          return new HttpResponse(null, { status: 204 })
+        }),
+      )
+      const u = userEvent.setup()
+      setup()
+      const section = await stepsOf('Elvia, household')
+      await section.findByRole('group', { name: 'Capacity steps from 01.07.2026' })
+
+      const deletes = section.getAllByRole('button', { name: /^Delete capacity steps from/ })
+      expect(deletes).toHaveLength(1)
+      expect(deletes[0]).toHaveAccessibleName(
+        'Delete capacity steps from 01.01.2027 for Elvia, household',
+      )
+
+      await u.click(deletes[0])
+      const dialog = await screen.findByRole('dialog', { name: 'Delete capacity steps' })
+      await u.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() => expect(deleted).toEqual(['tariff-elvia 2027-01-01']))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Delete capacity steps' }),
+        ).not.toBeInTheDocument(),
+      )
+    })
+
+    it('shows the server message when a delete is refused', async () => {
+      server.use(
+        http.delete('*/api/admin/grid-tariffs/:id/capacity-steps/:validFrom', () =>
+          HttpResponse.json({ message: 'The steps have already started' }, { status: 409 }),
+        ),
+      )
+      const u = userEvent.setup()
+      setup()
+      const section = await stepsOf('Elvia, household')
+      await u.click(
+        await section.findByRole('button', { name: /^Delete capacity steps from 01.01.2027/ }),
+      )
+      const dialog = await screen.findByRole('dialog', { name: 'Delete capacity steps' })
+      await u.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+      expect(await within(dialog).findByText(/already started/)).toBeInTheDocument()
+    })
   })
 })

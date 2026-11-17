@@ -10,18 +10,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { AddCapacityStepsDialog } from './AddCapacityStepsDialog'
 import { AddGridTariffRateDialog } from './AddGridTariffRateDialog'
+import { CapacityStepsSection } from './CapacityStepsSection'
 import { CreateGridTariffDialog } from './CreateGridTariffDialog'
+import { DeleteCapacityStepsDialog } from './DeleteCapacityStepsDialog'
 import { DeleteGridTariffRateDialog } from './DeleteGridTariffRateDialog'
 import { useGridTariffs } from './hooks'
 import { formatAmount, formatRateDate } from './norgesPris'
 import { RateStatusBadge } from './RateStatusBadge'
-import type { GridTariff, GridTariffRate } from './types'
+import type { CapacityStepTable, GridTariff, GridTariffRate } from './types'
 
 type DialogState =
   | { kind: 'create' }
   | { kind: 'addRate'; tariff: GridTariff }
   | { kind: 'deleteRate'; tariff: GridTariff; rate: GridTariffRate }
+  | { kind: 'addSteps'; tariff: GridTariff }
+  | { kind: 'deleteSteps'; tariff: GridTariff; table: CapacityStepTable }
   | null
 
 /**
@@ -111,6 +116,11 @@ export function GridTariffsPage() {
                 </TableBody>
               </Table>
             )}
+            <CapacityStepsSection
+              tariff={tariff}
+              onAdd={() => setDialog({ kind: 'addSteps', tariff })}
+              onDelete={(table) => setDialog({ kind: 'deleteSteps', tariff, table })}
+            />
           </CardContent>
         </Card>
       ))}
@@ -121,6 +131,12 @@ export function GridTariffsPage() {
       )}
       {dialog?.kind === 'deleteRate' && (
         <DeleteGridTariffRateDialog tariff={dialog.tariff} rate={dialog.rate} onClose={close} />
+      )}
+      {dialog?.kind === 'addSteps' && (
+        <AddCapacityStepsDialog tariff={dialog.tariff} onClose={close} />
+      )}
+      {dialog?.kind === 'deleteSteps' && (
+        <DeleteCapacityStepsDialog tariff={dialog.tariff} table={dialog.table} onClose={close} />
       )}
     </div>
   )

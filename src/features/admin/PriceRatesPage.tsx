@@ -14,17 +14,28 @@ import { AddPriceRateDialog } from './AddPriceRateDialog'
 import { DeletePriceRateDialog } from './DeletePriceRateDialog'
 import { usePriceRates } from './hooks'
 import { formatAmount, formatRateDate } from './norgesPris'
-import { formatPercent, kindLabel } from './pricing'
+import { formatKwhPerMonth, formatPercent, kindLabel } from './pricing'
+import { isCapKind } from './schema'
 import { RateStatusBadge } from './RateStatusBadge'
 import type { PriceRate, PriceRateKind } from './types'
 
-const KINDS: PriceRateKind[] = ['ElectricityTax', 'EnovaFee', 'Vat']
+const KINDS: PriceRateKind[] = [
+  'ElectricityTax',
+  'EnovaFee',
+  'Vat',
+  'NorgesPrisCapHome',
+  'NorgesPrisCapHolidayHome',
+]
 
 type DialogState =
   { kind: 'add'; priceKind: PriceRateKind } | { kind: 'delete'; rate: PriceRate } | null
 
 const formatValue = (rate: PriceRate) =>
-  rate.kind === 'Vat' ? formatPercent(rate.value) : formatAmount(rate.value)
+  rate.kind === 'Vat'
+    ? formatPercent(rate.value)
+    : isCapKind(rate.kind)
+      ? formatKwhPerMonth(rate.value)
+      : formatAmount(rate.value)
 
 /**
  * The national values the price is made of besides the energy and the grid tariff: the electricity tax and the Enova

@@ -1,5 +1,6 @@
 import { api } from '../../lib/apiClient'
 import type {
+  CapacityCharge,
   Consumption,
   CurrentHourCost,
   DailyCost,
@@ -63,4 +64,9 @@ export async function getLatestMeasurement(locationId: string) {
 /** What Norgespris saves compared with spot terms: today, the last 7 days, the month and the year so far. */
 export function getNorgesPrisSaving(locationId: string) {
   return api.get<NorgesPrisSaving>(`/api/electricity-cost/saving?${query({ locationId })}`)
+}
+
+/** The grid capacity charge of a month (yyyy-MM): the step, the amount and the three daily peaks behind it. */
+export function getCapacityCharge(locationId: string, month: string) {
+  return api.get<CapacityCharge>(`/api/electricity-cost/capacity?${query({ locationId, month })}`)
 }

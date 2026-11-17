@@ -8,6 +8,8 @@ import {
 } from '../locations'
 import type {
   AdminUser,
+  CapacityStepTable,
+  CapacityStepTableInput,
   CreateUserInput,
   GridTariff,
   GridTariffRate,
@@ -117,8 +119,18 @@ export function deleteNorgesPrisRate(id: string) {
 }
 
 /** Every location with its grid tariff and supplier markup, including ones the caller is not linked to. */
-export function getLocationPricing() {
-  return api.get<LocationPricing[]>('/api/admin/location-pricing')
+export async function getLocationPricing(): Promise<LocationPricing[]> {
+  type Flags = 'electricityTaxExempt' | 'vatExempt' | 'isHolidayHome'
+  const items = await api.get<
+    (Omit<LocationPricing, Flags> & Partial<Pick<LocationPricing, Flags>>)[]
+  >('/api/admin/location-pricing')
+  // An API older than the exemptions sends no flags: read them as not set.
+  return items.map((item) => ({
+    ...item,
+    electricityTaxExempt: item.electricityTaxExempt ?? false,
+    vatExempt: item.vatExempt ?? false,
+    isHolidayHome: item.isHolidayHome ?? false,
+  }))
 }
 
 /** Changing these recalculates every past hour of the location. */
@@ -154,4 +166,18 @@ export function addPriceRate(input: PriceRateInput) {
 /** Only a row that has not started can be deleted; the API answers 409 otherwise. */
 export function deletePriceRate(id: string) {
   return api.delete<void>(`/api/admin/price-rates/${id}`)
+}
+
+/** A tariff's capacity step tables, oldest start date first. */
+export function getCapacitySteps(tariffId: string) {
+  return api.get<CapacityStepTable[]>(`/api/admin/grid-tariffs/${tariffId}/capacity-steps`)
+}
+
+export function addCapacitySteps(tariffId: string, input: CapacityStepTableInput) {
+  return api.post<CapacityStepTable>(`/api/admin/grid-tariffs/${tariffId}/capacity-steps`, input)
+}
+
+/** Only a table that has not started can be deleted; the API answers 409 otherwise. */
+export function deleteCapacitySteps(tariffId: string, validFrom: string) {
+  return api.delete<void>(`/api/admin/grid-tariffs/${tariffId}/capacity-steps/${validFrom}`)
 }

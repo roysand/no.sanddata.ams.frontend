@@ -114,8 +114,8 @@ export function SavingCard({
         )}
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Compared at full price including VAT. The monthly limit of Norgespris (5 000 kWh) and the
-          monthly charges are not taken into account.
+          Compared at full price including VAT. The Norgespris monthly limit (5 000 kWh, 1 000 for a
+          holiday home) is applied. Monthly fees are not included.
         </p>
       </CardContent>
     </Card>
