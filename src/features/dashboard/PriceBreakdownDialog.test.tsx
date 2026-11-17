@@ -110,11 +110,13 @@ describe('PriceBreakdownButton and dialog', () => {
     expect(within(dialog).queryByText('Norgespris')).not.toBeInTheDocument()
   })
 
-  it('says which parts are excluding VAT, and that the monthly charges are not included', async () => {
+  it('says which parts are excluding VAT, and what monthly amounts are not included', async () => {
     const { dialog } = await open(hour())
 
     expect(within(dialog).getByText(/excluding VAT; the total includes VAT/)).toBeInTheDocument()
-    expect(within(dialog).getByText(/Monthly charges .* are not included/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/monthly fee is not included/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/capacity charge is a monthly amount/)).toBeInTheDocument()
+    expect(within(dialog).queryByText(/grid fixed fee/)).not.toBeInTheDocument()
   })
 
   it('names the hour in Oslo time', async () => {
@@ -185,5 +187,76 @@ describe('PriceBreakdownButton and dialog', () => {
     )
 
     expect(screen.queryByRole('button', { name: 'What is in the price' })).not.toBeInTheDocument()
+  })
+
+  describe('an hour across the Norgespris monthly limit', () => {
+    const cap = { kwhWithinCap: 1.2, kwhAboveCap: 0.8, aboveCapParts: SPOT }
+    const headersOf = (dialog: HTMLElement) =>
+      within(dialog)
+        .getAllByRole('columnheader')
+        .map((h) => plain(h.textContent))
+
+    it('splits the Norgespris column into the kWh within and above the limit', async () => {
+      const { dialog } = await open(
+        hour({
+          pricingModel: 'NorgesPris',
+          actual: { ratePerKwh: 1.224, costSoFar: 2.448, parts: NORGESPRIS, cap },
+          comparison: { ratePerKwh: SPOT.total, costSoFar: 3, parts: SPOT },
+        }),
+      )
+
+      expect(headersOf(dialog)).toEqual([
+        '',
+        'Norgespris, within limit (1,2 kWh)',
+        'Above limit, spot (0,8 kWh)',
+        'Spot price',
+      ])
+      expect(plain(rowOf(dialog, 'Energy').textContent)).toContain('0,40 kr/kWh')
+      expect(plain(rowOf(dialog, 'Energy').textContent)).toContain('1,58 kr/kWh')
+      expect(within(dialog).getByText(/monthly limit was reached this hour/)).toBeInTheDocument()
+      expect(within(dialog).getByText(/blended: 1,224 kr\/kWh/)).toBeInTheDocument()
+    })
+
+    it('shows only the above-limit column when the whole hour is above it', async () => {
+      const { dialog } = await open(
+        hour({
+          pricingModel: 'NorgesPris',
+          actual: {
+            ratePerKwh: SPOT.total,
+            costSoFar: 3,
+            parts: NORGESPRIS,
+            cap: { ...cap, kwhWithinCap: 0, kwhAboveCap: 2 },
+          },
+          comparison: { ratePerKwh: SPOT.total, costSoFar: 3, parts: SPOT },
+        }),
+      )
+
+      expect(headersOf(dialog)).toEqual(['', 'Above limit, spot (2 kWh)', 'Spot price'])
+      expect(within(dialog).getByText(/The whole hour is above/)).toBeInTheDocument()
+    })
+
+    it('splits the comparison column on a spot location', async () => {
+      const { dialog } = await open(
+        hour({ comparison: { ratePerKwh: 1.224, costSoFar: 2.448, parts: NORGESPRIS, cap } }),
+      )
+
+      expect(headersOf(dialog)).toEqual([
+        '',
+        'Spot price',
+        'Norgespris, within limit (1,2 kWh)',
+        'Above limit, spot (0,8 kWh)',
+      ])
+    })
+
+    it('says nothing about the limit without kWh above it', async () => {
+      const { dialog } = await open(
+        hour({
+          comparison: { ratePerKwh: NORGESPRIS.total, costSoFar: 1, parts: NORGESPRIS, cap: null },
+        }),
+      )
+
+      expect(headersOf(dialog)).toEqual(['', 'Spot price', 'Norgespris'])
+      expect(within(dialog).queryByText(/monthly limit/)).not.toBeInTheDocument()
+    })
   })
 })

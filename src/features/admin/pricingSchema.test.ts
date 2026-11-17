@@ -13,13 +13,18 @@ function messages(result: { success: boolean; error?: { issues: { message: strin
 }
 
 describe('locationPricingSchema', () => {
-  const valid = { gridTariffId: 'tariff-1', supplierMarkupPerKwh: '0,02' }
+  const flags = { electricityTaxExempt: false, vatExempt: false, isHolidayHome: false }
+  const valid = { gridTariffId: 'tariff-1', supplierMarkupPerKwh: '0,02', ...flags }
 
   it('accepts a tariff and a markup, or None and zero', () => {
     expect(locationPricingSchema.safeParse(valid).success).toBe(true)
     expect(
-      locationPricingSchema.safeParse({ gridTariffId: NO_TARIFF, supplierMarkupPerKwh: '0' })
-        .success,
+      locationPricingSchema.safeParse({
+        gridTariffId: NO_TARIFF,
+        supplierMarkupPerKwh: '0',
+        ...flags,
+        isHolidayHome: true,
+      }).success,
     ).toBe(true)
   })
 

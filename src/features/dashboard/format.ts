@@ -142,3 +142,33 @@ export const SAVING_PERIOD_LABELS = {
   MonthToDate: 'This month',
   YearToDate: 'This year',
 } as const
+
+const monthName = new Intl.DateTimeFormat('en-GB', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+const oneDecimal = new Intl.NumberFormat('nb-NO', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+})
+
+/** The Oslo calendar month of an instant, yyyy-MM. */
+export const osloMonth = (now: Date) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: OSLO }).format(now).slice(0, 7)
+
+/** "2026-01" moved by `n` months ("2025-12" for -1). */
+export function addMonths(month: string, n: number): string {
+  const [y, m] = month.split('-').map(Number)
+  const total = y * 12 + (m - 1) + n
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
+}
+
+/** "2026-10" -> "October 2026" */
+export function formatMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return monthName.format(new Date(Date.UTC(y, m - 1, 1)))
+}
+
+/** 5.4 -> "5,4 kW" */
+export const formatKw = (value: number) => `${oneDecimal.format(value)} kW`

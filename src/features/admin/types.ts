@@ -63,11 +63,20 @@ export interface LocationPricing {
   /** NOK per kWh excluding VAT, added on spot terms only. */
   supplierMarkupPerKwh: number
   isComplete: boolean
+  /** No electricity tax; the Enova fee still applies. */
+  electricityTaxExempt: boolean
+  /** No VAT on any part of the price. */
+  vatExempt: boolean
+  /** A holiday home has a lower Norgespris monthly limit (1 000 kWh instead of 5 000). */
+  isHolidayHome: boolean
 }
 
 export interface LocationPricingInput {
   gridTariffId: string | null
   supplierMarkupPerKwh: number
+  electricityTaxExempt: boolean
+  vatExempt: boolean
+  isHolidayHome: boolean
 }
 
 /** A rate of a grid tariff in NOK per kWh excluding taxes and VAT, valid from `validFrom`. */
@@ -92,9 +101,13 @@ export interface GridTariffRateInput {
   confirmPastDate: boolean
 }
 
-export type PriceRateKind = 'ElectricityTax' | 'EnovaFee' | 'Vat'
+export type PriceRateKind =
+  'ElectricityTax' | 'EnovaFee' | 'Vat' | 'NorgesPrisCapHome' | 'NorgesPrisCapHolidayHome'
 
-/** A national value with a start date: the two fees in NOK per kWh, VAT as a fraction (0.25 is 25 percent). */
+/**
+ * A national value with a start date: the two fees in NOK per kWh, VAT as a fraction (0.25 is 25 percent), the two
+ * Norgespris monthly limits in kWh per month.
+ */
 export interface PriceRate {
   id: string
   kind: PriceRateKind
@@ -107,5 +120,26 @@ export interface PriceRateInput {
   kind: PriceRateKind
   validFrom: string
   value: number
+  confirmPastDate: boolean
+}
+
+/** One step of a capacity table: an average peak from `lowerKw` up to `upperKw` (open for the top step). */
+export interface CapacityStep {
+  lowerKw: number
+  upperKw: number | null
+  /** NOK per month excluding VAT. */
+  monthlyAmount: number
+}
+
+/** A grid tariff's capacity steps from `validFrom`, added and deleted as a whole. */
+export interface CapacityStepTable {
+  validFrom: string
+  status: NorgesPrisStatus
+  steps: CapacityStep[]
+}
+
+export interface CapacityStepTableInput {
+  validFrom: string
+  steps: CapacityStep[]
   confirmPastDate: boolean
 }

@@ -1,4 +1,11 @@
-import { formatClockSeconds, sameHourYesterday } from './format'
+import {
+  addMonths,
+  formatClockSeconds,
+  formatKw,
+  formatMonth,
+  osloMonth,
+  sameHourYesterday,
+} from './format'
 
 describe('sameHourYesterday', () => {
   it('is 24 hours earlier on an ordinary day', () => {
@@ -30,5 +37,34 @@ describe('formatClockSeconds', () => {
 
   it('shows midnight as 00 and not 24', () => {
     expect(formatClockSeconds('2026-11-12T23:00:09Z')).toBe('00:00:09')
+  })
+})
+
+describe('osloMonth', () => {
+  it('is already the next month in Oslo late on the last UTC evening of a month', () => {
+    expect(osloMonth(new Date('2026-10-31T23:30:00Z'))).toBe('2026-11')
+  })
+
+  it('is the same month in the middle of it', () => {
+    expect(osloMonth(new Date('2026-07-15T12:00:00Z'))).toBe('2026-07')
+  })
+})
+
+describe('addMonths', () => {
+  it('moves across a year boundary both ways', () => {
+    expect(addMonths('2026-01', -1)).toBe('2025-12')
+    expect(addMonths('2025-12', 1)).toBe('2026-01')
+    expect(addMonths('2026-10', -10)).toBe('2025-12')
+  })
+})
+
+describe('formatMonth and formatKw', () => {
+  it('names the month', () => {
+    expect(formatMonth('2026-10')).toBe('October 2026')
+  })
+
+  it('shows kW with one decimal and a decimal comma', () => {
+    expect(formatKw(5.4)).toBe('5,4 kW')
+    expect(formatKw(6)).toBe('6,0 kW')
   })
 })

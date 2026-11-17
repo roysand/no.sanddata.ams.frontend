@@ -5,6 +5,16 @@ import { server } from '../../test/server'
 import { RecentUsage } from './RecentUsage'
 
 const HOUR = 3_600_000
+const SPOT_PARTS = {
+  energy: 1,
+  markup: 0.02,
+  grid: 0.3,
+  taxes: 0.08,
+  vat: 0.35,
+  total: 1.75,
+  gridSet: true,
+}
+const LIMIT = /above the Norgespris monthly limit/
 
 interface Setup {
   /** kWh per minute today and yesterday; null leaves that day without readings. */
@@ -13,9 +23,17 @@ interface Setup {
   /** NOK per kWh today and yesterday; null leaves the hours without a price. */
   todayRate?: number | null
   yesterdayRate?: number | null
+  /** Today's hours are on Norgespris and the second one is partly above the monthly limit. */
+  aboveLimit?: boolean
 }
 
-function useApi({ today = 0.05, yesterday = 0.1, todayRate = 1, yesterdayRate = 2 }: Setup = {}) {
+function useApi({
+  today = 0.05,
+  yesterday = 0.1,
+  todayRate = 1,
+  yesterdayRate = 2,
+  aboveLimit = false,
+}: Setup = {}) {
   const isToday = (url: URL) =>
     new Date(url.searchParams.get('to')!).getTime() > Date.now() - 60_000
 
@@ -38,12 +56,23 @@ function useApi({ today = 0.05, yesterday = 0.1, todayRate = 1, yesterdayRate = 
       const url = new URL(request.url)
       const from = new Date(url.searchParams.get('from')!).getTime()
       const rate = isToday(url) ? todayRate : yesterdayRate
+      const split = aboveLimit && isToday(url)
       return HttpResponse.json({
         items: Array.from({ length: 4 }, (_, i) => ({
           hourStart: new Date(from + i * HOUR).toISOString(),
           consumptionKwh: 1,
-          pricingModel: 'Spot',
-          actual: rate === null ? null : { ratePerKwh: rate, cost: rate },
+          pricingModel: split ? 'NorgesPris' : 'Spot',
+          actual:
+            rate === null
+              ? null
+              : {
+                  ratePerKwh: rate,
+                  cost: rate,
+                  cap:
+                    split && i === 1
+                      ? { kwhWithinCap: 0.5, kwhAboveCap: 0.5, aboveCapParts: SPOT_PARTS }
+                      : null,
+                },
           comparison: null,
         })),
         page: 1,
@@ -112,5 +141,20 @@ describe('RecentUsage', () => {
     renderWithQuery(<RecentUsage locationId="l1" />)
 
     expect(await screen.findByText(/not found|Could not load recent usage/i)).toBeInTheDocument()
+  })
+
+  it('says when part of the period is above the Norgespris monthly limit', async () => {
+    useApi({ aboveLimit: true })
+    renderWithQuery(<RecentUsage locationId="l1" />)
+
+    expect(await screen.findByText(LIMIT)).toBeInTheDocument()
+  })
+
+  it('says nothing about the limit when no hour is above it', async () => {
+    useApi()
+    renderWithQuery(<RecentUsage locationId="l1" />)
+
+    expect(await screen.findByText('Cost incl. VAT')).toBeInTheDocument()
+    expect(screen.queryByText(LIMIT)).not.toBeInTheDocument()
   })
 })

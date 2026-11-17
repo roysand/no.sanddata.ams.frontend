@@ -17,11 +17,24 @@ export interface PriceParts {
   gridSet: boolean
 }
 
+/**
+ * How an hour on Norgespris terms is split by the monthly limit (5 000 kWh, 1 000 for a holiday home): the kWh within
+ * the limit are priced by `parts`, the kWh above it on spot terms by `aboveCapParts`.
+ */
+export interface CapSplit {
+  kwhWithinCap: number
+  kwhAboveCap: number
+  aboveCapParts: PriceParts
+}
+
 export interface CurrentRateCost {
+  /** The blended rate of the hour when `cap` is set. */
   ratePerKwh: number
   costSoFar: number
   /** Absent when the API is older than the full-price calculation. */
   parts?: PriceParts
+  /** null when nothing is above the monthly limit; absent on an API without the limit. */
+  cap?: CapSplit | null
 }
 
 export interface CurrentHourCost {
@@ -34,9 +47,11 @@ export interface CurrentHourCost {
 }
 
 export interface HourRateCost {
+  /** The blended rate of the hour when `cap` is set. */
   ratePerKwh: number
   cost: number
   parts?: PriceParts
+  cap?: CapSplit | null
 }
 
 export interface HourlyCostItem {
@@ -125,4 +140,34 @@ export interface SavingPeriod {
 
 export interface NorgesPrisSaving {
   periods: SavingPeriod[]
+}
+
+/** One of the hours behind the capacity charge: the highest hour of its Oslo day. */
+export interface CapacityPeak {
+  /** Oslo calendar day, yyyy-MM-dd */
+  date: string
+  hourStartUtc: string
+  kw: number
+}
+
+/**
+ * The grid capacity charge of one month: the step that the average of the three highest daily peaks falls in. When
+ * `set` is false (no grid tariff, no step table for the month, or no consumption) the figures are null.
+ */
+export interface CapacityCharge {
+  /** yyyy-MM */
+  month: string
+  /** true for the current month: a higher peak can still raise the step. */
+  provisional: boolean
+  set: boolean
+  peaks: CapacityPeak[]
+  averageKw: number | null
+  /** `upperKw` is null for the top step. */
+  step: { lowerKw: number; upperKw: number | null } | null
+  amountExclVat: number | null
+  /** 0 for a VAT-exempt location. */
+  vat: number | null
+  amount: number | null
+  /** null for the top step. */
+  kwToNextStep: number | null
 }

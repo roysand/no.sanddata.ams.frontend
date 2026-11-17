@@ -5,6 +5,7 @@ import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isolatedDot } from './chartDots'
 import { formatClock, formatNok } from './format'
+import { isAboveCap } from './cap'
 import { useRecentUsage } from './hooks'
 import { RECENT_HOURS, buildRecentUsage } from './series'
 
@@ -129,6 +130,13 @@ export function RecentUsage({ locationId }: { locationId: string }) {
               }`
             : 'No readings from yesterday to compare with'}
         </p>
+        {data.currentRates.some(
+          (row) => row.pricingModel === 'NorgesPris' && isAboveCap(row.actual),
+        ) && (
+          <p role="note" className="mt-1 text-sm text-muted-foreground">
+            Part of this period is above the Norgespris monthly limit and priced at spot.
+          </p>
+        )}
 
         <ChartContainer config={config} className="mt-3 h-40 w-full">
           <ComposedChart

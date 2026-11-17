@@ -58,16 +58,18 @@ src/
   app/            Router setup and top-level providers (App.tsx, routes.tsx)
   features/
     auth/         Login form, auth context/hook, API calls, session restore
-    dashboard/    Location picker, current hour (with what is in the price), power and cost charts,
-                  what Norgespris has saved
+    dashboard/    Location picker, current hour (with what is in the price and when the Norgespris
+                  monthly limit is reached), power and cost charts, what Norgespris has saved, the
+                  grid capacity charge of a month with the peaks behind it
     locations/    A user's locations and meters: setup wizard, "My locations" page, owner dialogs
                   (edit location, edit meter comment), shared location/meter forms, one-time
                   sensor key notice, role helpers (owner or viewer)
     admin/        Administrator pages: users with their location roles, all locations with an
                   access list (add viewers, change roles), add location or meter on behalf of a user,
                   the electricity price data, each with start dates (add a rate, delete one that has
-                  not started): Norgespris rates, electricity tax, Enova fee and VAT, grid tariffs
-                  with their day and night rates, and the grid tariff and supplier markup of each
+                  not started): Norgespris rates, electricity tax, Enova fee, VAT and the Norgespris
+                  monthly limits, grid tariffs with their day and night rates and capacity steps,
+                  and the grid tariff, supplier markup, exemptions and holiday-home flag of each
                   location
   components/     Shared components (e.g. ProtectedRoute, AdminRoute, Header) and ui/ primitives
   lib/            API client, auth token store, TanStack Query client

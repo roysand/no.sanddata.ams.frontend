@@ -24,6 +24,20 @@ const rows: PriceRate[] = [
   { id: 'tax3', kind: 'ElectricityTax', validFrom: '2027-01-01', value: 0.08, status: 'Upcoming' },
   { id: 'enova1', kind: 'EnovaFee', validFrom: '2026-01-01', value: 0.01, status: 'InEffect' },
   { id: 'vat1', kind: 'Vat', validFrom: '2020-01-01', value: 0.25, status: 'InEffect' },
+  {
+    id: 'cap1',
+    kind: 'NorgesPrisCapHome',
+    validFrom: '2025-10-01',
+    value: 5000,
+    status: 'InEffect',
+  },
+  {
+    id: 'cap2',
+    kind: 'NorgesPrisCapHolidayHome',
+    validFrom: '2025-10-01',
+    value: 1000,
+    status: 'InEffect',
+  },
 ]
 
 function renderPage() {
@@ -168,5 +182,16 @@ describe('PriceRatesPage', () => {
     await u.click(await screen.findByRole('button', { name: 'Add VAT rate' }))
 
     expect(await screen.findByRole('dialog', { name: 'Add VAT rate' })).toBeInTheDocument()
+  })
+
+  it('shows the Norgespris monthly limits in kWh per month in their own sections', async () => {
+    setup()
+    const home = 'Norgespris monthly limit (home)'
+    await screen.findByText(home, { selector: '[data-slot="card-title"]' })
+
+    expect(within(sectionOf(home)).getByText('5 000 kWh/month')).toBeInTheDocument()
+    expect(
+      within(sectionOf('Norgespris monthly limit (holiday home)')).getByText('1 000 kWh/month'),
+    ).toBeInTheDocument()
   })
 })

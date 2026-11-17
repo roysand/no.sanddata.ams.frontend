@@ -11,6 +11,7 @@ vi.mock('./NowCard', () => ({
 }))
 vi.mock('./PriceTimeline', () => ({ PriceTimeline: () => null }))
 vi.mock('./RecentUsage', () => ({ RecentUsage: () => null }))
+vi.mock('./CapacityCard', () => ({ CapacityCard: () => null }))
 vi.mock('./UsageChart', () => ({ UsageChart: () => null }))
 
 const location = (id: string, name: string, role: 'Owner' | 'Viewer') => ({

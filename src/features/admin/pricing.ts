@@ -2,8 +2,20 @@ import type { PriceRateKind } from './types'
 
 const percent = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 2 })
 
-export const kindLabel = (kind: PriceRateKind): string =>
-  kind === 'ElectricityTax' ? 'Electricity tax' : kind === 'EnovaFee' ? 'Enova fee' : 'VAT'
+const KIND_LABELS: Record<PriceRateKind, string> = {
+  ElectricityTax: 'Electricity tax',
+  EnovaFee: 'Enova fee',
+  Vat: 'VAT',
+  NorgesPrisCapHome: 'Norgespris monthly limit (home)',
+  NorgesPrisCapHolidayHome: 'Norgespris monthly limit (holiday home)',
+}
+
+export const kindLabel = (kind: PriceRateKind): string => KIND_LABELS[kind]
+
+const kwhPerMonth = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 4 })
+
+/** 5000 -> "5 000 kWh/month": the Norgespris monthly limits are kWh, not money. */
+export const formatKwhPerMonth = (value: number) => `${kwhPerMonth.format(value)} kWh/month`
 
 /**
  * Reads a VAT percentage typed by a person (`25`, `25,5`) and returns it as the fraction the API takes (`0.25`,
@@ -29,3 +41,18 @@ export function percentDecimals(text: string): number {
 /** 0.255 -> "25,5 %" (a fraction shown as the percentage people think in). */
 export const formatPercent = (fraction: number): string =>
   `${percent.format(Math.round(fraction * 10_000) / 100)} %`
+
+const kw = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 4 })
+const perMonth = new Intl.NumberFormat('nb-NO', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+})
+
+/** "5–10 kW", or "100 kW and above" for the open top step. */
+export const capacityStepLabel = (lowerKw: number, upperKw: number | null) =>
+  upperKw === null
+    ? `${kw.format(lowerKw)} kW and above`
+    : `${kw.format(lowerKw)}–${kw.format(upperKw)} kW`
+
+/** 336 -> "336,00 kr/month" */
+export const formatMonthlyAmount = (value: number) => `${perMonth.format(value)} kr/month`

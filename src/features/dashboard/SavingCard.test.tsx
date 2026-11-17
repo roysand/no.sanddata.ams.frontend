@@ -117,12 +117,17 @@ describe('SavingCard', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('says what is not taken into account', async () => {
+  it('says the monthly limit is applied and the monthly fees are not included', async () => {
     renderCard(normal)
 
     expect(await screen.findByText(/Compared at full price including VAT/)).toBeInTheDocument()
-    expect(screen.getByText(/monthly limit of Norgespris \(5 000 kWh\)/)).toBeInTheDocument()
-    expect(screen.getByText(/monthly charges are not taken into account/)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /Norgespris monthly limit \(5 000 kWh, 1 000 for a holiday home\) is applied/,
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Monthly fees are not included/)).toBeInTheDocument()
+    expect(screen.queryByText(/not taken into account/)).not.toBeInTheDocument()
   })
 
   it('says No readings yet instead of showing zeros when there is no data', async () => {

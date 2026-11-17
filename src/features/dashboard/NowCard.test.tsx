@@ -7,6 +7,7 @@ import { renderWithQuery } from '../../test/render'
 import { AuthContext, type AuthContextValue } from '../auth/context'
 import { osloDayStartUtc } from './format'
 import { NowCard } from './NowCard'
+import type { CapSplit } from './types'
 
 const HOUR = 3_600_000
 
@@ -64,7 +65,7 @@ function dayPrices(currentRate: number | null, other: number) {
 
 interface Setup {
   pricingModel?: 'Spot' | 'NorgesPris'
-  actual?: { ratePerKwh: number; costSoFar: number } | null
+  actual?: { ratePerKwh: number; costSoFar: number; cap?: CapSplit | null } | null
   kwh?: number
   prices?: ReturnType<typeof dayPrices>
   yesterdayCost?: number | null
@@ -190,14 +191,15 @@ describe('NowCard', () => {
     expect(await screen.findByText(/Right now · 12:34:56/)).toBeInTheDocument()
   })
 
-  it('says that the prices include VAT, the grid charge and taxes, and that monthly charges are not included', async () => {
+  it('says what the prices include and that the monthly fee and the capacity charge are not in them', async () => {
     renderNow()
 
     expect(
       await screen.findByText(
-        'Prices include VAT, the grid charge and taxes. Monthly charges are not included.',
+        "Prices include VAT, the grid charge and taxes. The supplier's monthly fee is not included; the grid capacity charge is shown in its own card.",
       ),
     ).toBeInTheDocument()
+    expect(screen.queryByText(/grid fixed fee/)).not.toBeInTheDocument()
   })
 
   it('offers no "What is in the price" button when the API sent no parts', async () => {
@@ -260,5 +262,35 @@ describe('NowCard', () => {
     renderNow({ actual: null, kwh: 0, withReading: false, prices: dayPrices(null, 1) })
 
     expect(await screen.findByText('No readings yet')).toBeInTheDocument()
+  })
+
+  describe('the Norgespris monthly limit', () => {
+    const cap: CapSplit = {
+      kwhWithinCap: 1.2,
+      kwhAboveCap: 0.8,
+      aboveCapParts: { ...PARTS, gridSet: true },
+    }
+    const LIMIT = /The Norgespris monthly limit is reached/
+
+    it('says the limit is reached on a Norgespris location with kWh above it', async () => {
+      renderNow({ pricingModel: 'NorgesPris', actual: { ratePerKwh: 1.224, costSoFar: 2.4, cap } })
+
+      expect(await screen.findByText(LIMIT)).toBeInTheDocument()
+    })
+
+    it('says nothing when no kWh are above the limit', async () => {
+      renderNow({
+        pricingModel: 'NorgesPris',
+        actual: { ratePerKwh: 0.9, costSoFar: 1, cap: null },
+      })
+      expect(await screen.findByText(/Your plan: Norgespris/)).toBeInTheDocument()
+      expect(screen.queryByText(LIMIT)).not.toBeInTheDocument()
+    })
+
+    it('says nothing on a spot location', async () => {
+      renderNow({ pricingModel: 'Spot', actual: { ratePerKwh: 1.5, costSoFar: 2, cap } })
+      expect(await screen.findByText(/Prices include VAT/)).toBeInTheDocument()
+      expect(screen.queryByText(LIMIT)).not.toBeInTheDocument()
+    })
   })
 })

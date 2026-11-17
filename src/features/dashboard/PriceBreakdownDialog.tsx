@@ -17,8 +17,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useAuth } from '../auth/useAuth'
-import { formatClock, formatKrPerKwh, modelLabel, otherModel } from './format'
-import type { CurrentHourCost, PriceParts } from './types'
+import { isAboveCap } from './cap'
+import { formatClock, formatKrPerKwh, formatKwh, modelLabel, otherModel } from './format'
+import type { CurrentHourCost, CurrentRateCost, PriceParts, PricingModel } from './types'
 
 interface Row {
   label: string
@@ -40,6 +41,43 @@ const ROWS: Row[] = [
   { label: 'Total, incl. VAT', value: (p) => formatKrPerKwh(p.total), strong: true },
 ]
 
+interface Column {
+  title: string
+  parts: PriceParts
+}
+
+/**
+ * The columns of one plan. A Norgespris hour that crosses the monthly limit gets two: the kWh within the limit and the
+ * kWh above it, priced at spot (only the second when the whole hour is above).
+ */
+function planColumns(
+  model: PricingModel,
+  rate: CurrentRateCost | null,
+): { columns: Column[]; split?: CurrentRateCost & { cap: NonNullable<CurrentRateCost['cap']> } } {
+  if (!rate?.parts) return { columns: [] }
+  if (model !== 'NorgesPris' || !isAboveCap(rate) || !rate.cap) {
+    return { columns: [{ title: modelLabel(model), parts: rate.parts }] }
+  }
+  const cap = rate.cap
+  const above = {
+    title: `Above limit, spot (${formatKwh(cap.kwhAboveCap)})`,
+    parts: cap.aboveCapParts,
+  }
+  return {
+    columns:
+      cap.kwhWithinCap > 0
+        ? [
+            {
+              title: `Norgespris, within limit (${formatKwh(cap.kwhWithinCap)})`,
+              parts: rate.parts,
+            },
+            above,
+          ]
+        : [above],
+    split: { ...rate, cap },
+  }
+}
+
 /**
  * What one kWh costs this hour, part by part, for the location's plan and for the other plan. The figures are the API's;
  * nothing is recomputed here.
@@ -53,15 +91,13 @@ export function PriceBreakdownDialog({
 }) {
   const { roles } = useAuth()
   const isAdmin = roles.includes('Admin')
-  const own = current.actual?.parts
-  const other = current.comparison?.parts
-  if (!own) return null
+  if (!current.actual?.parts) return null
 
-  const columns = [
-    { title: modelLabel(current.pricingModel), parts: own },
-    ...(other ? [{ title: modelLabel(otherModel(current.pricingModel)), parts: other }] : []),
-  ]
-  const gridMissing = !own.gridSet || (other !== undefined && !other.gridSet)
+  const own = planColumns(current.pricingModel, current.actual)
+  const other = planColumns(otherModel(current.pricingModel), current.comparison)
+  const columns = [...own.columns, ...other.columns]
+  const split = own.split ?? other.split
+  const gridMissing = columns.some((column) => !column.parts.gridSet)
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -105,6 +141,15 @@ export function PriceBreakdownDialog({
           </TableBody>
         </Table>
 
+        {split && (
+          <p role="note" className="text-sm">
+            {split.cap.kwhWithinCap === 0
+              ? 'The whole hour is above the Norgespris monthly limit, so it is priced at spot. '
+              : 'The Norgespris monthly limit was reached this hour: the kWh above it are priced at spot. '}
+            Norgespris rate this hour, blended: {formatKrPerKwh(split.ratePerKwh)}.
+          </p>
+        )}
+
         {gridMissing && (
           <p role="note" className="text-sm text-destructive">
             The grid charge has not been set for this location yet, so these prices leave it out and
@@ -120,8 +165,9 @@ export function PriceBreakdownDialog({
         )}
 
         <p className="text-xs text-muted-foreground">
-          Energy, markup, grid charge and taxes are excluding VAT; the total includes VAT. Monthly
-          charges (the supplier monthly fee and the grid fixed fee) are not included.
+          Energy, markup, grid charge and taxes are excluding VAT; the total includes VAT. The
+          supplier&apos;s monthly fee is not included, and the grid capacity charge is a monthly
+          amount shown in its own card.
         </p>
       </DialogContent>
     </Dialog>

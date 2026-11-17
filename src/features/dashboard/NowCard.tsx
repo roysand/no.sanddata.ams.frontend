@@ -1,6 +1,7 @@
 import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { isAboveCap } from './cap'
 import { useCurrentHourCost, useDayPrices, useLatestMeasurement, useYesterdayHour } from './hooks'
 import {
   formatClock,
@@ -141,7 +142,8 @@ export function NowCard({ locationId }: { locationId: string }) {
         </dl>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Prices include VAT, the grid charge and taxes. Monthly charges are not included.
+          Prices include VAT, the grid charge and taxes. The supplier&apos;s monthly fee is not
+          included; the grid capacity charge is shown in its own card.
         </p>
         <PriceBreakdownButton current={data} />
 
@@ -155,6 +157,13 @@ export function NowCard({ locationId }: { locationId: string }) {
         {data.pricingModel === 'NorgesPris' && data.actual && (
           <p className="mt-3 text-sm text-muted-foreground">
             Your plan: Norgespris {formatRate(data.actual.ratePerKwh)}
+          </p>
+        )}
+
+        {data.pricingModel === 'NorgesPris' && isAboveCap(data.actual) && (
+          <p role="note" className="mt-2 text-sm font-semibold">
+            The Norgespris monthly limit is reached. Consumption above it is priced at spot for the
+            rest of the month.
           </p>
         )}
 

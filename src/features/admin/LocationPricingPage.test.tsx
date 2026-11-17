@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
@@ -18,6 +18,9 @@ const home: LocationPricing = {
   gridTariffName: 'Elvia, household',
   supplierMarkupPerKwh: 0.02,
   isComplete: true,
+  electricityTaxExempt: false,
+  vatExempt: false,
+  isHolidayHome: false,
 }
 const cabin: LocationPricing = {
   locationId: 'loc-cabin',
@@ -26,15 +29,30 @@ const cabin: LocationPricing = {
   gridTariffName: null,
   supplierMarkupPerKwh: 0,
   isComplete: false,
+  electricityTaxExempt: false,
+  vatExempt: false,
+  isHolidayHome: true,
 }
 
 interface Put {
   locationId: string
-  body: { gridTariffId: string | null; supplierMarkupPerKwh: number }
+  body: {
+    gridTariffId: string | null
+    supplierMarkupPerKwh: number
+    electricityTaxExempt: boolean
+    vatExempt: boolean
+    isHolidayHome: boolean
+  }
 }
 
 /** Serves the lists, and applies a PUT to the list the way the API would. */
-function setup(initial: LocationPricing[] = [home, cabin], tariffs: GridTariff[] = [elvia, bkk]) {
+function setup(
+  initial: (Partial<LocationPricing> & Pick<LocationPricing, 'locationId' | 'name'>)[] = [
+    home,
+    cabin,
+  ],
+  tariffs: GridTariff[] = [elvia, bkk],
+) {
   let locations = initial
   const puts: Put[] = []
   server.use(
@@ -50,6 +68,9 @@ function setup(initial: LocationPricing[] = [home, cabin], tariffs: GridTariff[]
         gridTariffName: tariff?.name ?? null,
         supplierMarkupPerKwh: body.supplierMarkupPerKwh,
         isComplete: body.gridTariffId !== null,
+        electricityTaxExempt: body.electricityTaxExempt,
+        vatExempt: body.vatExempt,
+        isHolidayHome: body.isHolidayHome,
       }
       locations = locations.map((l) => (l.locationId === params.id ? updated : l))
       return HttpResponse.json(updated)
@@ -136,7 +157,13 @@ describe('LocationPricingPage', () => {
       expect(puts).toEqual([
         {
           locationId: 'loc-cabin',
-          body: { gridTariffId: 'tariff-bkk', supplierMarkupPerKwh: 0.035 },
+          body: {
+            gridTariffId: 'tariff-bkk',
+            supplierMarkupPerKwh: 0.035,
+            electricityTaxExempt: false,
+            vatExempt: false,
+            isHolidayHome: true,
+          },
         },
       ])
       expect(within(rowFor('Cabin')).getByText('Complete')).toBeInTheDocument()
@@ -253,6 +280,67 @@ describe('LocationPricingPage', () => {
       await vi.waitFor(() => {
         expect(queryClient.getQueryState(['cost', 'current', 'loc-home'])?.isInvalidated).toBe(true)
         expect(queryClient.getQueryState(['prices', 'today', 'loc-home'])?.isInvalidated).toBe(true)
+      })
+    })
+  })
+
+  describe('exemptions and holiday home', () => {
+    it('shows a badge for each flag that is set', async () => {
+      setup([{ ...home, electricityTaxExempt: true, vatExempt: true }, cabin])
+      await screen.findByText('Home')
+
+      expect(within(rowFor('Home')).getByText('Tax exempt')).toBeInTheDocument()
+      expect(within(rowFor('Home')).getByText('VAT exempt')).toBeInTheDocument()
+      expect(within(rowFor('Home')).queryByText('Holiday home')).not.toBeInTheDocument()
+      expect(within(rowFor('Cabin')).getByText('Holiday home')).toBeInTheDocument()
+    })
+
+    it('starts from the current flags, sends the changed ones and shows them', async () => {
+      const u = userEvent.setup()
+      const { puts } = setup()
+      await screen.findByText('Home')
+
+      await u.click(screen.getByRole('button', { name: 'Edit pricing for Home' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pricing for Home' })
+      expect(within(dialog).getByRole('checkbox', { name: 'Holiday home' })).not.toBeChecked()
+
+      await u.click(within(dialog).getByRole('checkbox', { name: 'Holiday home' }))
+      await u.click(within(dialog).getByRole('checkbox', { name: 'Exempt from VAT' }))
+      await u.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+      await within(rowFor('Home')).findByText('Holiday home')
+      expect(within(rowFor('Home')).getByText('VAT exempt')).toBeInTheDocument()
+      expect(puts[0].body).toMatchObject({
+        electricityTaxExempt: false,
+        vatExempt: true,
+        isHolidayHome: true,
+      })
+    })
+
+    it('reads a list without flags (an older API) as none set, and still saves', async () => {
+      const u = userEvent.setup()
+      const { puts } = setup([
+        {
+          locationId: 'loc-old',
+          name: 'Old',
+          gridTariffId: 'tariff-elvia',
+          gridTariffName: 'Elvia, household',
+          supplierMarkupPerKwh: 0,
+          isComplete: true,
+        },
+      ])
+      await screen.findByText('Old')
+      expect(within(rowFor('Old')).queryByText(/exempt|Holiday home/)).not.toBeInTheDocument()
+
+      await u.click(screen.getByRole('button', { name: 'Edit pricing for Old' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pricing for Old' })
+      await u.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(puts).toHaveLength(1))
+      expect(puts[0].body).toMatchObject({
+        electricityTaxExempt: false,
+        vatExempt: false,
+        isHolidayHome: false,
       })
     })
   })
