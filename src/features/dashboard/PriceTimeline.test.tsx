@@ -7,8 +7,8 @@ import { PriceTimeline } from './PriceTimeline'
 
 const HOUR = 3_600_000
 
-function prices(rate: (hour: number) => number | null, hours = 24) {
-  const start = osloDayStartUtc(new Date()).getTime()
+function prices(rate: (hour: number) => number | null, hours = 24, dayOffset = 0) {
+  const start = osloDayStartUtc(new Date()).getTime() + dayOffset * 24 * HOUR
   return {
     date: '2026-11-13',
     zone: 'NO1',
@@ -25,16 +25,21 @@ interface CurrentOptions {
   model?: 'Spot' | 'NorgesPris'
   /** The Norgespris rate; null leaves the current-hour data without prices. */
   norgesRate?: number | null
+  /** Tomorrow's prices; by default they are not published yet. */
+  tomorrow?: ReturnType<typeof prices>
 }
 
 function renderTimeline(
   body: ReturnType<typeof prices>,
-  { model = 'Spot', norgesRate = 0.92 }: CurrentOptions = {},
+  { model = 'Spot', norgesRate = 0.92, tomorrow = prices(() => null, 24, 1) }: CurrentOptions = {},
 ) {
   const own = { ratePerKwh: model === 'NorgesPris' ? norgesRate : 1, costSoFar: 1 }
   const other = { ratePerKwh: model === 'NorgesPris' ? 1 : norgesRate, costSoFar: 1 }
   server.use(
-    http.get('*/api/electricity-cost/prices', () => HttpResponse.json(body)),
+    // Only the request for tomorrow carries a date.
+    http.get('*/api/electricity-cost/prices', ({ request }) =>
+      HttpResponse.json(new URL(request.url).searchParams.has('date') ? tomorrow : body),
+    ),
     http.get('*/api/electricity-cost/current', () =>
       HttpResponse.json({
         hourStart: new Date().toISOString(),
@@ -49,10 +54,13 @@ function renderTimeline(
 }
 
 describe('PriceTimeline', () => {
-  it('labels the unit as including VAT', async () => {
+  it('says the prices are on spot terms with the grid charge, taxes and VAT', async () => {
     renderTimeline(prices((i) => 0.5 + i * 0.05))
 
-    expect(await screen.findByText('kr / kWh incl. VAT')).toBeInTheDocument()
+    expect(await screen.findByText('kr / kWh')).toBeInTheDocument()
+    expect(
+      screen.getByText('On spot terms, including the grid charge, taxes and VAT.'),
+    ).toBeInTheDocument()
   })
 
   it('lists every hour of the day with its price and level', async () => {
@@ -107,7 +115,7 @@ describe('PriceTimeline', () => {
       await screen.findByText(/Norgespris 0,92 kr.kWh/, { selector: 'li' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/The spot price is below Norgespris in 9 of 24 hours today/),
+      screen.getByText(/The price on spot terms is below Norgespris in 9 of 24 hours today/),
     ).toBeInTheDocument()
   })
 
@@ -138,6 +146,32 @@ describe('PriceTimeline', () => {
 
     await screen.findByRole('table', { name: 'Price per hour today' })
     expect(screen.queryByText(/Norgespris/)).not.toBeInTheDocument()
+  })
+
+  it("says when tomorrow's prices usually appear while they are not published", async () => {
+    renderTimeline(prices((i) => 0.5 + i * 0.05))
+
+    expect(
+      await screen.findByText(/Tomorrow's prices usually appear around 13:00/),
+    ).toBeInTheDocument()
+    expect(screen.getByText("Today's price by hour")).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Price per hour tomorrow' })).not.toBeInTheDocument()
+  })
+
+  it("adds tomorrow's hours and best hours once they are published", async () => {
+    renderTimeline(
+      prices((i) => 0.5 + i * 0.05),
+      {
+        tomorrow: prices((i) => 1 + Math.abs(i - 3) * 0.1, 24, 1),
+      },
+    )
+
+    const table = await screen.findByRole('table', { name: 'Price per hour tomorrow' })
+    expect(within(table).getAllByRole('row')).toHaveLength(24)
+    expect(within(table).getAllByText(/^Tomorrow /)).toHaveLength(24)
+    expect(screen.getByText('Price by hour, today and tomorrow')).toBeInTheDocument()
+    expect(screen.getByText(/Best hours tomorrow: /)).toBeInTheDocument()
+    expect(screen.queryByText(/usually appear around 13:00/)).not.toBeInTheDocument()
   })
 
   it('explains when no prices are published yet', async () => {
