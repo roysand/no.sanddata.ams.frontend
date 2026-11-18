@@ -9,7 +9,7 @@ import { useAuth } from '../auth/useAuth'
 import { averageLabel, isVatExempt, peakLabel, stepLabel } from './capacity'
 import { addMonths, formatKw, formatMonth, formatNok, osloMonth } from './format'
 import { useCapacityCharge } from './hooks'
-import type { CapacityCharge } from './types'
+import type { CapacityCharge, CapacityPeak } from './types'
 
 /**
  * The grid capacity charge (kapasitetsledd) of a month: the step that the average of the three highest daily peaks
@@ -56,7 +56,7 @@ export function CapacityCard({ locationId }: { locationId: string }) {
         ) : data.set ? (
           <Charge charge={data} />
         ) : (
-          <NotSet month={month} />
+          <NotSet charge={data} />
         )}
         <p className="mt-3 text-xs text-muted-foreground">
           The grid company charges this per month from the average of the highest hour on each of
@@ -100,19 +100,7 @@ function Charge({ charge }: { charge: CapacityCharge }) {
         <p className="text-sm">{formatKw(charge.kwToNextStep)} below the next step</p>
       )}
 
-      <div>
-        <h3 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-          The peaks behind it
-        </h3>
-        <ul className="mt-1 space-y-0.5 text-sm tabular-nums">
-          {charge.peaks.map((peak) => (
-            <li key={peak.hourStartUtc} className="flex justify-between gap-4">
-              <span>{peakLabel(peak)}</span>
-              <span className="font-semibold">{formatKw(peak.kw)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Peaks peaks={charge.peaks} title="The peaks behind it" />
 
       {charge.provisional && (
         <p className="text-xs text-muted-foreground">
@@ -123,16 +111,48 @@ function Charge({ charge }: { charge: CapacityCharge }) {
   )
 }
 
-function NotSet({ month }: { month: string }) {
+function Peaks({ peaks, title }: { peaks: CapacityPeak[]; title: string }) {
+  return (
+    <div>
+      <h3 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{title}</h3>
+      <ul className="mt-1 space-y-0.5 text-sm tabular-nums">
+        {peaks.map((peak) => (
+          <li key={peak.hourStartUtc} className="flex justify-between gap-4">
+            <span>{peakLabel(peak)}</span>
+            <span className="font-semibold">{formatKw(peak.kw)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * The charge cannot be priced. With readings the API still sends the peaks, so the step table is what is missing (no
+ * grid tariff on the location, or no capacity steps on it for the month); without readings there is nothing to price.
+ */
+function NotSet({ charge }: { charge: CapacityCharge }) {
   const { roles } = useAuth()
   const isAdmin = roles.includes('Admin')
-  return (
-    <div className="py-2 text-sm text-muted-foreground">
-      <p className="font-semibold text-foreground">
-        Capacity charge not available for {formatMonth(month)}.
+  const month = formatMonth(charge.month)
+
+  if (charge.peaks.length === 0) {
+    return (
+      <p className="py-2 text-sm text-muted-foreground">
+        <span className="block font-semibold text-foreground">No readings in {month}.</span>
+        The capacity charge appears when the meter has reported some power use.
       </p>
+    )
+  }
+
+  return (
+    <div className="space-y-3 py-2 text-sm text-muted-foreground">
       <p>
-        The location needs a grid tariff with capacity steps for the month, and readings.{' '}
+        <span className="block font-semibold text-foreground">
+          No capacity steps for this location in {month}.
+        </span>
+        The location needs a grid tariff with capacity steps that start on or before the first day
+        of the month.{' '}
         {isAdmin ? (
           <>
             Set them under{' '}
@@ -149,6 +169,10 @@ function NotSet({ month }: { month: string }) {
           'Ask an administrator.'
         )}
       </p>
+      <Peaks
+        peaks={charge.peaks}
+        title={charge.provisional ? 'The highest peaks so far' : 'The highest peaks'}
+      />
     </div>
   )
 }
