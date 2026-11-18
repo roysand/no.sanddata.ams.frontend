@@ -2,9 +2,10 @@ import { Navigate } from 'react-router-dom'
 import { SELF_SERVICE_ENABLED, useSelectedLocation } from '../locations'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ExportCard } from './ExportCard'
 import { UsageChart } from './UsageChart'
 
-/** The same chart as on the Now tab, given the whole screen. */
+/** The same chart as on the Now tab, given the whole screen, and the CSV export. */
 export function HistoryPage() {
   const { all, selected, isLoading, error } = useSelectedLocation()
 
@@ -27,5 +28,10 @@ export function HistoryPage() {
     )
   }
 
-  return <UsageChart locationId={selected.id} large />
+  return (
+    <div className="flex flex-col gap-4">
+      <UsageChart locationId={selected.id} large />
+      <ExportCard locationId={selected.id} locationName={selected.name} />
+    </div>
+  )
 }

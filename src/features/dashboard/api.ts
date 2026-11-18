@@ -29,6 +29,19 @@ export function getHourlyCost(locationId: string, fromUtc: string, toUtc?: strin
   )
 }
 
+/** One page of hourly cost between two instants (ISO, both included), for paging through long ranges. */
+export function getHourlyCostPage(
+  locationId: string,
+  fromUtc: string,
+  toUtc: string,
+  page: number,
+  pageSize: number,
+) {
+  return api.get<PagedHourlyCost>(
+    `/api/electricity-cost/hourly?${query({ locationId, from: fromUtc, to: toUtc, page, pageSize })}`,
+  )
+}
+
 /** Daily cost; the API defaults to the last 7 Oslo days. */
 export function getDailyCost(locationId: string) {
   return api.get<DailyCost>(`/api/electricity-cost/daily?${query({ locationId })}`)

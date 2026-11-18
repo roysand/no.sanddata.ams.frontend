@@ -36,7 +36,8 @@ const monthLong = oslo({ month: 'long' })
 
 /** Noon UTC of an Oslo date is always on that same date in Oslo, so it is a safe anchor for date maths. */
 const anchor = (date: string) => new Date(`${date}T12:00:00Z`)
-const dayStart = (date: string) => osloDayStartUtc(anchor(date))
+/** The UTC instant an Oslo date (yyyy-MM-dd) starts. */
+export const dayStart = (date: string) => osloDayStartUtc(anchor(date))
 
 export function addDays(date: string, days: number): string {
   const moved = anchor(date)
