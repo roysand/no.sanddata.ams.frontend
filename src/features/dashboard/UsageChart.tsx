@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Area, Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
+import { Area, Bar, CartesianGrid, ComposedChart, LabelList, Line, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 import { Segmented } from '@/components/ui/segmented'
@@ -34,6 +34,65 @@ const format = (unit: Unit, value: number) =>
   unit === 'nok'
     ? formatNok(value)
     : `${(value >= 1000 ? kwhFormatWhole : kwhFormat).format(value)} kWh`
+
+/** Bar labels: whole numbers, rounded up, so a small value never reads as 0. */
+const barLabelFormat = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 })
+const barLabel = (value: number) => barLabelFormat.format(Math.ceil(value))
+
+interface BarLabelProps {
+  x?: number | string
+  y?: number | string
+  width?: number | string
+  height?: number | string
+  value?: number | string | boolean | null
+}
+
+/**
+ * The value written in its bar. It sits across the top of the bar when the bar is wide enough,
+ * turns on its side for narrow bars, and moves just above the bar when the bar is too short.
+ */
+function BarValue({ x = 0, y = 0, width = 0, height = 0, value }: BarLabelProps) {
+  if (typeof value !== 'number' && typeof value !== 'string') return null
+  if (value === '') return null
+  const text = barLabel(Number(value))
+  const [bx, by, bw, bh] = [Number(x), Number(y), Number(width), Number(height)]
+  const fontSize = 10
+  const textLength = text.length * fontSize * 0.62 + 4
+  const cx = bx + bw / 2
+
+  if (bw >= textLength) {
+    const inside = bh >= fontSize + 6
+    return (
+      <text
+        x={cx}
+        y={inside ? by + fontSize + 2 : by - 4}
+        textAnchor="middle"
+        fontSize={fontSize}
+        fontWeight={700}
+        className={inside ? 'fill-white' : 'fill-foreground'}
+      >
+        {text}
+      </text>
+    )
+  }
+
+  const inside = bh >= textLength + 2
+  const ty = inside ? by + 3 : by - 3
+  return (
+    <text
+      x={cx}
+      y={ty}
+      transform={`rotate(-90 ${cx} ${ty})`}
+      textAnchor={inside ? 'end' : 'start'}
+      dominantBaseline="central"
+      fontSize={fontSize}
+      fontWeight={700}
+      className={inside ? 'fill-white' : 'fill-foreground'}
+    >
+      {text}
+    </text>
+  )
+}
 
 const config = {
   current: { label: 'This period', color: 'var(--usage)' },
@@ -158,6 +217,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
     current: point.current,
     previous: point.previous,
   }))
+  const bars = period !== 'day'
   const tickEvery = period === 'day' ? 6 : period === 'week' ? 1 : period === 'month' ? 7 : 2
   const shown = active !== null ? series.points[active] : null
   const delta = series.deltaPercent
@@ -220,6 +280,8 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
           <ChartContainer config={config} className="h-52 w-full">
             <ComposedChart
               data={rows}
+              barGap={0}
+              barCategoryGap="25%"
               margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
               onMouseMove={(state) => {
                 const index = Number(state?.activeTooltipIndex)
@@ -244,23 +306,28 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                 width={40}
                 tickFormatter={(value: number) => String(Math.round(value * 10) / 10)}
               />
-              {period === 'year' ? (
-                // Monthly totals: last year and this year side by side for each month.
+              {bars ? (
+                // Daily or monthly totals: the previous period and this period as two bars side
+                // by side in each slot, each with its value in the bar.
                 <>
-                  <Bar
-                    dataKey="previous"
-                    fill="var(--usage-ghost)"
-                    radius={[4, 4, 2, 2]}
-                    maxBarSize={14}
-                    isAnimationActive={false}
-                  />
+                  {series.hasPrevious && (
+                    <Bar
+                      dataKey="previous"
+                      fill="var(--usage-ghost)"
+                      radius={[4, 4, 2, 2]}
+                      isAnimationActive={false}
+                    >
+                      <LabelList dataKey="previous" content={BarValue} />
+                    </Bar>
+                  )}
                   <Bar
                     dataKey="current"
                     fill="var(--usage)"
                     radius={[4, 4, 2, 2]}
-                    maxBarSize={14}
                     isAnimationActive={false}
-                  />
+                  >
+                    <LabelList dataKey="current" content={BarValue} />
+                  </Bar>
                 </>
               ) : (
                 <>
@@ -301,7 +368,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
           <li className="flex items-center gap-1.5">
             <span
               aria-hidden="true"
-              className={period === 'year' ? 'size-2.5 rounded-sm bg-usage' : 'h-0.5 w-4 bg-usage'}
+              className={bars ? 'size-2.5 rounded-sm bg-usage' : 'h-0.5 w-4 bg-usage'}
             />
             {plan.current.title}
           </li>
@@ -310,7 +377,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
               <span
                 aria-hidden="true"
                 className={
-                  period === 'year'
+                  bars
                     ? 'size-2.5 rounded-sm bg-usage-ghost'
                     : 'h-0 w-4 border-t-2 border-dashed border-usage-ghost'
                 }
