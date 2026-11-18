@@ -87,12 +87,14 @@ describe('CapacityCard', () => {
     expect(await screen.findByText('5–10 kW')).toBeInTheDocument()
     expect(plain(document.body.textContent)).toContain('420,00')
     expect(screen.getByText('incl. VAT')).toBeInTheDocument()
-    expect(screen.getByText('5,4 kW')).toBeInTheDocument()
+    expect(screen.getByText('Tariff peaks')).toBeInTheDocument()
     expect(screen.getByText('Average of the three highest days')).toBeInTheDocument()
-    expect(screen.getByText('14.10. 18:00')).toBeInTheDocument()
-    expect(screen.getByText('6,2 kW')).toBeInTheDocument()
-    expect(screen.getByText('03.10. 07:00')).toBeInTheDocument()
-    expect(screen.getByText('27.10. 18:00')).toBeInTheDocument()
+    // The chart's peaks, in date order, as the screen-reader list beside it.
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '03.10. 07:00: 5,1 kW',
+      '14.10. 18:00: 6,2 kW',
+      '27.10. 18:00: 4,9 kW',
+    ])
     expect(screen.getByText('4,6 kW below the next step')).toBeInTheDocument()
     expect(screen.queryByText('Provisional')).not.toBeInTheDocument()
   })
@@ -134,7 +136,7 @@ describe('CapacityCard', () => {
     renderCard(() => ({ ...OCTOBER, peaks: OCTOBER.peaks.slice(0, 2), averageKw: 5.65 }))
 
     expect(await screen.findByText('Average of 2 days')).toBeInTheDocument()
-    expect(screen.queryByText('27.10. 18:00')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
   it('shows no VAT for a VAT-exempt location', async () => {
@@ -190,7 +192,7 @@ describe('CapacityCard', () => {
       HttpResponse.json({ message: 'Location not found', statusCode: 404 }, { status: 404 }),
     )
 
-    expect(screen.getByLabelText('Loading the capacity charge')).toBeInTheDocument()
+    expect(screen.getByLabelText('Loading the tariff peaks')).toBeInTheDocument()
     expect(await screen.findByText(/not found/i)).toBeInTheDocument()
   })
 })

@@ -1,13 +1,24 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Bar, BarChart, CartesianGrid, LabelList, ReferenceLine, XAxis, YAxis } from 'recharts'
+import type { LabelProps } from 'recharts'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '../auth/useAuth'
-import { averageLabel, isVatExempt, peakLabel, stepLabel } from './capacity'
-import { addMonths, formatKw, formatMonth, formatNok, osloMonth } from './format'
+import { averageLabel, isVatExempt, peakAxis, peakLabel, stepLabel } from './capacity'
+import {
+  addMonths,
+  formatClock,
+  formatDay,
+  formatKw,
+  formatMonth,
+  formatNok,
+  osloMonth,
+} from './format'
 import { useCapacityCharge } from './hooks'
 import type { CapacityCharge, CapacityPeak } from './types'
 
@@ -24,7 +35,7 @@ export function CapacityCard({ locationId }: { locationId: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-base font-extrabold">Capacity charge</CardTitle>
+        <CardTitle className="text-base font-extrabold">Tariff peaks</CardTitle>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -48,7 +59,7 @@ export function CapacityCard({ locationId }: { locationId: string }) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <Skeleton className="h-24 w-full" aria-label="Loading the capacity charge" />
+          <Skeleton className="h-24 w-full" aria-label="Loading the tariff peaks" />
         ) : error || !data ? (
           <p className="py-4 text-center text-sm text-destructive">
             {error?.message ?? 'Could not load the capacity charge'}
@@ -67,47 +78,202 @@ export function CapacityCard({ locationId }: { locationId: string }) {
   )
 }
 
+const chartConfig = {
+  kw: { label: 'Peak', color: 'var(--usage)' },
+} satisfies ChartConfig
+
 function Charge({ charge }: { charge: CapacityCharge }) {
   const exempt = isVatExempt(charge)
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-2xl font-extrabold tracking-tight tabular-nums">
-          {formatNok(charge.amount ?? 0)}
-        </span>
-        <span className="text-sm text-muted-foreground">
-          {exempt ? 'No VAT for this location' : 'incl. VAT'}
-        </span>
-        {charge.provisional && <Badge variant="secondary">Provisional</Badge>}
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] gap-4">
+      <div className="space-y-3">
+        <div>
+          <span className="block text-2xl font-extrabold tracking-tight tabular-nums">
+            {formatNok(charge.amount ?? 0)}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {exempt ? 'No VAT for this location' : 'incl. VAT'}
+          </span>
+          {charge.provisional && (
+            <Badge variant="secondary" className="ml-2 align-middle">
+              Provisional
+            </Badge>
+          )}
+        </div>
+
+        <p className="text-sm">
+          <span className="text-muted-foreground">Step: </span>
+          <span className="font-semibold">{charge.step ? stepLabel(charge.step) : '–'}</span>
+        </p>
+
+        {charge.kwToNextStep !== null && (
+          <p className="text-sm">{formatKw(charge.kwToNextStep)} below the next step</p>
+        )}
+
+        {charge.provisional && (
+          <p className="text-xs text-muted-foreground">
+            A higher peak later this month can raise the step.
+          </p>
+        )}
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        <div>
-          <dt className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Step</dt>
-          <dd className="font-semibold">{charge.step ? stepLabel(charge.step) : '–'}</dd>
-        </div>
-        <div>
-          <dt className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-            {averageLabel(charge.peaks.length)}
-          </dt>
-          <dd className="font-semibold tabular-nums">
-            {charge.averageKw === null ? '–' : formatKw(charge.averageKw)}
-          </dd>
-        </div>
-      </dl>
-
-      {charge.kwToNextStep !== null && (
-        <p className="text-sm">{formatKw(charge.kwToNextStep)} below the next step</p>
-      )}
-
-      <Peaks peaks={charge.peaks} title="The peaks behind it" />
-
-      {charge.provisional && (
-        <p className="text-xs text-muted-foreground">
-          A higher peak later this month can raise the step.
-        </p>
-      )}
+      <PeaksChart charge={charge} />
     </div>
+  )
+}
+
+/** The daily peaks as bars in date order, with the average as a dashed line labelled with its value. */
+function PeaksChart({ charge }: { charge: CapacityCharge }) {
+  const { peaks, averageKw } = charge
+  const rows = [...peaks]
+    .sort((a, b) => a.hourStartUtc.localeCompare(b.hourStartUtc))
+    .map((peak) => ({
+      key: peak.hourStartUtc,
+      day: formatDay(peak.date),
+      clock: formatClock(peak.hourStartUtc),
+      kw: peak.kw,
+    }))
+  const axis = peakAxis(peaks, charge.step)
+
+  return (
+    <figure className="min-w-0">
+      <ChartContainer config={chartConfig} className="h-40 w-full" aria-hidden="true">
+        <BarChart data={rows} margin={{ top: 20, right: 4, bottom: 0, left: 0 }}>
+          <XAxis
+            dataKey="key"
+            tickLine={false}
+            axisLine={{ stroke: 'var(--muted-foreground)' }}
+            interval={0}
+            height={34}
+            tick={(props) => <DayTick {...props} rows={rows} />}
+          />
+          {/* One dotted line from each y-axis label. An explicit stroke, because the chart wrapper fades the default grid
+              colour to near invisible. */}
+          <CartesianGrid
+            vertical={false}
+            horizontalValues={axis.ticks}
+            stroke="var(--muted-foreground)"
+            strokeOpacity={0.6}
+            strokeDasharray="3 3"
+          />
+          <YAxis
+            domain={[0, axis.max]}
+            ticks={axis.ticks}
+            allowDataOverflow
+            tickLine={{ stroke: 'var(--muted-foreground)' }}
+            tickSize={4}
+            axisLine={{ stroke: 'var(--muted-foreground)' }}
+            width={48}
+            tickFormatter={(value: number) => `${value} kW`}
+          />
+          <Bar
+            dataKey="kw"
+            fill="var(--usage)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={44}
+            isAnimationActive={false}
+          >
+            <LabelList dataKey="kw" content={BarValue} />
+          </Bar>
+          {averageKw !== null && (
+            <ReferenceLine
+              y={averageKw}
+              stroke="var(--peak-average)"
+              strokeDasharray="4 4"
+              strokeWidth={2}
+              label={(props) => <AverageLabel {...props} text={formatKw(averageKw)} />}
+            />
+          )}
+        </BarChart>
+      </ChartContainer>
+      <figcaption className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span aria-hidden="true" className="h-0 w-4 border-t-2 border-dashed border-peak-average" />
+        {averageLabel(peaks.length)}
+      </figcaption>
+      <ul className="sr-only">
+        {rows.map((row) => (
+          <li key={row.key}>
+            {row.day} {row.clock}: {formatKw(row.kw)}
+          </li>
+        ))}
+      </ul>
+    </figure>
+  )
+}
+
+const barValue = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 })
+
+/**
+ * The peak's kW inside the top of its bar, in the card colour so it contrasts with the bar in both themes. A bar too
+ * short to hold the text gets it just above instead. The unit is on the y-axis, so it is left out to fit narrow bars.
+ */
+function BarValue({ x, y, width, height, value }: LabelProps) {
+  const [left, top, w, h] = [x, y, width, height].map(Number)
+  if (![left, top, w, h].every(Number.isFinite) || typeof value !== 'number') return null
+  const fits = h >= 20
+  return (
+    <text
+      x={left + w / 2}
+      y={fits ? top + 14 : top - 4}
+      textAnchor="middle"
+      fontSize={11}
+      fontWeight={700}
+      fill={fits ? 'var(--card)' : 'var(--foreground)'}
+    >
+      {barValue.format(value)}
+    </text>
+  )
+}
+
+/** The average's value, right-aligned just above the dashed line, with a halo so it reads over a bar. */
+function AverageLabel({
+  viewBox,
+  text,
+}: {
+  viewBox?: { x?: number; y?: number; width?: number }
+  text: string
+}) {
+  if (viewBox?.x === undefined || viewBox.y === undefined) return null
+  return (
+    <text
+      x={viewBox.x + (viewBox.width ?? 0)}
+      y={viewBox.y - 5}
+      textAnchor="end"
+      fontSize={12}
+      fontWeight={700}
+      fill="var(--foreground)"
+      stroke="var(--card)"
+      strokeWidth={3}
+      paintOrder="stroke"
+    >
+      {text}
+    </text>
+  )
+}
+
+/** The date of the peak, with the hour it happened below. */
+function DayTick({
+  x,
+  y,
+  payload,
+  rows,
+}: {
+  x?: number | string
+  y?: number | string
+  payload?: { value: string }
+  rows: { key: string; day: string; clock: string }[]
+}) {
+  const row = rows.find((r) => r.key === payload?.value)
+  if (!row) return null
+  return (
+    <text x={x} y={y} textAnchor="middle" className="fill-muted-foreground text-xs">
+      <tspan x={x} dy="0.9em" className="fill-foreground font-semibold">
+        {row.day}
+      </tspan>
+      <tspan x={x} dy="1.2em">
+        {row.clock}
+      </tspan>
+    </text>
   )
 }
 
