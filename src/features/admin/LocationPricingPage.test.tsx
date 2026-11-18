@@ -34,6 +34,30 @@ const cabin: LocationPricing = {
   isHolidayHome: true,
 }
 
+const owner = (email: string) => ({
+  userId: email,
+  email,
+  firstName: 'A',
+  lastName: 'B',
+  role: 'Owner' as const,
+})
+const adminLocation = (id: string, name: string, address: string, owners: string[]) => ({
+  id,
+  name,
+  address,
+  serialNumber: id,
+  zone: 'NO1',
+  isActive: true,
+  hasNorgesPriceAgreement: true,
+  meters: [],
+  users: owners.map(owner),
+})
+// Two locations may share a name, so the rows also show the address and the owners.
+const adminLocations = [
+  adminLocation('loc-home', 'Home', 'Storgata 1', ['anne@example.no']),
+  adminLocation('loc-cabin', 'Cabin', 'Fjellveien 9', ['anne@example.no', 'bo@example.no']),
+]
+
 interface Put {
   locationId: string
   body: {
@@ -58,6 +82,7 @@ function setup(
   server.use(
     http.get('*/api/admin/location-pricing', () => HttpResponse.json(locations)),
     http.get('*/api/admin/grid-tariffs', () => HttpResponse.json(tariffs)),
+    http.get('*/api/admin/locations', () => HttpResponse.json(adminLocations)),
     http.put('*/api/admin/location-pricing/:id', async ({ params, request }) => {
       const body = (await request.json()) as Put['body']
       puts.push({ locationId: String(params.id), body })
@@ -343,5 +368,17 @@ describe('LocationPricingPage', () => {
         isHolidayHome: false,
       })
     })
+  })
+
+  it('shows the address and the owners under each name, so locations with the same name can be told apart', async () => {
+    setup()
+    await screen.findByText('Home')
+
+    expect(
+      await within(rowFor('Home')).findByText('Storgata 1 · Owner: anne@example.no'),
+    ).toBeInTheDocument()
+    expect(
+      within(rowFor('Cabin')).getByText('Fjellveien 9 · Owner: anne@example.no, bo@example.no'),
+    ).toBeInTheDocument()
   })
 })

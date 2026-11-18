@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { EditLocationPricingDialog } from './EditLocationPricingDialog'
-import { useLocationPricing } from './hooks'
+import { useAdminLocations, useLocationPricing } from './hooks'
 import { formatAmount } from './norgesPris'
 import type { LocationPricing } from './types'
 
@@ -21,6 +21,16 @@ import type { LocationPricing } from './types'
  */
 export function LocationPricingPage() {
   const locations = useLocationPricing()
+  // Names need not be unique, so each row also shows the address and the owners, from the admin location list.
+  const admin = useAdminLocations()
+  const detailsOf = (locationId: string) => {
+    const location = admin.data?.find((l) => l.id === locationId)
+    if (!location) return null
+    const owners = location.users?.filter((u) => u.role === 'Owner').map((u) => u.email) ?? []
+    return [location.address, owners.length > 0 ? `Owner: ${owners.join(', ')}` : null]
+      .filter(Boolean)
+      .join(' · ')
+  }
   const [editing, setEditing] = useState<LocationPricing | null>(null)
 
   return (
@@ -57,7 +67,14 @@ export function LocationPricingPage() {
               <TableBody>
                 {locations.data.map((location) => (
                   <TableRow key={location.locationId}>
-                    <TableCell className="font-medium">{location.name}</TableCell>
+                    <TableCell>
+                      <span className="font-medium">{location.name}</span>
+                      {detailsOf(location.locationId) && (
+                        <span className="block text-xs text-muted-foreground">
+                          {detailsOf(location.locationId)}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {location.gridTariffName ?? <Badge variant="outline">Not set</Badge>}
                     </TableCell>

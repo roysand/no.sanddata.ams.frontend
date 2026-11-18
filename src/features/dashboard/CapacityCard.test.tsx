@@ -49,6 +49,9 @@ const NOT_SET: CapacityCharge = {
   kwToNextStep: null,
 }
 
+// Readings but no step table for the month: the API still sends the peaks.
+const NO_STEPS: CapacityCharge = { ...NOT_SET, peaks: OCTOBER.peaks }
+
 const thisMonth = osloMonth(new Date())
 
 /** Answers with `answer(month)` and records the months asked for. */
@@ -141,10 +144,15 @@ describe('CapacityCard', () => {
     expect(screen.queryByText('incl. VAT')).not.toBeInTheDocument()
   })
 
-  it('links an administrator to the pages where the charge is set up when it is not available', async () => {
-    renderCard(() => NOT_SET, ['Admin'])
+  it('says the steps are missing, shows the peaks, and links an administrator to the setup pages', async () => {
+    renderCard(() => NO_STEPS, ['Admin'])
 
-    expect(await screen.findByText(/Capacity charge not available for/)).toBeInTheDocument()
+    expect(
+      await screen.findByText('No capacity steps for this location in November 2026.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('The highest peaks so far')).toBeInTheDocument()
+    expect(screen.getByText('14.10. 18:00')).toBeInTheDocument()
+    expect(screen.getByText('6,2 kW')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Grid tariffs' })).toHaveAttribute(
       'href',
       '/admin/grid-tariffs',
@@ -156,11 +164,25 @@ describe('CapacityCard', () => {
     expect(screen.queryByText(/0,00/)).not.toBeInTheDocument()
   })
 
-  it('asks a user to contact an administrator when it is not available', async () => {
-    renderCard(() => NOT_SET)
+  it('asks a user to contact an administrator when the steps are missing', async () => {
+    renderCard(() => NO_STEPS)
 
     expect(await screen.findByText(/Ask an administrator/)).toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('says there are no readings when the month has none, without setup links', async () => {
+    renderCard(() => NOT_SET, ['Admin'])
+
+    expect(await screen.findByText('No readings in November 2026.')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByText(/No capacity steps/)).not.toBeInTheDocument()
+  })
+
+  it('does not say "so far" about the peaks of a month that has ended', async () => {
+    renderCard(() => ({ ...NO_STEPS, month: '2026-10', provisional: false }))
+
+    expect(await screen.findByText('The highest peaks')).toBeInTheDocument()
   })
 
   it('shows a skeleton while loading and the server message on error', async () => {
