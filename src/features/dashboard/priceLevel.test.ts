@@ -1,4 +1,4 @@
-import { buildPriceDay, priceRank, ratedHourCount } from './priceLevel'
+import { buildPriceDay, priceRank, priceTicks, ratedHourCount } from './priceLevel'
 import type { HourPrice } from './types'
 
 const MIDNIGHT = Date.UTC(2026, 9, 31, 22) // 2026-11-01 00:00 Oslo is 23:00 UTC; any fixed hour works here
@@ -109,5 +109,18 @@ describe('buildPriceDay with a flat plan rate', () => {
     expect(result.hours[13].level).toBe('cheap')
     expect(result.hours[18].level).toBe('expensive')
     expect(result.best).toEqual([12, 13, 14, 15])
+  })
+})
+
+describe('priceTicks', () => {
+  it('gives about four round steps from 0 to just above the highest price', () => {
+    expect(priceTicks(1.37)).toEqual([0, 0.5, 1, 1.5])
+    expect(priceTicks(0.62)).toEqual([0, 0.2, 0.4, 0.6, 0.8])
+    expect(priceTicks(3.1)).toEqual([0, 1, 2, 3, 4])
+  })
+
+  it('keeps a top line when the highest price is exactly on a step or zero', () => {
+    expect(priceTicks(1)).toEqual([0, 0.25, 0.5, 0.75, 1])
+    expect(priceTicks(0)).toEqual([0, 0.1])
   })
 })

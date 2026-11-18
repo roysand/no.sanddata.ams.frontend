@@ -81,3 +81,13 @@ export function priceRank(day: PriceDay, index: number): number | null {
 export function ratedHourCount(day: PriceDay): number {
   return day.hours.filter((hour) => hour.rate !== null).length
 }
+
+/** Round price steps for the y axis: about four lines from 0 up to just above the highest price. */
+export function priceTicks(max: number): number[] {
+  const step = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5].find((s) => max / s <= 4) ?? 10
+  const top = Math.max(step, Math.ceil(max / step - 1e-9) * step)
+  return Array.from(
+    { length: Math.round(top / step) + 1 },
+    (_, i) => Math.round(i * step * 100) / 100,
+  )
+}

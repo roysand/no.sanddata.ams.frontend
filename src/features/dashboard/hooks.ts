@@ -55,10 +55,11 @@ export function useLastHourPower(locationId: string | undefined) {
 }
 
 /** Today's hourly prices (all 24 hours, including the ones still to come). Prices rarely change within the day. */
-export function useDayPrices(locationId: string | undefined) {
+/** Hourly prices for one Oslo day (yyyy-MM-dd); today when no date is given. */
+export function useDayPrices(locationId: string | undefined, date?: string) {
   return useQuery({
-    queryKey: ['prices', 'today', locationId],
-    queryFn: () => getDayPrices(locationId!),
+    queryKey: ['prices', date ?? 'today', locationId],
+    queryFn: () => getDayPrices(locationId!, date),
     enabled: !!locationId,
     refetchInterval: 15 * ONE_MINUTE,
   })
