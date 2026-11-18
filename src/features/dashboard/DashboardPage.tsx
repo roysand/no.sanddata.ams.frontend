@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CapacityCard } from './CapacityCard'
 import { NowCard } from './NowCard'
+import { CheapestTimeCard } from './CheapestTimeCard'
 import { PriceTimeline } from './PriceTimeline'
 import { RecentUsage } from './RecentUsage'
 import { SavingCard } from './SavingCard'
@@ -66,6 +67,7 @@ export function DashboardPage() {
       />
       <CapacityCard locationId={selected.id} />
       <UsageChart locationId={selected.id} />
+      <CheapestTimeCard locationId={selected.id} />
       <PriceTimeline locationId={selected.id} />
     </div>
   )
