@@ -24,6 +24,7 @@ body {
   --color-price-expensive-soft: var(--price-expensive-soft);
   --color-usage: var(--usage);
   --color-usage-ghost: var(--usage-ghost);
+  --color-peak-average: var(--peak-average);
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -107,6 +108,8 @@ body {
   --price-expensive-soft: oklch(0.95 0.04 20);
   --usage: oklch(0.52 0.2 262);
   --usage-ghost: oklch(0.65 0.02 262);
+  /* the average line on the tariff peaks chart */
+  --peak-average: oklch(0.74 0.17 148);
 }
 
 .dark {
@@ -149,6 +152,7 @@ body {
   --price-expensive-soft: oklch(0.3 0.08 22);
   --usage: oklch(0.75 0.14 262);
   --usage-ghost: oklch(0.55 0.03 262);
+  --peak-average: oklch(0.8 0.16 148);
 }
 
 @layer base {

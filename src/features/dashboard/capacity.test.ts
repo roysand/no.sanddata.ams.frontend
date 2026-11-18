@@ -1,4 +1,4 @@
-import { averageLabel, isVatExempt, peakLabel, stepLabel } from './capacity'
+import { averageLabel, isVatExempt, peakAxis, peakLabel, stepLabel } from './capacity'
 import type { CapacityCharge } from './types'
 
 const charge = (vat: number | null, amount: number | null): CapacityCharge => ({
@@ -46,5 +46,34 @@ describe('peakLabel', () => {
     expect(peakLabel({ date: '2026-10-14', hourStartUtc: '2026-10-14T16:00:00Z', kw: 6.2 })).toBe(
       '14.10. 18:00',
     )
+  })
+})
+
+describe('peakAxis', () => {
+  const peak = (kw: number) => ({ date: '2026-10-01', hourStartUtc: '2026-10-01T10:00:00Z', kw })
+
+  it('tops out at the upper bound of the step when every peak is below it', () => {
+    expect(peakAxis([peak(6.2), peak(5.1), peak(4.9)], { lowerKw: 5, upperKw: 10 })).toEqual({
+      max: 10,
+      ticks: [0, 5, 10],
+    })
+  })
+
+  it('rounds up to the next 5 kW when a peak is above the step', () => {
+    expect(peakAxis([peak(12.3), peak(4), peak(4)], { lowerKw: 5, upperKw: 10 })).toEqual({
+      max: 15,
+      ticks: [0, 5, 10, 15],
+    })
+  })
+
+  it('rounds up the highest peak on the open top step', () => {
+    expect(peakAxis([peak(103)], { lowerKw: 100, upperKw: null })).toEqual({
+      max: 105,
+      ticks: [0, 100, 105],
+    })
+  })
+
+  it('starts the lowest step at 0 without a duplicate tick', () => {
+    expect(peakAxis([peak(1.2)], { lowerKw: 0, upperKw: 2 })).toEqual({ max: 2, ticks: [0, 2] })
   })
 })
