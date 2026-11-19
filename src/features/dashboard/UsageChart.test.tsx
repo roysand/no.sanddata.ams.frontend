@@ -184,3 +184,117 @@ describe('UsageChart', () => {
     expect(screen.queryByText(/vs yesterday/)).not.toBeInTheDocument()
   })
 })
+
+describe('UsageChart stepping back', () => {
+  beforeEach(() =>
+    localStorage.setItem('ams.chart', JSON.stringify({ period: 'month', unit: 'kwh' })),
+  )
+  afterEach(() => localStorage.clear())
+
+  const now = new Date()
+  const title = (offset: number) => periodPlan('month', now, offset).current.title
+  // The first reading was on the first day of the month two months ago.
+  const firstReading = periodPlan('month', now, -2).current.fromDate
+
+  /** 10 kWh for every day from the first reading on; the days asked for come from the request. */
+  function useDailyApi() {
+    const requested: string[] = []
+    server.use(
+      http.get('*/api/electricity-cost/daily', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const [from, to] = [params.get('from')!, params.get('to')!]
+        requested.push(from)
+        const days: string[] = []
+        for (let d = new Date(`${from}T12:00:00Z`); d.toISOString().slice(0, 10) <= to;) {
+          const date = d.toISOString().slice(0, 10)
+          if (date >= firstReading) days.push(date)
+          d = new Date(d.getTime() + 86_400_000)
+        }
+        return HttpResponse.json({
+          items: days.map((date) => ({
+            date,
+            consumptionKwh: 10,
+            pricingModel: 'Spot',
+            actual: { cost: 12 },
+            comparison: null,
+          })),
+        })
+      }),
+    )
+    return requested
+  }
+
+  it('starts on now, with no way forward', async () => {
+    useDailyApi()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    expect(await screen.findByText(`${title(0)} so far`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous month' })).toBeEnabled()
+  })
+
+  it('steps back a month at a time, compares with the month before, and steps forward again', async () => {
+    const requested = useDailyApi()
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+    await screen.findByText(`${title(0)} so far`)
+
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+
+    // A finished month is not "so far", and the comparison names the month before it.
+    expect(await screen.findByText(title(-1), { selector: 'p' })).toBeInTheDocument()
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
+    expect(screen.getByText(new RegExp(`vs ${title(-2)}`))).toBeInTheDocument()
+    expect(requested).toContain(periodPlan('month', now, -1).current.fromDate)
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'Next month' }))
+    expect(await screen.findByText(`${title(0)} so far`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled()
+  })
+
+  it('stops stepping back where there are no readings', async () => {
+    useDailyApi()
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+    await screen.findByText(`${title(0)} so far`)
+
+    const previous = () => screen.getByRole('button', { name: 'Previous month' })
+    await user.click(previous())
+    await screen.findByText(title(-1), { selector: 'p' })
+    await user.click(previous())
+    await screen.findByText(title(-2), { selector: 'p' })
+    // Two months back still has readings, though the month before it has none.
+    expect(previous()).toBeEnabled()
+
+    await user.click(previous())
+    expect(await screen.findByText(`No readings for ${title(-3)}`)).toBeInTheDocument()
+    expect(previous()).toBeDisabled()
+  })
+
+  it('goes back to now when another period is chosen', async () => {
+    useDailyApi()
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+    await screen.findByText(`${title(0)} so far`)
+
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+    await screen.findByText(title(-1), { selector: 'p' })
+    await user.click(screen.getByRole('button', { name: 'Week' }))
+
+    expect(await screen.findByText('Last 7 days so far')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next week' })).toBeDisabled()
+  })
+
+  it('names yesterday in the day view', async () => {
+    localStorage.setItem('ams.chart', JSON.stringify({ period: 'day', unit: 'kwh' }))
+    useApi()
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+    await screen.findByText(/Today so far/)
+
+    await user.click(screen.getByRole('button', { name: 'Previous day' }))
+
+    expect(await screen.findByText('Yesterday', { selector: 'p' })).toBeInTheDocument()
+  })
+})

@@ -91,3 +91,61 @@ describe('addDays', () => {
     expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
   })
 })
+
+describe('periodPlan stepping back', () => {
+  it('day: names today and yesterday, and earlier days by their date', () => {
+    expect(periodPlan('day', NOON, 0).current.title).toBe('Today')
+    expect(periodPlan('day', NOON, 0).previous.inline).toBe('yesterday')
+
+    const yesterday = periodPlan('day', NOON, -1)
+    expect(yesterday.offset).toBe(-1)
+    expect(yesterday.current.title).toBe('Yesterday')
+    expect(yesterday.current.fromDate).toBe('2026-11-12')
+    expect(yesterday.previous.title).toBe('Wed 11 Nov')
+
+    const older = periodPlan('day', NOON, -5)
+    expect(older.current.fromDate).toBe('2026-11-08')
+    expect(older.current.title).toBe('Sun 8 Nov')
+    expect(older.previous.fromDate).toBe('2026-11-07')
+  })
+
+  it('day: adds the year to a day in another year', () => {
+    expect(periodPlan('day', NOON, -320).current.title).toBe('Sun 28 Dec 2025')
+  })
+
+  it('week: steps 7 days at a time and names the weeks by their dates', () => {
+    const plan = periodPlan('week', NOON, -1)
+
+    expect(plan.current.fromDate).toBe('2026-10-31')
+    expect(plan.current.toDate).toBe('2026-11-06')
+    expect(plan.current.title).toBe('31 Oct – 6 Nov')
+    expect(plan.previous.fromDate).toBe('2026-10-24')
+    expect(plan.previous.title).toBe('24–30 Oct')
+  })
+
+  it('week: keeps "Last 7 days" for the current week', () => {
+    const plan = periodPlan('week', NOON)
+    expect(plan.current.title).toBe('Last 7 days')
+    expect(plan.previous.inline).toBe('the 7 days before')
+  })
+
+  it('month: steps a month at a time, across the turn of the year, with the year when it is not this one', () => {
+    const october = periodPlan('month', NOON, -1)
+    expect(october.current.title).toBe('October')
+    expect(october.current.slots).toHaveLength(31)
+    expect(october.previous.title).toBe('September')
+
+    const january = periodPlan('month', NOON, -10)
+    expect(january.current.fromDate).toBe('2026-01-01')
+    expect(january.previous.fromDate).toBe('2025-12-01')
+    expect(january.previous.title).toBe('December 2025')
+    expect(january.previous.inline).toBe('December 2025')
+  })
+
+  it('year: steps a year at a time', () => {
+    const plan = periodPlan('year', NOON, -1)
+    expect(plan.current.title).toBe('2025')
+    expect(plan.current.fromDate).toBe('2025-01-01')
+    expect(plan.previous.title).toBe('2024')
+  })
+})

@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Area, Bar, CartesianGrid, ComposedChart, LabelList, Line, XAxis, YAxis } from 'recharts'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 import { Segmented } from '@/components/ui/segmented'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePeriodData } from './hooks'
 import { formatNok } from './format'
-import type { Period, Unit } from './periods'
+import { periodPlan, type Period, type Unit } from './periods'
 import { buildUsageSeries, type UsageSeries } from './series'
 import { isolatedDot } from './chartDots'
 
@@ -102,13 +104,23 @@ const config = {
 export function UsageChart({ locationId, large = false }: { locationId: string; large?: boolean }) {
   const [prefs, setPrefs] = useState(readPrefs)
   const [active, setActive] = useState<number | null>(null)
+  // 0 = the period going on now; -1 = the one before. Not remembered: the chart always opens on now.
+  const [offset, setOffset] = useState(0)
   const { period, unit } = prefs
-  const { data, isLoading, error } = usePeriodData(locationId, period)
+  const { data, isLoading, isPlaceholderData, error } = usePeriodData(locationId, period, offset)
+  // The title of the period asked for, shown at once while its data loads.
+  const wanted = periodPlan(period, new Date(), offset).current
+
+  const step = (by: number) => {
+    setOffset((value) => Math.min(value + by, 0))
+    setActive(null)
+  }
 
   const update = (next: Partial<typeof prefs>) => {
     const value = { ...prefs, ...next }
     setPrefs(value)
     setActive(null)
+    if (next.period !== undefined && next.period !== prefs.period) setOffset(0)
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
     } catch {
@@ -141,12 +153,53 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
     </div>
   )
 
+  // Stepping back stops at a period that, like the one before it, has no readings: the app does not know when the
+  // first reading was, and a single empty period (the meter was off) should not block the way further back.
+  const shownSeries =
+    data && !isPlaceholderData
+      ? buildUsageSeries(
+          data.plan.current.slots,
+          data.current,
+          data.plan.previous.slots,
+          data.previous,
+          'kwh',
+        )
+      : null
+  const atStart = shownSeries !== null && !shownSeries.hasCurrent && !shownSeries.hasPrevious
+
+  const navigation = (
+    <div className="mt-3 flex items-center justify-between gap-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={`Previous ${period}`}
+        disabled={atStart || isPlaceholderData}
+        onClick={() => step(-1)}
+      >
+        <ChevronLeft />
+      </Button>
+      <span className="text-sm font-semibold" aria-live="polite">
+        {wanted.title}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={`Next ${period}`}
+        disabled={offset === 0}
+        onClick={() => step(1)}
+      >
+        <ChevronRight />
+      </Button>
+    </div>
+  )
+
   const header = (
     <CardHeader>
       <CardTitle className="text-base font-extrabold">
         {large ? 'Usage and cost' : 'Usage'}
       </CardTitle>
       {controls}
+      {navigation}
     </CardHeader>
   )
 
@@ -201,11 +254,15 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
               <p className="text-base font-semibold text-foreground">Cost needs prices</p>
               Prices are not available yet. Switch to kWh to see your usage.
             </>
-          ) : (
+          ) : plan.offset === 0 ? (
             <>
               <p className="text-base font-semibold text-foreground">Nothing to chart yet</p>
               Usage appears here after the first readings arrive.
             </>
+          ) : (
+            <p className="text-base font-semibold text-foreground">
+              No readings for {plan.current.title}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -230,11 +287,14 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
   return (
     <Card>
       {header}
-      <CardContent>
+      <CardContent
+        aria-busy={isPlaceholderData}
+        className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}
+      >
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              {plan.current.title} so far
+              {plan.offset === 0 ? `${plan.current.title} so far` : plan.current.title}
             </p>
             <p className="text-3xl font-extrabold tracking-tight tabular-nums">
               {format(unit, series.total)}
@@ -248,8 +308,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                   : 'bg-price-expensive-soft text-price-expensive'
               }`}
             >
-              {delta <= 0 ? '▼' : '▲'} {Math.abs(Math.round(delta))}% vs{' '}
-              {plan.previous.title.toLowerCase()}
+              {delta <= 0 ? '▼' : '▲'} {Math.abs(Math.round(delta))}% vs {plan.previous.inline}
             </span>
           )}
         </div>
@@ -398,7 +457,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
               {series.hasPrevious && shown.previous !== null && (
                 <span className="text-muted-foreground">
                   {' '}
-                  · {plan.previous.title.toLowerCase()} {format(unit, shown.previous)}
+                  · {plan.previous.inline} {format(unit, shown.previous)}
                 </span>
               )}
             </span>

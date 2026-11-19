@@ -1,4 +1,4 @@
-import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query'
 import {
   getCapacityCharge,
   getCurrentHourCost,
@@ -89,9 +89,9 @@ export function useYesterdayHour(
   })
 }
 
-/** Current and previous period for one location: hourly rows for the day view, daily rows otherwise. */
-async function fetchPeriod(locationId: string, period: Period) {
-  const plan = periodPlan(period, new Date())
+/** A period and the one before it for one location: hourly rows for the day view, daily rows otherwise. */
+async function fetchPeriod(locationId: string, period: Period, offset: number) {
+  const plan = periodPlan(period, new Date(), offset)
   const rowsFor = async (window: PeriodWindow): Promise<UsageRow[]> =>
     period === 'day'
       ? rowsFromHourly((await getHourlyCost(locationId, window.fromUtc, window.toUtc)).items)
@@ -103,22 +103,32 @@ async function fetchPeriod(locationId: string, period: Period) {
   return { plan, current, previous }
 }
 
-function periodQuery(locationId: string, period: Period) {
-  const plan = periodPlan(period, new Date())
+function periodQuery(locationId: string, period: Period, offset = 0) {
+  const plan = periodPlan(period, new Date(), offset)
+  const isCurrent = offset === 0
+  // Only the period going on now gets new readings.
+  const refetchInterval: number | false = !isCurrent
+    ? false
+    : period === 'day'
+      ? 5 * ONE_MINUTE
+      : 15 * ONE_MINUTE
   return {
     queryKey: ['usage', locationId, period, plan.current.fromDate, plan.current.toDate],
-    queryFn: () => fetchPeriod(locationId, period),
-    refetchInterval: period === 'day' ? 5 * ONE_MINUTE : 15 * ONE_MINUTE,
-    // The year view reads a lot of data; keep it for a while instead of refetching on every visit.
-    staleTime: period === 'year' ? 15 * ONE_MINUTE : 0,
+    queryFn: () => fetchPeriod(locationId, period, offset),
+    refetchInterval,
+    // The year view reads a lot of data, and a past period rarely changes (only when prices are corrected); keep
+    // them for a while instead of refetching on every visit.
+    staleTime: period === 'year' || !isCurrent ? 15 * ONE_MINUTE : 0,
   }
 }
 
-/** Current and previous period for the usage chart. */
-export function usePeriodData(locationId: string | undefined, period: Period) {
+/** A period (`offset` 0 = now, -1 = the one before, …) and the period before it, for the usage chart. */
+export function usePeriodData(locationId: string | undefined, period: Period, offset = 0) {
   return useQuery({
-    ...periodQuery(locationId ?? '', period),
+    ...periodQuery(locationId ?? '', period, offset),
     enabled: !!locationId,
+    // Keep the chart on screen while the next period loads, instead of flashing a skeleton at every step.
+    placeholderData: keepPreviousData,
   })
 }
 
