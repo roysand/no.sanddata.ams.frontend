@@ -5,6 +5,7 @@ import { AppLayout } from '../components/AppLayout'
 import { LoginPage } from '../features/auth/LoginPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { HistoryPage } from '../features/dashboard/HistoryPage'
+import { WaterHeaterPage } from '../features/dashboard/WaterHeaterPage'
 import { UsersPage } from '../features/admin/UsersPage'
 import { AdminLocationsPage } from '../features/admin/AdminLocationsPage'
 import { NorgesPrisPage } from '../features/admin/NorgesPrisPage'
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
           { path: '/', element: <DashboardPage /> },
           { path: '/setup', element: <SetupPage /> },
           { path: '/history', element: <HistoryPage /> },
+          { path: '/water-heater', element: <WaterHeaterPage /> },
           { path: '/locations', element: <LocationsEntry /> },
           { path: '/locations/manage', element: <LocationsPage /> },
           {

@@ -1,4 +1,4 @@
-import { api } from '../../lib/apiClient'
+import { ApiError, api } from '../../lib/apiClient'
 import {
   createLocationAsAdmin,
   type AdminLocation,
@@ -21,6 +21,8 @@ import type {
   PriceRate,
   PriceRateInput,
   PagedUsers,
+  WaterHeaterInput,
+  WaterHeaterSettings,
 } from './types'
 
 export async function getUsers(page: number, pageSize: number, search: string) {
@@ -182,4 +184,40 @@ export function addCapacitySteps(tariffId: string, input: CapacityStepTableInput
 /** Only a table that has not started can be deleted; the API answers 409 otherwise. */
 export function deleteCapacitySteps(tariffId: string, validFrom: string) {
   return api.delete<void>(`/api/admin/grid-tariffs/${tariffId}/capacity-steps/${validFrom}`)
+}
+
+const waterHeaterPath = (locationId: string) => `/api/admin/locations/${locationId}/water-heater`
+
+const isNotFound = (error: unknown) => error instanceof ApiError && error.status === 404
+
+/**
+ * The heater connected to a location, or `null` when there is none. The API answers 404 both for "no heater" and
+ * "no such location"; the dialog is open on a location that exists, so 404 means not connected.
+ */
+export async function getWaterHeaterSettings(
+  locationId: string,
+): Promise<WaterHeaterSettings | null> {
+  try {
+    return await api.get<WaterHeaterSettings>(waterHeaterPath(locationId))
+  } catch (error) {
+    if (isNotFound(error)) return null
+    throw error
+  }
+}
+
+/** Connects or replaces the heater; the API checks the pair with OSO first (up to 10 s). */
+export function connectWaterHeater(locationId: string, input: WaterHeaterInput) {
+  return api.put<WaterHeaterSettings>(waterHeaterPath(locationId), {
+    subscriptionKey: input.subscriptionKey,
+    deviceId: input.deviceId,
+  })
+}
+
+/** Removes the connection. A 404 means it is already gone, which is what was asked for. */
+export async function removeWaterHeater(locationId: string): Promise<void> {
+  try {
+    await api.delete<void>(waterHeaterPath(locationId))
+  } catch (error) {
+    if (!isNotFound(error)) throw error
+  }
 }

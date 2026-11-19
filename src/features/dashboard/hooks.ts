@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { ApiError } from '../../lib/apiClient'
 import {
   getCapacityCharge,
   getCurrentHourCost,
@@ -11,6 +13,7 @@ import {
   getMinuteConsumption,
   getMonthlyBill,
   getNorgesPrisSaving,
+  getWaterHeaterState,
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
 import { addDays, dayStart, periodPlan, type Period, type PeriodWindow } from './periods'
@@ -286,4 +289,48 @@ export function useHeatmap(locationId: string | undefined) {
     staleTime: 60 * ONE_MINUTE,
     refetchInterval: 60 * ONE_MINUTE,
   })
+}
+
+/** True for the API's 404, which for the water heater means "no heater here". */
+export const isNotFound = (error: unknown) => error instanceof ApiError && error.status === 404
+
+/**
+ * The water heater's state, once a minute while the page is visible (each request makes the API ask OSO four
+ * times). A 404 means there is no heater, so polling stops; no retries, since a failed read is tried again at the next
+ * minute and OSO may already have taken 10 s to fail.
+ */
+export function useWaterHeaterState(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ['water-heater', 'state', locationId],
+    queryFn: () => getWaterHeaterState(locationId!),
+    enabled: !!locationId,
+    retry: false,
+    refetchInterval: (query) => (isNotFound(query.state.error) ? false : ONE_MINUTE),
+  })
+}
+
+/**
+ * Whether a location has a water heater, for the bottom tab. Shares the state query's cache, but without polling and
+ * with a long stale time, so only the open heater page polls OSO. True while the heater is connected but unreadable
+ * (502/503), false on 404 and while not yet known.
+ */
+export function useHasWaterHeater(locationId: string | undefined): boolean {
+  const { data, error } = useQuery({
+    queryKey: ['water-heater', 'state', locationId],
+    queryFn: () => getWaterHeaterState(locationId!),
+    enabled: !!locationId,
+    retry: false,
+    staleTime: 5 * ONE_MINUTE,
+  })
+  return !!data || (!!error && !isNotFound(error))
+}
+
+/** The current time, refreshed every `intervalMs`, for text that moves on between fetches ("updated 2 minutes ago"). */
+export function useNow(intervalMs: number): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    return () => clearInterval(id)
+  }, [intervalMs])
+  return now
 }

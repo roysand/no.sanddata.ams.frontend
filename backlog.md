@@ -8,10 +8,11 @@ Rotate or replace a lost sensor (API) key used by the MQTTForwarder app. Deferre
 
 ## OSO water heater
 
-Reading the heater is built in the API (`no.sanddata.ams.api` spec 011, deployed 2026-11-19), and the frontend part
-(an Admin section to connect it, a dashboard card with its state) is specified in `specs/009-oso-water-heater/`.
-Still open for later: heating in the cheapest hours and pausing it to stay below the next capacity step (control
-from the API, a later API spec), and the heater's kWh and cost per day from the power samples the API now stores.
+Reading the heater is built in the API (`no.sanddata.ams.api` spec 011, deployed 2026-11-19) and in the frontend
+(`specs/009-oso-water-heater/`, built 2026-11-19: an Admin section to connect, replace and remove it, and a dashboard
+card with its live state). Still open for later: heating in the cheapest hours and pausing it to stay below the next
+capacity step (control from the API, a later API spec), and the heater's kWh and cost per day from the power samples
+the API now stores.
 
 ## Warnings
 

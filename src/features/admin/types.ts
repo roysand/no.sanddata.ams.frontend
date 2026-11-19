@@ -148,3 +148,20 @@ export interface CapacityStepTableInput {
   steps: CapacityStep[]
   confirmPastDate: boolean
 }
+
+/** The water heater connected to a location. There is no field for the key: the API never returns it. */
+export interface WaterHeaterSettings {
+  locationId: string
+  /** The device id shortened, for example `4b8814…49499d`. */
+  deviceIdHint: string
+  /** UTC ISO. */
+  connectedAt: string
+  /** UTC ISO; when the key or device id last changed. */
+  updatedAt: string
+}
+
+/** What the administrator types to connect a heater; sent once in the PUT body and kept nowhere else. */
+export interface WaterHeaterInput {
+  deviceId: string
+  subscriptionKey: string
+}

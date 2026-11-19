@@ -257,3 +257,44 @@ export interface MonthlyBill {
   nettleie: BillPart
   total: BillAmounts
 }
+
+export type WaterHeaterMode = 'None' | 'Holiday' | 'Supercharge' | 'BlueBattery'
+
+/** The OSO water heater's state, read from OSO when asked. A value OSO does not give is null, never 0. */
+export interface WaterHeaterState {
+  locationId: string
+  /** UTC ISO; when the heater last reported. */
+  readingTime: string
+  /** Seconds between `readingTime` and the server's clock; never negative. */
+  ageSeconds: number
+  /** True when `ageSeconds` > 900. */
+  isStale: boolean
+  isOnline: boolean
+  isHeating: boolean
+  setPointCelsius: number | null
+  temperatures: {
+    topCelsius: number | null
+    midCelsius: number | null
+    lowCelsius: number | null
+    fourthCelsius: number | null
+  }
+  hotWater: {
+    /** Litres of 40 °C water available now and at most. */
+    availableLitres40: number | null
+    maxLitres40: number | null
+    showers: number | null
+    baths: number | null
+    storedEnergyKwh: number | null
+  }
+  /** Small while idle (standby), so it is shown only while heating. */
+  powerKw: number
+  /** `start` and `end` are null for `None` and `BlueBattery`. */
+  specialMode: {
+    mode: WaterHeaterMode
+    start: string | null
+    end: string | null
+    profileName: string | null
+  }
+  /** OSO's undocumented numbers, passed on as they are. */
+  osoCodes: Record<string, number | null>
+}
