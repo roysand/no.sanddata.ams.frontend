@@ -4,10 +4,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BillCard } from './BillCard'
 import { ExportCard } from './ExportCard'
+import { HeatmapCard } from './HeatmapCard'
 import { StandbyCard } from './StandbyCard'
 import { UsageChart } from './UsageChart'
 
-/** The usage chart given the whole screen, the standby usage, the bill of each month and the CSV export. */
+/** The usage chart given the whole screen, the standby usage, usage by hour and weekday, the bill of each month and the CSV export. */
 export function HistoryPage() {
   const { all, selected, isLoading, error } = useSelectedLocation()
 
@@ -34,6 +35,7 @@ export function HistoryPage() {
     <div className="flex flex-col gap-4">
       <UsageChart locationId={selected.id} large />
       <StandbyCard locationId={selected.id} />
+      <HeatmapCard locationId={selected.id} />
       <BillCard locationId={selected.id} />
       <ExportCard locationId={selected.id} locationName={selected.name} />
     </div>
