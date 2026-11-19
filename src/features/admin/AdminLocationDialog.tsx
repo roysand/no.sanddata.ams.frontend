@@ -60,7 +60,8 @@ export function AdminLocationDialog({
   return (
     <>
       <Dialog open onOpenChange={(open) => !open && onClose()}>
-        <DialogContent>
+        {/* Taller than a phone screen with Access and Water heater, so it scrolls inside the viewport. */}
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit {location.name}</DialogTitle>
             <DialogDescription>
