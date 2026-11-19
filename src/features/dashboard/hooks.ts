@@ -12,7 +12,8 @@ import {
   getNorgesPrisSaving,
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
-import { periodPlan, type Period, type PeriodWindow } from './periods'
+import { addDays, dayStart, periodPlan, type Period, type PeriodWindow } from './periods'
+import { standbyDays, standbyFrom } from './standby'
 import { RECENT_WINDOW_MS, rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
 import type { Consumption } from './types'
 
@@ -240,5 +241,26 @@ export function useMonthlyBill(locationId: string | undefined, month: string, is
     queryFn: () => getMonthlyBill(locationId!, month),
     enabled: !!locationId,
     refetchInterval: isCurrent ? 15 * ONE_MINUTE : false,
+  })
+}
+
+/**
+ * The standby (base load) of the last 14 finished days, from their hourly use. It only changes when a day ends, so it
+ * is fetched once an hour; the key holds the last day, so a new day fetches anew.
+ */
+export function useStandby(locationId: string | undefined) {
+  const days = standbyDays(new Date())
+  const first = days[0]
+  const last = days[days.length - 1]
+  return useQuery({
+    queryKey: ['cost', 'standby', locationId, last],
+    queryFn: async () => {
+      const end = new Date(dayStart(addDays(last, 1)).getTime() - 1000).toISOString()
+      const page = await getHourlyCost(locationId!, dayStart(first).toISOString(), end)
+      return standbyFrom(page.items, new Date())
+    },
+    enabled: !!locationId,
+    staleTime: 60 * ONE_MINUTE,
+    refetchInterval: 60 * ONE_MINUTE,
   })
 }
