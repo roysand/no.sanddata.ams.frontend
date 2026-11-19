@@ -206,7 +206,7 @@ function ConnectForm({
           Cancel
         </Button>
         <Button type="submit" disabled={isPending}>
-          {isPending ? 'Checking with OSO…' : 'Save'}
+          {isPending ? 'Checking with OSO…' : 'Connect heater'}
         </Button>
       </div>
     </form>

@@ -99,7 +99,7 @@ describe('AdminLocationsPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.click(screen.getByRole('combobox', { name: 'Price zone' }))
     await user.click(await screen.findByRole('option', { name: 'NO5' }))
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Save location' }))
 
     await screen.findByRole('button', { name: 'Edit Cabin' })
     expect(body).toEqual({
@@ -143,7 +143,7 @@ describe('AdminLocationsPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.clear(screen.getByLabelText('Serial number'))
     await user.type(screen.getByLabelText('Serial number'), 'SN-2')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Save location' }))
 
     expect(await screen.findByText(/already uses this serial number/)).toBeInTheDocument()
     expect(screen.getByLabelText('Serial number')).toHaveValue('SN-2')
@@ -164,7 +164,7 @@ describe('AdminLocationsPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.click(screen.getByLabelText('Active'))
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Save location' }))
 
     expect(await screen.findByText('Deactivate Cabin?')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Keep active' }))
@@ -187,7 +187,7 @@ describe('AdminLocationsPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.click(screen.getByLabelText('Active'))
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Save location' }))
     await user.click(await screen.findByRole('button', { name: 'Deactivate' }))
 
     await screen.findByRole('button', { name: 'Edit Cabin' })

@@ -70,7 +70,7 @@ export function AdminLocationDialog({
           </DialogHeader>
 
           <LocationForm
-            submitLabel="Save"
+            submitLabel="Save location"
             defaultValues={{
               name: location.name,
               address: location.address,

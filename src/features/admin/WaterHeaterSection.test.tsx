@@ -82,7 +82,7 @@ describe('WaterHeaterSection', () => {
     const user = userEvent.setup()
     const { bodies } = setup()
     await user.click(await screen.findByRole('button', { name: 'Connect' }))
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Connect heater' }))
 
     expect(await screen.findByText('Device id is required')).toBeInTheDocument()
     expect(screen.getByText('Subscription key is required')).toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('WaterHeaterSection', () => {
     })
     await user.click(await screen.findByRole('button', { name: 'Connect' }))
     await fill(user, '4b88147ab00649499d', 'secret-key')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Connect heater' }))
 
     expect(await screen.findByRole('button', { name: 'Checking with OSO…' })).toBeDisabled()
     expect(await screen.findByText('Connected')).toBeInTheDocument()
@@ -120,7 +120,7 @@ describe('WaterHeaterSection', () => {
     })
     await user.click(await screen.findByRole('button', { name: 'Connect' }))
     await fill(user, '4b88147ab0', 'wrong-key')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Connect heater' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('OSO rejected the key or device id')
     expect(screen.getByLabelText('Device id')).toHaveValue('4b88147ab0')
@@ -139,7 +139,7 @@ describe('WaterHeaterSection', () => {
     })
     await user.click(await screen.findByRole('button', { name: 'Connect' }))
     await fill(user, 'abc', 'key')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Connect heater' }))
 
     expect(await screen.findByText('The device id is not valid')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
