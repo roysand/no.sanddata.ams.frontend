@@ -35,7 +35,7 @@ export function LocationPricingPage() {
   const [editing, setEditing] = useState<LocationPricing | null>(null)
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <Card className="bg-card shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl">Location pricing</CardTitle>
@@ -63,7 +63,6 @@ export function LocationPricingPage() {
                   <TableHead>Grid tariff</TableHead>
                   <TableHead>Supplier markup</TableHead>
                   <TableHead>Monthly fee</TableHead>
-                  <TableHead>Exemptions and type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-20" />
                 </TableRow>
@@ -78,6 +77,18 @@ export function LocationPricingPage() {
                           {detailsOf(location.locationId)}
                         </span>
                       )}
+                      {/* Exemptions and type, only when set: most locations have none. */}
+                      {(location.electricityTaxExempt ||
+                        location.vatExempt ||
+                        location.isHolidayHome) && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {location.electricityTaxExempt && (
+                            <Badge variant="outline">Tax exempt</Badge>
+                          )}
+                          {location.vatExempt && <Badge variant="outline">VAT exempt</Badge>}
+                          {location.isHolidayHome && <Badge variant="outline">Holiday home</Badge>}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {location.gridTariffName ?? <Badge variant="outline">Not set</Badge>}
@@ -89,15 +100,6 @@ export function LocationPricingPage() {
                       ) : (
                         formatMonthlyFee(location.supplierMonthlyFee)
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {location.electricityTaxExempt && (
-                          <Badge variant="outline">Tax exempt</Badge>
-                        )}
-                        {location.vatExempt && <Badge variant="outline">VAT exempt</Badge>}
-                        {location.isHolidayHome && <Badge variant="outline">Holiday home</Badge>}
-                      </div>
                     </TableCell>
                     <TableCell>
                       {location.isComplete ? (
