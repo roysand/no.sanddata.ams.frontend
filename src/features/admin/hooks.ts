@@ -4,6 +4,7 @@ import {
   addGridTariffRate,
   addNorgesPrisRate,
   addPriceRate,
+  connectWaterHeater,
   createGridTariff,
   createLocationForUser,
   createUser,
@@ -12,6 +13,7 @@ import {
   deleteNorgesPrisRate,
   deletePriceRate,
   deleteUser,
+  removeWaterHeater,
   getAdminLocations,
   getCapacitySteps,
   getGridTariffs,
@@ -19,6 +21,7 @@ import {
   getNorgesPrisRates,
   getPriceRates,
   getUsers,
+  getWaterHeaterSettings,
   resetPassword,
   setAdmin,
   setLocationLink,
@@ -27,7 +30,7 @@ import {
   updateLocationAsAdmin,
 } from './api'
 import type { LocationInput, LocationRole } from '../locations'
-import type { CapacityStepTableInput, LocationPricingInput } from './types'
+import type { CapacityStepTableInput, LocationPricingInput, WaterHeaterInput } from './types'
 
 export const PAGE_SIZE = 10
 
@@ -211,5 +214,36 @@ export function useCapacityStepActions(tariffId: string) {
       mutationFn: (validFrom: string) => deleteCapacitySteps(tariffId, validFrom),
       onSuccess: refresh,
     }),
+  }
+}
+
+const WATER_HEATER_KEY = ['admin', 'water-heater']
+
+/** The heater connected to a location, or `null` when none is. */
+export function useWaterHeaterSettings(locationId: string) {
+  return useQuery({
+    queryKey: [...WATER_HEATER_KEY, locationId],
+    queryFn: () => getWaterHeaterSettings(locationId),
+  })
+}
+
+/**
+ * Connect (or replace) and remove. Both refresh the Admin view and the dashboard card. The connect mutation holds the
+ * key in its variables, so it is dropped from the mutation cache at once (`gcTime: 0`); callers also `reset()` it.
+ */
+export function useWaterHeaterActions(locationId: string) {
+  const queryClient = useQueryClient()
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: [...WATER_HEATER_KEY, locationId] }),
+      queryClient.invalidateQueries({ queryKey: ['water-heater', 'state', locationId] }),
+    ])
+  return {
+    connect: useMutation({
+      mutationFn: (input: WaterHeaterInput) => connectWaterHeater(locationId, input),
+      onSuccess: refresh,
+      gcTime: 0,
+    }),
+    remove: useMutation({ mutationFn: () => removeWaterHeater(locationId), onSuccess: refresh }),
   }
 }

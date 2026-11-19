@@ -35,6 +35,16 @@ const secondsFormat = new Intl.DateTimeFormat('nb-NO', {
 /** "14:03:27" in Oslo time for a UTC ISO timestamp. */
 export const formatClockSeconds = (isoUtc: string) => secondsFormat.format(new Date(isoUtc))
 
+const osloDate = new Intl.DateTimeFormat('nb-NO', {
+  timeZone: OSLO,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+})
+
+/** "20.11.2026": the Oslo calendar date of a UTC ISO timestamp. */
+export const formatOsloDate = (isoUtc: string) => osloDate.format(new Date(isoUtc))
+
 /** "2026-10-03" -> "03.10." */
 export const formatDay = (isoDate: string) => `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.`
 
@@ -178,3 +188,33 @@ export function formatMonth(month: string): string {
 
 /** 5.4 -> "5,4 kW" */
 export const formatKw = (value: number) => `${oneDecimal.format(value)} kW`
+
+/** 70.1 -> "70,1 °C" */
+export const formatCelsius = (value: number) => `${oneDecimal.format(value)} °C`
+
+/** How old a reading is, in words: "updated just now", "updated 5 minutes ago", "updated 2 hours ago". */
+export function formatAge(seconds: number): string {
+  const age = Math.max(seconds, 0)
+  if (age < 60) return 'updated just now'
+  if (age < 3600) {
+    const minutes = Math.floor(age / 60)
+    return `updated ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`
+  }
+  const hours = Math.floor(age / 3600)
+  return `updated ${hours} ${hours === 1 ? 'hour' : 'hours'} ago`
+}
+
+const osloDayKey = (at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: OSLO }).format(at)
+
+/** "today 19:40", "tomorrow 19:40" or "25.11. 19:40", in Oslo time. */
+export function formatOsloDateTime(isoUtc: string, now = new Date()): string {
+  const at = new Date(isoUtc)
+  const day = osloDayKey(at)
+  const clock = formatClock(isoUtc)
+  if (day === osloDayKey(now)) return `today ${clock}`
+  // Step the calendar date, not 24 hours: an Oslo day around a clock change has 23 or 25 hours.
+  const tomorrow = new Date(`${osloDayKey(now)}T00:00:00Z`)
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+  if (day === tomorrow.toISOString().slice(0, 10)) return `tomorrow ${clock}`
+  return `${formatDay(day)} ${clock}`
+}

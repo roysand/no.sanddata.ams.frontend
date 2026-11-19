@@ -14,6 +14,7 @@ import {
   type LocationFormValues,
 } from '../locations'
 import { LocationAccessList } from './LocationAccessList'
+import { WaterHeaterSection } from './WaterHeaterSection'
 import { useUpdateLocationAsAdmin } from './hooks'
 
 const LOCATION_FIELDS = ['name', 'address', 'serialNumber', 'zone'] as const
@@ -84,6 +85,8 @@ export function AdminLocationDialog({
           />
 
           <LocationAccessList location={location} />
+
+          <WaterHeaterSection location={location} />
 
           {location.apiKey && (
             <p className="text-xs text-muted-foreground">

@@ -9,6 +9,7 @@ import type {
   MonthlyBill,
   NorgesPrisSaving,
   PagedHourlyCost,
+  WaterHeaterState,
 } from './types'
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -88,4 +89,9 @@ export function getCapacityCharge(locationId: string, month: string) {
 /** The bill of a month (yyyy-MM), line by line as the invoice: final for an ended month, an estimate for the current. */
 export function getMonthlyBill(locationId: string, month: string) {
   return api.get<MonthlyBill>(`/api/electricity-cost/bill?${query({ locationId, month })}`)
+}
+
+/** The water heater's state, read from OSO now. 404 when the location has no heater (or is not visible). */
+export function getWaterHeaterState(locationId: string) {
+  return api.get<WaterHeaterState>(`/api/locations/${locationId}/water-heater`)
 }

@@ -257,3 +257,23 @@ export function toCapacityStepTableInput(
     confirmPastDate: startsInThePast && values.confirmPast,
   }
 }
+
+// Same rules as the API's water heater validator (spec 011), so mistakes are caught before OSO is asked. The key is
+// not trimmed: a stray space is reported instead of being removed silently.
+const WATER_HEATER_MAX = 200
+
+export const waterHeaterSchema = z.object({
+  deviceId: z
+    .string()
+    .trim()
+    .min(1, 'Device id is required')
+    .max(WATER_HEATER_MAX, 'At most 200 characters')
+    .regex(/^[0-9a-fA-F]+$/, 'Device id can only contain 0-9 and a-f'),
+  subscriptionKey: z
+    .string()
+    .min(1, 'Subscription key is required')
+    .max(WATER_HEATER_MAX, 'At most 200 characters')
+    .regex(/^\S+$/, 'The key cannot contain spaces'),
+})
+
+export type WaterHeaterFormValues = z.infer<typeof waterHeaterSchema>
