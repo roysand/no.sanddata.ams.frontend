@@ -6,6 +6,7 @@ import {
   getDailyCostRange,
   getDayPrices,
   getHourlyCost,
+  getHourlyCostPage,
   getLatestMeasurement,
   getMinuteConsumption,
   getMonthlyBill,
@@ -13,6 +14,7 @@ import {
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
 import { addDays, dayStart, periodPlan, type Period, type PeriodWindow } from './periods'
+import { heatmapDays, heatmapFrom } from './heatmap'
 import { standbyDays, standbyFrom } from './standby'
 import { RECENT_WINDOW_MS, rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
 import type { Consumption } from './types'
@@ -258,6 +260,27 @@ export function useStandby(locationId: string | undefined) {
       const end = new Date(dayStart(addDays(last, 1)).getTime() - 1000).toISOString()
       const page = await getHourlyCost(locationId!, dayStart(first).toISOString(), end)
       return standbyFrom(page.items, new Date())
+    },
+    enabled: !!locationId,
+    staleTime: 60 * ONE_MINUTE,
+    refetchInterval: 60 * ONE_MINUTE,
+  })
+}
+
+/**
+ * Average use per hour of each weekday over the last 4 finished weeks (672 hours, one page). It only changes when a
+ * day ends, so it is fetched once an hour; the key holds the last day, so a new day fetches anew.
+ */
+export function useHeatmap(locationId: string | undefined) {
+  const days = heatmapDays(new Date())
+  const first = days[0]
+  const last = days[days.length - 1]
+  return useQuery({
+    queryKey: ['cost', 'heatmap', locationId, last],
+    queryFn: async () => {
+      const end = new Date(dayStart(addDays(last, 1)).getTime() - 1000).toISOString()
+      const page = await getHourlyCostPage(locationId!, dayStart(first).toISOString(), end, 1, 1000)
+      return heatmapFrom(page.items)
     },
     enabled: !!locationId,
     staleTime: 60 * ONE_MINUTE,
