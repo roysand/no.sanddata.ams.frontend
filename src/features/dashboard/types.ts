@@ -171,3 +171,89 @@ export interface CapacityCharge {
   /** null for the top step. */
   kwToNextStep: number | null
 }
+
+// ---- Monthly bill (API spec 010, GET /api/electricity-cost/bill) ------------------------------------------------
+
+/** `Final` once the month has ended; `Estimate` for the current month (so far + projected). */
+export type BillStatus = 'Estimate' | 'Final'
+
+/** The invoice lines, in the order the API sends them. `NorgesPrisCredit` only for a Norgespris location. */
+export type BillLineCode =
+  | 'SupplierMonthlyFee'
+  | 'SpotEnergy'
+  | 'SupplierMarkup'
+  | 'GridEnergyDay'
+  | 'GridEnergyNight'
+  | 'CapacityCharge'
+  | 'ElectricityTax'
+  | 'EnovaFee'
+  | 'NorgesPrisCredit'
+
+/** NOK at full precision (the client rounds). `amount = soFar + projected = amountExclVat + vat`. */
+export interface BillAmounts {
+  soFar: number
+  projected: number
+  amount: number
+  amountExclVat: number
+  vat: number
+}
+
+/**
+ * One invoice line. A line with `set: false` (its setting is missing) has null amounts and is not in the sums of its
+ * part or the total. `complete: false` means some hours could not be priced for it.
+ */
+export interface BillLine {
+  /** A `BillLineCode`; a code this app does not know is still shown. */
+  code: BillLineCode | string
+  unit: 'kWh' | 'Month'
+  /** kWh (so far + projected), or 1 for a monthly line. */
+  quantity: number
+  /** NOK per unit including VAT; null when not set or the quantity is 0. */
+  unitPrice: number | null
+  /** Fraction: 0.25, or 0 when exempt and for the Norgespris credit. */
+  vatRate: number
+  set: boolean
+  complete: boolean
+  soFar: number | null
+  projected: number | null
+  amount: number | null
+  amountExclVat: number | null
+  vat: number | null
+}
+
+export interface BillPart extends BillAmounts {
+  name: 'Strom' | 'Nettleie'
+  lines: BillLine[]
+}
+
+export interface BillProjection {
+  fromUtc: string
+  hours: number
+  kwh: number
+  basedOnHours: number
+  /** How many days of recent use the projection is based on; 7 normally, fewer for a new location, 0 with none. */
+  basedOnDays: number
+  /** NOK per kWh excluding VAT; null when there was no spot price in the window. */
+  assumedSpotPricePerKwh: number | null
+}
+
+/** The bill of one location and month. `Final` ⇒ `projection` null and every `projected` 0. */
+export interface MonthlyBill {
+  /** yyyy-MM */
+  month: string
+  status: BillStatus
+  pricingModel: PricingModel
+  /** False when a line is not set or not complete, or some hours with readings could not be priced. */
+  isComplete: boolean
+  hours: { inMonth: number; passed: number; withReadings: number; priced: number }
+  projection: BillProjection | null
+  capacity: {
+    /** True for the current month: a higher peak can still raise the step. */
+    provisional: boolean
+    averageKw: number | null
+    step: { lowerKw: number; upperKw: number | null } | null
+  }
+  strom: BillPart
+  nettleie: BillPart
+  total: BillAmounts
+}

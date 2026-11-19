@@ -6,6 +6,7 @@ import type {
   DailyCost,
   DayPrices,
   LatestMeasurement,
+  MonthlyBill,
   NorgesPrisSaving,
   PagedHourlyCost,
 } from './types'
@@ -82,4 +83,9 @@ export function getNorgesPrisSaving(locationId: string) {
 /** The grid capacity charge of a month (yyyy-MM): the step, the amount and the three daily peaks behind it. */
 export function getCapacityCharge(locationId: string, month: string) {
   return api.get<CapacityCharge>(`/api/electricity-cost/capacity?${query({ locationId, month })}`)
+}
+
+/** The bill of a month (yyyy-MM), line by line as the invoice: final for an ended month, an estimate for the current. */
+export function getMonthlyBill(locationId: string, month: string) {
+  return api.get<MonthlyBill>(`/api/electricity-cost/bill?${query({ locationId, month })}`)
 }

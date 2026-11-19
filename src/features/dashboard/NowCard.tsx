@@ -143,7 +143,8 @@ export function NowCard({ locationId }: { locationId: string }) {
 
         <p className="mt-3 text-xs text-muted-foreground">
           Prices include VAT, the grid charge and taxes. The supplier&apos;s monthly fee is not
-          included; the grid capacity charge is shown in its own card.
+          included; the grid capacity charge is shown in its own card. The expected bill for the
+          month includes both.
         </p>
         <PriceBreakdownButton current={data} />
 

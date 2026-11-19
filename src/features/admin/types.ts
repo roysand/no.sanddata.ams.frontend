@@ -60,8 +60,11 @@ export interface LocationPricing {
   name: string
   gridTariffId: string | null
   gridTariffName: string | null
-  /** NOK per kWh excluding VAT, added on spot terms only. */
+  /** NOK per kWh excluding VAT, added to every kWh, also under Norgespris. */
   supplierMarkupPerKwh: number
+  /** The supplier's fee in NOK per month excluding VAT; null = not set (the bill's fee line is "not set"). */
+  supplierMonthlyFee: number | null
+  /** True only when both a grid tariff and the supplier monthly fee are set. */
   isComplete: boolean
   /** No electricity tax; the Enova fee still applies. */
   electricityTaxExempt: boolean
@@ -74,6 +77,8 @@ export interface LocationPricing {
 export interface LocationPricingInput {
   gridTariffId: string | null
   supplierMarkupPerKwh: number
+  /** NOK per month excluding VAT. Omitted keeps the stored value; the API cannot clear it back to not set. */
+  supplierMonthlyFee?: number
   electricityTaxExempt: boolean
   vatExempt: boolean
   isHolidayHome: boolean

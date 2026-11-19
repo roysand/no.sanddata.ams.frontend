@@ -8,6 +8,7 @@ import {
   getHourlyCost,
   getLatestMeasurement,
   getMinuteConsumption,
+  getMonthlyBill,
   getNorgesPrisSaving,
 } from './api'
 import { osloDayStartUtc, sameHourYesterday } from './format'
@@ -214,6 +215,19 @@ export function useCapacityCharge(
   return useQuery({
     queryKey: ['cost', 'capacity', locationId, month],
     queryFn: () => getCapacityCharge(locationId!, month),
+    enabled: !!locationId,
+    refetchInterval: isCurrent ? 15 * ONE_MINUTE : false,
+  })
+}
+
+/**
+ * The bill of a month. Only the current month changes as readings arrive, so only it is refreshed. The key starts
+ * with `cost`, so an admin pricing change refetches it.
+ */
+export function useMonthlyBill(locationId: string | undefined, month: string, isCurrent: boolean) {
+  return useQuery({
+    queryKey: ['cost', 'bill', locationId, month],
+    queryFn: () => getMonthlyBill(locationId!, month),
     enabled: !!locationId,
     refetchInterval: isCurrent ? 15 * ONE_MINUTE : false,
   })

@@ -30,31 +30,40 @@ const AMOUNT_MAX = 100
 const AMOUNT_DECIMALS = 4
 
 export const amountField = (label: string, max = AMOUNT_MAX) =>
+  z.string().trim().min(1, `${label} is required`).superRefine(amountRules(label, max))
+
+/** An amount that may be left empty; empty means "keep what is stored". */
+export const optionalAmountField = (label: string, max = AMOUNT_MAX) =>
   z
     .string()
     .trim()
-    .min(1, `${label} is required`)
     .superRefine((text, ctx) => {
-      const value = parseAmount(text)
-      if (value === null) {
-        ctx.addIssue({
-          code: 'custom',
-          message: text.startsWith('-')
-            ? `${label} cannot be negative`
-            : `${label} must be a number, for example 0,50`,
-        })
-      } else if (value > max) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `${label} can be at most ${max}`,
-        })
-      } else if (decimalsOf(text) > AMOUNT_DECIMALS) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `${label} can have at most ${AMOUNT_DECIMALS} decimals`,
-        })
-      }
+      if (text !== '') amountRules(label, max)(text, ctx)
     })
+
+function amountRules(label: string, max: number) {
+  return (text: string, ctx: z.RefinementCtx) => {
+    const value = parseAmount(text)
+    if (value === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: text.startsWith('-')
+          ? `${label} cannot be negative`
+          : `${label} must be a number, for example 0,50`,
+      })
+    } else if (value > max) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${label} can be at most ${max}`,
+      })
+    } else if (decimalsOf(text) > AMOUNT_DECIMALS) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${label} can have at most ${AMOUNT_DECIMALS} decimals`,
+      })
+    }
+  }
+}
 
 /**
  * Form values are text, as typed. `today` is the Norwegian calendar date (`yyyy-MM-dd`): a start date on or before it
@@ -83,9 +92,13 @@ const START_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a start date')
 /** Id of the chosen grid tariff, or `none` to clear it. */
 export const NO_TARIFF = 'none'
 
+const MONTHLY_FEE_MAX = 10_000
+
 export const locationPricingSchema = z.object({
   gridTariffId: z.string().min(1, 'Choose a tariff or None'),
   supplierMarkupPerKwh: amountField('Markup'),
+  // Same rule as the API's Validation.InvalidMonthlyFee: 0..10 000 with at most 4 decimals. Empty keeps the stored fee.
+  supplierMonthlyFee: optionalAmountField('Monthly fee', MONTHLY_FEE_MAX),
   electricityTaxExempt: z.boolean(),
   vatExempt: z.boolean(),
   isHolidayHome: z.boolean(),

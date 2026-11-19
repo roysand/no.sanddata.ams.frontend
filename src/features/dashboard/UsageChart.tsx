@@ -257,7 +257,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
         {unit === 'nok' && (
           <p className="mt-2 text-xs text-muted-foreground">
             Cost includes VAT, the grid charge and taxes. The supplier&apos;s monthly fee and the
-            grid capacity charge are not included.
+            grid capacity charge are not included; the bill for the month includes them.
           </p>
         )}
 

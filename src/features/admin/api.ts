@@ -120,13 +120,15 @@ export function deleteNorgesPrisRate(id: string) {
 
 /** Every location with its grid tariff and supplier markup, including ones the caller is not linked to. */
 export async function getLocationPricing(): Promise<LocationPricing[]> {
-  type Flags = 'electricityTaxExempt' | 'vatExempt' | 'isHolidayHome'
+  type Optional = 'electricityTaxExempt' | 'vatExempt' | 'isHolidayHome' | 'supplierMonthlyFee'
   const items = await api.get<
-    (Omit<LocationPricing, Flags> & Partial<Pick<LocationPricing, Flags>>)[]
+    (Omit<LocationPricing, Optional> & Partial<Pick<LocationPricing, Optional>>)[]
   >('/api/admin/location-pricing')
-  // An API older than the exemptions sends no flags: read them as not set.
+  // An API older than the exemptions sends no flags, and one older than the bill (API spec 010) no monthly fee: read
+  // them as not set.
   return items.map((item) => ({
     ...item,
+    supplierMonthlyFee: item.supplierMonthlyFee ?? null,
     electricityTaxExempt: item.electricityTaxExempt ?? false,
     vatExempt: item.vatExempt ?? false,
     isHolidayHome: item.isHolidayHome ?? false,

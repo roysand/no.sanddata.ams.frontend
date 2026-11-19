@@ -41,6 +41,11 @@ const FLAGS = [
   },
 ] as const
 
+/** The API refuses the fee with this code, or as a validation error on the field. */
+const isFeeError = (error: ApiError) =>
+  error.code === 'Validation.InvalidMonthlyFee' ||
+  Object.keys(error.fieldErrors ?? {}).some((field) => /monthlyfee/i.test(field))
+
 /** 0.02 -> "0,02": the way a Norwegian types it. */
 const asInput = (value: number) => String(value).replace('.', ',')
 
@@ -54,6 +59,7 @@ export function EditLocationPricingDialog({
   const tariffs = useGridTariffs()
   const { mutateAsync } = useSetLocationPricing()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [feeError, setFeeError] = useState<string | null>(null)
 
   const {
     register,
@@ -65,6 +71,8 @@ export function EditLocationPricingDialog({
     defaultValues: {
       gridTariffId: location.gridTariffId ?? NO_TARIFF,
       supplierMarkupPerKwh: asInput(location.supplierMarkupPerKwh),
+      supplierMonthlyFee:
+        location.supplierMonthlyFee === null ? '' : asInput(location.supplierMonthlyFee),
       electricityTaxExempt: location.electricityTaxExempt,
       vatExempt: location.vatExempt,
       isHolidayHome: location.isHolidayHome,
@@ -73,12 +81,16 @@ export function EditLocationPricingDialog({
 
   const onSubmit = async (values: LocationPricingFormValues) => {
     setServerError(null)
+    setFeeError(null)
+    const fee = values.supplierMonthlyFee.trim()
     try {
       await mutateAsync({
         locationId: location.locationId,
         input: {
           gridTariffId: values.gridTariffId === NO_TARIFF ? null : values.gridTariffId,
           supplierMarkupPerKwh: amountOf(values.supplierMarkupPerKwh),
+          // Left empty, the fee is not sent and the API keeps the stored value.
+          ...(fee === '' ? {} : { supplierMonthlyFee: amountOf(fee) }),
           electricityTaxExempt: values.electricityTaxExempt,
           vatExempt: values.vatExempt,
           isHolidayHome: values.isHolidayHome,
@@ -86,7 +98,8 @@ export function EditLocationPricingDialog({
       })
       onClose()
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : 'Could not save the pricing')
+      if (error instanceof ApiError && isFeeError(error)) setFeeError(error.message)
+      else setServerError(error instanceof ApiError ? error.message : 'Could not save the pricing')
     }
   }
 
@@ -148,10 +161,32 @@ export function EditLocationPricingDialog({
               {...register('supplierMarkupPerKwh')}
             />
             <p className="text-sm text-muted-foreground">
-              Added on spot terms only; there is no markup under Norgespris.
+              Added to every kWh, also under Norgespris.
             </p>
             {errors.supplierMarkupPerKwh && (
               <p className="text-sm text-destructive">{errors.supplierMarkupPerKwh.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="supplierMonthlyFee">
+              Supplier monthly fee (kr per month excluding VAT)
+            </Label>
+            <Input
+              id="supplierMonthlyFee"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="27,20"
+              {...register('supplierMonthlyFee')}
+            />
+            <p className="text-sm text-muted-foreground">
+              Enter 0 for a supplier without a monthly fee. Leaving it empty keeps the current
+              value.
+            </p>
+            {(errors.supplierMonthlyFee || feeError) && (
+              <p className="text-sm text-destructive">
+                {errors.supplierMonthlyFee?.message ?? feeError}
+              </p>
             )}
           </div>
 

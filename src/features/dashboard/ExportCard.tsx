@@ -121,8 +121,8 @@ export function ExportCard({
 
         <p className="text-xs text-muted-foreground">
           Cost includes VAT, the grid charge and taxes, but not the supplier&apos;s monthly fee or
-          the grid capacity charge. The file uses semicolons and decimal commas, as Excel expects
-          with Norwegian settings.
+          the grid capacity charge; the bill for each month, above, includes them. The file uses
+          semicolons and decimal commas, as Excel expects with Norwegian settings.
         </p>
       </CardContent>
     </Card>

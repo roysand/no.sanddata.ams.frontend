@@ -4,6 +4,10 @@ const OSLO = 'Europe/Oslo'
 
 const nok = new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK' })
 const decimal = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 2 })
+const twoDecimals = new Intl.NumberFormat('nb-NO', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
 const hourFormat = new Intl.DateTimeFormat('nb-NO', {
   timeZone: OSLO,
   hour: '2-digit',
@@ -12,6 +16,8 @@ const hourFormat = new Intl.DateTimeFormat('nb-NO', {
 
 export const formatNok = (value: number) => nok.format(value)
 export const formatKwh = (value: number) => `${decimal.format(value)} kWh`
+/** Always two decimals, as on an invoice: 240.31 -> "240,31 kWh", 1 -> "1,00 kWh". */
+export const formatKwh2 = (value: number) => `${twoDecimals.format(value)} kWh`
 const rate = new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 export const formatRate = (value: number) => `${rate.format(value)} kr/kWh`
 

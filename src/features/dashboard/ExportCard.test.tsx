@@ -46,6 +46,15 @@ describe('ExportCard', () => {
     expect(await saved!.text()).toContain('2026-11-01;20,000;Spot price;25,00;Norgespris;22,00')
   })
 
+  it('says what the cost leaves out, and that the bill for each month includes it', () => {
+    renderWithQuery(<ExportCard locationId="l1" locationName="Home" />)
+    expect(
+      screen.getByText(
+        /not the supplier's monthly fee or the grid capacity charge; the bill for each month, above, includes them/,
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('will not export a range that ends before it starts', async () => {
     renderWithQuery(<ExportCard locationId="l1" locationName="Home" />)
 

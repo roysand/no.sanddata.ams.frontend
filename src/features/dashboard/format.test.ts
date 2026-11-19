@@ -2,6 +2,7 @@ import {
   addMonths,
   formatClockSeconds,
   formatKw,
+  formatKwh2,
   formatMonth,
   osloMonth,
   sameHourYesterday,
@@ -66,5 +67,13 @@ describe('formatMonth and formatKw', () => {
   it('shows kW with one decimal and a decimal comma', () => {
     expect(formatKw(5.4)).toBe('5,4 kW')
     expect(formatKw(6)).toBe('6,0 kW')
+  })
+})
+
+describe('formatKwh2', () => {
+  it('always shows two decimals, as an invoice does', () => {
+    expect(formatKwh2(240.31)).toBe('240,31 kWh')
+    expect(formatKwh2(1)).toBe('1,00 kWh')
+    expect(formatKwh2(95.575)).toBe('95,58 kWh')
   })
 })

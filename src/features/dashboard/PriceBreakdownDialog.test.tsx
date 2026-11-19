@@ -115,6 +115,9 @@ describe('PriceBreakdownButton and dialog', () => {
 
     expect(within(dialog).getByText(/excluding VAT; the total includes VAT/)).toBeInTheDocument()
     expect(within(dialog).getByText(/monthly fee is not included/)).toBeInTheDocument()
+    expect(
+      within(dialog).getByText(/The expected bill for the month includes both\./),
+    ).toBeInTheDocument()
     expect(within(dialog).getByText(/capacity charge is a monthly amount/)).toBeInTheDocument()
     expect(within(dialog).queryByText(/grid fixed fee/)).not.toBeInTheDocument()
   })
