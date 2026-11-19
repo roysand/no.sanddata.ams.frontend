@@ -102,6 +102,7 @@ describe('WaterHeaterSection', () => {
     await user.click(screen.getByRole('button', { name: 'Connect heater' }))
 
     expect(await screen.findByRole('button', { name: 'Checking with OSO…' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
     expect(await screen.findByText('Connected')).toBeInTheDocument()
     expect(screen.getByText('4b8814…49499d')).toBeInTheDocument()
     expect(screen.getByText(/20\.11\.2026/)).toBeInTheDocument()
@@ -145,10 +146,25 @@ describe('WaterHeaterSection', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('connects in a dialog of its own', async () => {
+    const user = userEvent.setup()
+    setup()
+    await user.click(await screen.findByRole('button', { name: 'Connect' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Connect water heater' })
+    expect(within(dialog).getByLabelText('Device id')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Connect heater' })).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('opens an empty form to replace a connected heater', async () => {
     const user = userEvent.setup()
     setup({ connected: true })
     await user.click(await screen.findByRole('button', { name: 'Replace' }))
+
+    expect(screen.getByRole('dialog', { name: 'Replace water heater' })).toBeInTheDocument()
 
     expect(screen.getByLabelText('Device id')).toHaveValue('')
     expect(screen.getByLabelText('Subscription key')).toHaveValue('')

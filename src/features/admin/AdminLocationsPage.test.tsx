@@ -114,6 +114,36 @@ describe('AdminLocationsPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('puts Cancel and Save location together at the bottom, after the water heater', async () => {
+    setup()
+    server.use(
+      http.get('*/api/admin/locations/:id/water-heater', () =>
+        HttpResponse.json({ errors: { generalErrors: ['Not connected'] } }, { status: 404 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithQuery(<AdminLocationsPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
+    const dialog = screen.getByRole('dialog')
+    await within(dialog).findByText('No water heater connected')
+
+    // The last two buttons in the dialog (the close icon sits outside the content flow).
+    const buttons = within(dialog)
+      .getAllByRole('button')
+      .filter((button) => button.textContent !== 'Close')
+    expect(buttons.slice(-2).map((button) => button.textContent)).toEqual([
+      'Cancel',
+      'Save location',
+    ])
+    const heater = within(dialog).getByRole('region', { name: 'Water heater' })
+    const save = within(dialog).getByRole('button', { name: 'Save location' })
+    expect(heater.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('shows the key facts but never a key', async () => {
     setup()
     const user = userEvent.setup()

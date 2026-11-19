@@ -54,10 +54,17 @@ Phase 0 of [plan.md](plan.md). The Technical Context had no open questions; thes
 
 ## R6. Form placement in the Admin dialog
 
-- **Decision**: An inline form inside the Water heater section (toggled by Connect / Replace), with Cancel. Remove uses
-  a separate confirmation `Dialog` rendered next to the main one, like `ConfirmDeactivateDialog`.
-- **Rationale**: A dialog inside a dialog is awkward on a phone; the existing Access section is inline too.
-- **Alternatives**: A separate connect dialog.
+- **Decision** (changed 2026-11-19 after testing): Connect / Replace open `ConnectWaterHeaterDialog`, a dialog of its
+  own with Cancel and "Connect heater" at its bottom; Cancel and Escape wait while OSO is being asked. Remove uses
+  `RemoveWaterHeaterDialog`. The location dialog's own Cancel and "Save location" sit together in a footer at the very
+  bottom, below Access and Water heater (the button reaches the form through `form={id}`; `LocationForm` takes
+  `formId` and `showSubmit`). The location dialog scrolls inside 90dvh.
+- **Rationale**: The first version had the form inline in the section. On a phone the location dialog was taller than
+  the screen and could not scroll, and there were two "Save" buttons; the one in reach saved the location and never
+  asked OSO, so a wrong pair seemed to give no error. A separate dialog keeps the two saves apart, and one footer at
+  the bottom makes clear what "Save location" saves.
+- **Alternatives**: The inline form (the first version, see above); renaming the buttons only (done too, not enough
+  on its own).
 
 ## R7. The reading's age
 

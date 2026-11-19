@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -18,6 +20,7 @@ import { WaterHeaterSection } from './WaterHeaterSection'
 import { useUpdateLocationAsAdmin } from './hooks'
 
 const LOCATION_FIELDS = ['name', 'address', 'serialNumber', 'zone'] as const
+const FORM_ID = 'admin-location-form'
 
 /** Lets an administrator change every field of a location. The sensor key is shown as facts only. */
 export function AdminLocationDialog({
@@ -70,7 +73,8 @@ export function AdminLocationDialog({
           </DialogHeader>
 
           <LocationForm
-            submitLabel="Save location"
+            formId={FORM_ID}
+            showSubmit={false}
             defaultValues={{
               name: location.name,
               address: location.address,
@@ -80,7 +84,6 @@ export function AdminLocationDialog({
               isActive: location.isActive,
             }}
             onSubmit={submit}
-            serverError={serverError}
             fieldErrors={fieldErrors}
             isSubmitting={update.isPending}
           />
@@ -94,6 +97,23 @@ export function AdminLocationDialog({
               Sensor key …{location.apiKey.hint} · {location.apiKey.status}
             </p>
           )}
+
+          {/* Next to the buttons, so a refusal is seen where Save was pressed. */}
+          {serverError && (
+            <p className="text-sm text-destructive" role="alert">
+              {serverError}
+            </p>
+          )}
+
+          {/* Access and Water heater save on their own; these buttons are for the location fields above. */}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" form={FORM_ID} disabled={update.isPending}>
+              {update.isPending ? 'Saving…' : 'Save location'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

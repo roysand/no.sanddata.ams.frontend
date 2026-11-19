@@ -10,8 +10,9 @@ Two pieces on top of the API's spec 011 (deployed 2026-11-19):
 
 1. **Admin**: a "Water heater" section in `AdminLocationDialog`, below Access. It reads
    `GET /api/admin/locations/{id}/water-heater` (404 → "No water heater connected"), connects or replaces with `PUT`
-   (an inline form: device id + password-style key, Zod rules that mirror the API's validator, "Checking with OSO…"
-   while waiting) and removes with `DELETE` after a confirmation dialog. The key lives only in the form and is never
+   (in its own dialog: device id + password-style key, Zod rules that mirror the API's validator, "Checking with
+   OSO…" while waiting) and removes with `DELETE` after a confirmation dialog. The location dialog's Cancel and "Save
+   location" sit together at its bottom (research R6). The key lives only in the form and is never
    kept in the query or mutation cache.
 2. **Dashboard**: a `WaterHeaterCard` placed after `RecentUsage`. It polls `GET /api/locations/{id}/water-heater`
    once a minute while the page is visible, renders nothing on 404, shows the API's message on 502/503, and otherwise
@@ -83,9 +84,10 @@ specs/009-oso-water-heater/
 
 ```text
 src/features/admin/
-├── AdminLocationDialog.tsx          # + <WaterHeaterSection location={location} /> below Access
+├── AdminLocationDialog.tsx          # + <WaterHeaterSection /> below Access; Cancel + Save location in the footer
 ├── WaterHeaterSection.tsx           # new: status, Connect/Replace form, Remove
 ├── WaterHeaterSection.test.tsx      # new
+├── ConnectWaterHeaterDialog.tsx     # new: the connect / replace form in its own dialog
 ├── RemoveWaterHeaterDialog.tsx      # new: confirmation ("stored power history is kept")
 ├── api.ts                           # + getWaterHeaterSettings (404 → null), connectWaterHeater, removeWaterHeater
 ├── hooks.ts                         # + useWaterHeaterSettings, useWaterHeaterActions

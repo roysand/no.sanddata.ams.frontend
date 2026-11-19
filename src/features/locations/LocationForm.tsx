@@ -23,6 +23,12 @@ interface LocationFormProps {
   isSubmitting?: boolean
   /** Start values, for editing an existing location. */
   defaultValues?: Partial<LocationFormValues>
+  /**
+   * The form's id. With `showSubmit={false}` the caller renders its own submit button elsewhere (e.g. a dialog
+   * footer) and links it with `form={formId}`.
+   */
+  formId?: string
+  showSubmit?: boolean
 }
 
 export function LocationForm({
@@ -32,6 +38,8 @@ export function LocationForm({
   fieldErrors,
   isSubmitting,
   defaultValues,
+  formId,
+  showSubmit = true,
 }: LocationFormProps) {
   const {
     register,
@@ -58,7 +66,7 @@ export function LocationForm({
   }, [fieldErrors, setError])
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
         <Input id="name" autoComplete="off" {...register('name')} />
@@ -133,9 +141,11 @@ export function LocationForm({
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting || submitting}>
-        {isSubmitting || submitting ? 'Saving…' : submitLabel}
-      </Button>
+      {showSubmit && (
+        <Button type="submit" disabled={isSubmitting || submitting}>
+          {isSubmitting || submitting ? 'Saving…' : submitLabel}
+        </Button>
+      )}
     </form>
   )
 }
