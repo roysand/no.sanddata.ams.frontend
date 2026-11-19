@@ -3,6 +3,7 @@ import { SELF_SERVICE_ENABLED, useSelectedLocation } from '../locations'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CapacityCard } from './CapacityCard'
+import { ExpectedBillCard } from './ExpectedBillCard'
 import { NowCard } from './NowCard'
 import { CheapestTimeCard } from './CheapestTimeCard'
 import { PriceTimeline } from './PriceTimeline'
@@ -66,6 +67,7 @@ export function DashboardPage() {
         hasNorgesPriceAgreement={selected.hasNorgesPriceAgreement}
       />
       <CapacityCard locationId={selected.id} />
+      <ExpectedBillCard locationId={selected.id} />
       <UsageChart locationId={selected.id} />
       <CheapestTimeCard locationId={selected.id} />
       <PriceTimeline locationId={selected.id} />

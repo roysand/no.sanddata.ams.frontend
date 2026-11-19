@@ -167,7 +167,7 @@ export function PriceBreakdownDialog({
         <p className="text-xs text-muted-foreground">
           Energy, markup, grid charge and taxes are excluding VAT; the total includes VAT. The
           supplier&apos;s monthly fee is not included, and the grid capacity charge is a monthly
-          amount shown in its own card.
+          amount shown in its own card. The expected bill for the month includes both.
         </p>
       </DialogContent>
     </Dialog>

@@ -10,6 +10,9 @@ export const formatRateDate = (isoDate: string) =>
 /** 0.5 -> "0,50 kr/kWh"; keeps up to four decimals, the API's precision. */
 export const formatAmount = (value: number) => `${amount.format(value)} kr/kWh`
 
+/** 27.2 -> "27,20 kr/month"; a fee is stored excluding VAT. */
+export const formatMonthlyFee = (value: number) => `${amount.format(value)} kr/month`
+
 /**
  * Reads an amount typed by a person: comma or dot as the decimal separator, surrounding spaces ignored.
  * Returns null for anything that is not a plain non-negative decimal number.

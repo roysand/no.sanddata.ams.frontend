@@ -95,7 +95,7 @@ describe('UsageChart', () => {
 
     expect(
       await screen.findByText(
-        "Cost includes VAT, the grid charge and taxes. The supplier's monthly fee and the grid capacity charge are not included.",
+        "Cost includes VAT, the grid charge and taxes. The supplier's monthly fee and the grid capacity charge are not included; the bill for the month includes them.",
       ),
     ).toBeInTheDocument()
   })

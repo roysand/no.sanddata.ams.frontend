@@ -14,7 +14,12 @@ function messages(result: { success: boolean; error?: { issues: { message: strin
 
 describe('locationPricingSchema', () => {
   const flags = { electricityTaxExempt: false, vatExempt: false, isHolidayHome: false }
-  const valid = { gridTariffId: 'tariff-1', supplierMarkupPerKwh: '0,02', ...flags }
+  const valid = {
+    gridTariffId: 'tariff-1',
+    supplierMarkupPerKwh: '0,02',
+    supplierMonthlyFee: '',
+    ...flags,
+  }
 
   it('accepts a tariff and a markup, or None and zero', () => {
     expect(locationPricingSchema.safeParse(valid).success).toBe(true)
@@ -22,6 +27,7 @@ describe('locationPricingSchema', () => {
       locationPricingSchema.safeParse({
         gridTariffId: NO_TARIFF,
         supplierMarkupPerKwh: '0',
+        supplierMonthlyFee: '0',
         ...flags,
         isHolidayHome: true,
       }).success,
@@ -38,6 +44,18 @@ describe('locationPricingSchema', () => {
     expect(check('100,01')).toContain('Markup can be at most 100')
     expect(check('0,02501')).toContain('Markup can have at most 4 decimals')
     expect(check('100')).toEqual([])
+  })
+
+  it('takes an empty monthly fee (keep the stored one), or 0 to 10 000 with at most four decimals, as the API', () => {
+    const check = (text: string) =>
+      messages(locationPricingSchema.safeParse({ ...valid, supplierMonthlyFee: text }))
+
+    for (const ok of ['', '  ', '0', '27,20', '27.2', '27,2025', '10000'])
+      expect(check(ok)).toEqual([])
+    expect(check('-1')).toContain('Monthly fee cannot be negative')
+    expect(check('abc')).toContain('Monthly fee must be a number, for example 0,50')
+    expect(check('10000,01')).toContain('Monthly fee can be at most 10000')
+    expect(check('27,20005')).toContain('Monthly fee can have at most 4 decimals')
   })
 
   it('needs a choice for the tariff', () => {

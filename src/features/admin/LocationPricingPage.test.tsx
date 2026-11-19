@@ -17,6 +17,7 @@ const home: LocationPricing = {
   gridTariffId: 'tariff-elvia',
   gridTariffName: 'Elvia, household',
   supplierMarkupPerKwh: 0.02,
+  supplierMonthlyFee: 27.2,
   isComplete: true,
   electricityTaxExempt: false,
   vatExempt: false,
@@ -28,6 +29,7 @@ const cabin: LocationPricing = {
   gridTariffId: null,
   gridTariffName: null,
   supplierMarkupPerKwh: 0,
+  supplierMonthlyFee: null,
   isComplete: false,
   electricityTaxExempt: false,
   vatExempt: false,
@@ -63,6 +65,7 @@ interface Put {
   body: {
     gridTariffId: string | null
     supplierMarkupPerKwh: number
+    supplierMonthlyFee?: number
     electricityTaxExempt: boolean
     vatExempt: boolean
     isHolidayHome: boolean
@@ -87,12 +90,16 @@ function setup(
       const body = (await request.json()) as Put['body']
       puts.push({ locationId: String(params.id), body })
       const tariff = tariffs.find((t) => t.id === body.gridTariffId)
+      const current = locations.find((l) => l.locationId === params.id)!
+      // An omitted fee keeps the stored one; complete needs both a tariff and a fee.
+      const fee = body.supplierMonthlyFee ?? current.supplierMonthlyFee ?? null
       const updated: LocationPricing = {
-        ...locations.find((l) => l.locationId === params.id)!,
+        ...current,
         gridTariffId: body.gridTariffId,
         gridTariffName: tariff?.name ?? null,
         supplierMarkupPerKwh: body.supplierMarkupPerKwh,
-        isComplete: body.gridTariffId !== null,
+        supplierMonthlyFee: fee,
+        isComplete: body.gridTariffId !== null && fee !== null,
         electricityTaxExempt: body.electricityTaxExempt,
         vatExempt: body.vatExempt,
         isHolidayHome: body.isHolidayHome,
@@ -115,19 +122,30 @@ function setup(
 const rowFor = (name: string) => screen.getByText(name).closest('tr')!
 
 describe('LocationPricingPage', () => {
-  it('lists every location with its tariff, its markup and whether it is complete', async () => {
+  it('lists every location with its tariff, its markup, its monthly fee and whether it is complete', async () => {
     setup()
 
     await screen.findByText('Home')
+    expect(screen.getByRole('columnheader', { name: 'Monthly fee' })).toBeInTheDocument()
 
     const homeRow = within(rowFor('Home'))
     expect(homeRow.getByText('Elvia, household')).toBeInTheDocument()
     expect(homeRow.getByText(/0,02 kr\/kWh/)).toBeInTheDocument()
+    expect(homeRow.getByText('27,20 kr/month')).toBeInTheDocument()
     expect(homeRow.getByText('Complete')).toBeInTheDocument()
 
+    // Neither a tariff nor a fee.
     const cabinRow = within(rowFor('Cabin'))
-    expect(cabinRow.getByText('Not set')).toBeInTheDocument()
+    expect(cabinRow.getAllByText('Not set')).toHaveLength(2)
     expect(cabinRow.getByText('Incomplete')).toBeInTheDocument()
+  })
+
+  it('says a location needs both a grid tariff and a monthly fee', async () => {
+    setup()
+
+    expect(
+      await screen.findByText(/incomplete until it has both a grid tariff and a monthly fee/),
+    ).toBeInTheDocument()
   })
 
   it('says what a missing tariff means for the prices', async () => {
@@ -176,6 +194,9 @@ describe('LocationPricingPage', () => {
       await u.click(await screen.findByRole('option', { name: 'BKK' }))
       const markup = within(dialog).getByLabelText(/Supplier markup/)
       fireEvent.change(markup, { target: { value: '0,035' } })
+      fireEvent.change(within(dialog).getByLabelText(/Supplier monthly fee/), {
+        target: { value: '27,20' },
+      })
       await u.click(within(dialog).getByRole('button', { name: 'Save' }))
 
       await within(rowFor('Cabin')).findByText('BKK')
@@ -185,6 +206,7 @@ describe('LocationPricingPage', () => {
           body: {
             gridTariffId: 'tariff-bkk',
             supplierMarkupPerKwh: 0.035,
+            supplierMonthlyFee: 27.2,
             electricityTaxExempt: false,
             vatExempt: false,
             isHolidayHome: true,
@@ -204,6 +226,7 @@ describe('LocationPricingPage', () => {
       const dialog = await screen.findByRole('dialog', { name: 'Pricing for Home' })
 
       expect(within(dialog).getByLabelText(/Supplier markup/)).toHaveValue('0,02')
+      expect(within(dialog).getByLabelText(/Supplier monthly fee/)).toHaveValue('27,2')
       expect(within(dialog).getByRole('combobox', { name: 'Grid tariff' })).toHaveTextContent(
         'Elvia, household',
       )
@@ -222,6 +245,101 @@ describe('LocationPricingPage', () => {
 
       await within(rowFor('Home')).findByText('Incomplete')
       expect(puts[0].body.gridTariffId).toBeNull()
+    })
+
+    it('starts with an empty fee field when no fee is set, and says what empty and 0 mean', async () => {
+      const u = userEvent.setup()
+      setup()
+      await screen.findByText('Cabin')
+
+      await u.click(screen.getByRole('button', { name: 'Edit pricing for Cabin' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pricing for Cabin' })
+
+      expect(within(dialog).getByLabelText(/Supplier monthly fee/)).toHaveValue('')
+      expect(
+        within(dialog).getByText(
+          'Enter 0 for a supplier without a monthly fee. Leaving it empty keeps the current value.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('leaves the fee out of the request when the field is empty, so the stored fee is kept', async () => {
+      const u = userEvent.setup()
+      const { puts } = setup()
+      await screen.findByText('Home')
+
+      await u.click(screen.getByRole('button', { name: 'Edit pricing for Home' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pricing for Home' })
+      fireEvent.change(within(dialog).getByLabelText(/Supplier monthly fee/), {
+        target: { value: '' },
+      })
+      await u.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(puts).toHaveLength(1))
+      expect(puts[0].body).not.toHaveProperty('supplierMonthlyFee')
+      expect(await within(rowFor('Home')).findByText('27,20 kr/month')).toBeInTheDocument()
+    })
+
+    it('shows what is wrong with the fee and sends nothing', async () => {
+      const u = userEvent.setup()
+      const { puts } = setup()
+      await screen.findByText('Home')
+
+      await u.click(screen.getByRole('button', { name: 'Edit pricing for Home' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pricing for Home' })
+      fireEvent.change(within(dialog).getByLabelText(/Supplier monthly fee/), {
+        target: { value: '10001' },
+      })
+      await u.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+      expect(
+        await within(dialog).findByText('Monthly fee can be at most 10000'),
+      ).toBeInTheDocument()
+      expect(puts).toHaveLength(0)
+    })
+
+    it('shows a refusal of the fee by the API under the fee field', async () => {
+      const u = userEvent.setup()
+      setup()
+      server.use(
+        http.put('*/api/admin/location-pricing/:id', () =>
+          HttpResponse.json(
+            {
+              code: 'Validation.InvalidMonthlyFee',
+              errors: {
+                supplierMonthlyFee: [
+                  'Monthly fee must be between 0 and 10000 with at most 4 decimals',
+                ],
+              },
+            },
+            { status: 400 },
+          ),
+        ),
+      )
+      await screen.findByText('Home')
+
+      await u.click(screen.getByRole('button', { name: 'Edit pricing for Home' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pricing for Home' })
+      await u.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+      const message = await within(dialog).findByText(
+        'Monthly fee must be between 0 and 10000 with at most 4 decimals',
+      )
+      // Right under the fee's help text, not in the general error at the bottom.
+      expect(message.previousElementSibling).toHaveTextContent(/Enter 0 for a supplier/)
+    })
+
+    it('says the markup is added to every kWh, also under Norgespris', async () => {
+      const u = userEvent.setup()
+      setup()
+      await screen.findByText('Home')
+
+      await u.click(screen.getByRole('button', { name: 'Edit pricing for Home' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Pricing for Home' })
+
+      expect(
+        within(dialog).getByText('Added to every kWh, also under Norgespris.'),
+      ).toBeInTheDocument()
     })
 
     it('warns that past hours are recalculated', async () => {
@@ -356,6 +474,8 @@ describe('LocationPricingPage', () => {
       ])
       await screen.findByText('Old')
       expect(within(rowFor('Old')).queryByText(/exempt|Holiday home/)).not.toBeInTheDocument()
+      // Nor a monthly fee: shown as not set.
+      expect(within(rowFor('Old')).getByText('Not set')).toBeInTheDocument()
 
       await u.click(screen.getByRole('button', { name: 'Edit pricing for Old' }))
       const dialog = await screen.findByRole('dialog', { name: 'Pricing for Old' })

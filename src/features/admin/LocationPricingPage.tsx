@@ -12,12 +12,13 @@ import {
 } from '@/components/ui/table'
 import { EditLocationPricingDialog } from './EditLocationPricingDialog'
 import { useAdminLocations, useLocationPricing } from './hooks'
-import { formatAmount } from './norgesPris'
+import { formatAmount, formatMonthlyFee } from './norgesPris'
 import type { LocationPricing } from './types'
 
 /**
- * The grid tariff and supplier markup of every location, for administrators. A location without a grid tariff still
- * gets prices, but without the grid part, so it is marked until one is chosen.
+ * The grid tariff, supplier markup and supplier monthly fee of every location, for administrators. A location without
+ * a grid tariff still gets prices, but without the grid part, and one without a monthly fee gets an incomplete bill,
+ * so it is marked until both are set.
  */
 export function LocationPricingPage() {
   const locations = useLocationPricing()
@@ -42,8 +43,10 @@ export function LocationPricingPage() {
 
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            The grid tariff and the supplier markup of each location. Without a grid tariff the grid
-            part is left out of the location&apos;s prices, so they come out too low.
+            The grid tariff, the supplier markup and the supplier monthly fee of each location.
+            Without a grid tariff the grid part is left out of the location&apos;s prices, so they
+            come out too low. A location is incomplete until it has both a grid tariff and a monthly
+            fee; without the fee its monthly bill is incomplete.
           </p>
 
           {locations.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
@@ -59,6 +62,7 @@ export function LocationPricingPage() {
                   <TableHead>Location</TableHead>
                   <TableHead>Grid tariff</TableHead>
                   <TableHead>Supplier markup</TableHead>
+                  <TableHead>Monthly fee</TableHead>
                   <TableHead>Exemptions and type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-20" />
@@ -79,6 +83,13 @@ export function LocationPricingPage() {
                       {location.gridTariffName ?? <Badge variant="outline">Not set</Badge>}
                     </TableCell>
                     <TableCell>{formatAmount(location.supplierMarkupPerKwh)}</TableCell>
+                    <TableCell>
+                      {location.supplierMonthlyFee === null ? (
+                        <Badge variant="outline">Not set</Badge>
+                      ) : (
+                        formatMonthlyFee(location.supplierMonthlyFee)
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {location.electricityTaxExempt && (

@@ -196,7 +196,7 @@ describe('NowCard', () => {
 
     expect(
       await screen.findByText(
-        "Prices include VAT, the grid charge and taxes. The supplier's monthly fee is not included; the grid capacity charge is shown in its own card.",
+        "Prices include VAT, the grid charge and taxes. The supplier's monthly fee is not included; the grid capacity charge is shown in its own card. The expected bill for the month includes both.",
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText(/grid fixed fee/)).not.toBeInTheDocument()
