@@ -14,8 +14,9 @@ Two pieces on top of the API's spec 011 (deployed 2026-11-19):
    OSO…" while waiting) and removes with `DELETE` after a confirmation dialog. The location dialog's Cancel and "Save
    location" sit together at its bottom (research R6). The key lives only in the form and is never
    kept in the query or mutation cache.
-2. **Dashboard**: a `WaterHeaterCard` placed after `RecentUsage`. It polls `GET /api/locations/{id}/water-heater`
-   once a minute while the page is visible, renders nothing on 404, shows the API's message on 502/503, and otherwise
+2. **Heater tab**: a `WaterHeaterCard` on its own page, `WaterHeaterPage`, reached by a Heater tab in the bottom bar
+   that is shown only for a location with a heater (research R9; first placed on the Now page after `RecentUsage`).
+   It polls `GET /api/locations/{id}/water-heater` once a minute while the page is open and visible, renders nothing on 404, shows the API's message on 502/503, and otherwise
    shows litres of 40 °C water (with a fill bar), showers and baths, the top temperature with mid and low as details,
    heating with kW, a special mode with its Oslo end time, and the reading's age, ticking between fetches.
 
@@ -83,6 +84,11 @@ specs/009-oso-water-heater/
 ### Source Code (repository root)
 
 ```text
+src/app/routes.tsx                   # + /water-heater
+src/components/
+├── AppLayout.tsx                    # + useHasWaterHeater(selected?.id) → TabBar
+└── TabBar.tsx                       # + Heater tab when hasWaterHeater (4 columns)
+
 src/features/admin/
 ├── AdminLocationDialog.tsx          # + <WaterHeaterSection /> below Access; Cancel + Save location in the footer
 ├── WaterHeaterSection.tsx           # new: status, Connect/Replace form, Remove
@@ -96,7 +102,8 @@ src/features/admin/
 └── types.ts                         # + WaterHeaterSettings, WaterHeaterInput
 
 src/features/dashboard/
-├── DashboardPage.tsx                # + <WaterHeaterCard locationId={selected.id} /> after RecentUsage
+├── WaterHeaterPage.tsx              # new: the Heater tab's page (/water-heater)
+├── WaterHeaterPage.test.tsx         # new
 ├── WaterHeaterCard.tsx              # new
 ├── WaterHeaterCard.test.tsx         # new
 ├── api.ts                           # + getWaterHeaterState

@@ -124,12 +124,13 @@ ago". For a location whose state answers "no water heater connected", see no car
   submit; a refusal MUST show the API's message and keep the typed values.
 - **FR-005**: The key field MUST be hidden by default, MUST NOT be saved by the browser, and the key MUST NOT be kept
   anywhere after the form closes.
-- **FR-006**: The dashboard MUST show a Water heater card for the selected location when it has a connected heater,
-  and no card when the API says there is none.
+- **FR-006**: The app MUST show a Water heater card for the selected location when it has a connected heater, and no
+  card when the API says there is none. (Changed 2026-11-19: the card is on its own page behind a Heater tab in the
+  bottom bar, shown only for a location with a heater, instead of on the dashboard; see research R9.)
 - **FR-007**: The card MUST show litres of 40 °C water available and maximum, showers and baths left, the tank
   temperatures (top as main figure), heating or not with power in kW, any special mode with its end time in Oslo
   time, and the reading's age; offline and stale readings MUST be marked.
-- **FR-008**: The card MUST refresh about once a minute while the dashboard is open.
+- **FR-008**: The card MUST refresh about once a minute while its page is open.
 - **FR-009**: When the API cannot read the heater (502/503), the card MUST show the API's message and MUST NOT affect
   the rest of the dashboard.
 - **FR-010**: Values the API gives as missing MUST be left out, never shown as 0.

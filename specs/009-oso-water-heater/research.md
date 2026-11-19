@@ -90,6 +90,15 @@ Phase 0 of [plan.md](plan.md). The Technical Context had no open questions; thes
 
 ## R9. Where the card sits
 
-- **Decision**: After `RecentUsage`, before `SavingCard`.
-- **Rationale**: It is live state, read at the same glance as "right now" usage; cost cards follow.
-- **Alternatives**: Last on the page (easy to miss on a phone).
+- **Decision** (changed 2026-11-19, chosen by Roy after connecting the real heater): a **Heater** tab in the bottom bar,
+  between History and Location, opens `WaterHeaterPage` (`/water-heater`) with the card. The tab is shown only when
+  the selected location has a heater; the card is no longer on the Now page.
+- **How the tab knows**: `AppLayout` calls `useHasWaterHeater`, which shares the state query's key and cache but has
+  no `refetchInterval` and a 5-minute stale time. TanStack Query polls at the shortest interval of the _mounted_
+  observers, so OSO is polled once a minute only while the Heater page is open (FR-008, research R3). A 502/503 keeps
+  the tab (the heater exists, it is just unreadable); a 404 hides it. Connecting or removing in Admin invalidates the
+  key, so the tab appears or disappears without a reload. The page says "No water heater is connected at …" when
+  reached for a location without one (by switching location while on it, or by URL).
+- **Rationale**: Roy wanted the heater one tap away from the bottom of the screen rather than in the long Now page.
+- **Alternatives**: The card on Now after `RecentUsage` (the first version); the tab plus the card on Now; a bottom
+  sheet opened from a button on Now.
