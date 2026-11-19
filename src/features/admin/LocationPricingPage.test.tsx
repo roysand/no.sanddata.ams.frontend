@@ -127,6 +127,12 @@ describe('LocationPricingPage', () => {
 
     await screen.findByText('Home')
     expect(screen.getByRole('columnheader', { name: 'Monthly fee' })).toBeInTheDocument()
+    // The flags are shown under the name when set, not in a column of their own.
+    expect(
+      screen.queryByRole('columnheader', { name: 'Exemptions and type' }),
+    ).not.toBeInTheDocument()
+    expect(rowFor('Cabin').cells[0]).toHaveTextContent('Holiday home')
+    expect(rowFor('Home').cells[0]).not.toHaveTextContent(/exempt|Holiday home/)
 
     const homeRow = within(rowFor('Home'))
     expect(homeRow.getByText('Elvia, household')).toBeInTheDocument()
