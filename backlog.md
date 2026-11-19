@@ -8,9 +8,10 @@ Rotate or replace a lost sensor (API) key used by the MQTTForwarder app. Deferre
 
 ## OSO water heater
 
-Connect Roy's OSO water heater through the OSO inCharge API (Swagger: https://api.osoenergy.no/water-heater-api-swagger/index.html): show its temperature and hot water left, heat in the
-cheapest hours, and pause it to stay below the next capacity step. The API key must live in the backend, so the full
-note is in the API repo: `no.sanddata.ams.api/specs/_backlog/oso-water-heater.md`.
+Reading the heater is built in the API (`no.sanddata.ams.api` spec 011, deployed 2026-11-19), and the frontend part
+(an Admin section to connect it, a dashboard card with its state) is specified in `specs/009-oso-water-heater/`.
+Still open for later: heating in the cheapest hours and pausing it to stay below the next capacity step (control
+from the API, a later API spec), and the heater's kWh and cost per day from the power samples the API now stores.
 
 ## Warnings
 
