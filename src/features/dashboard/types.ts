@@ -54,12 +54,34 @@ export interface HourRateCost {
   cap?: CapSplit | null
 }
 
+/**
+ * The water heater's part of an hour or a day (API spec 012): its kWh (at most the item's kWh), the cost of those kWh
+ * as their share of the actual cost (null without a price), the sampled minutes, and whether the kWh was capped at the
+ * meter's. null on the item means no heater figure (no heater, before it was connected, an outage, or an API without
+ * spec 012); never zeros.
+ */
+export interface WaterHeaterPart {
+  kwh: number
+  cost: number | null
+  sampledMinutes: number
+  capped: boolean
+}
+
+/** The water heater's part of a month's bill: the hours so far, never projected. */
+export interface WaterHeaterBillPart extends WaterHeaterPart {
+  /** UTC ISO; the first and last hour with a heater part. */
+  firstHourUtc: string
+  lastHourUtc: string
+  estimate: false
+}
+
 export interface HourlyCostItem {
   hourStart: string
   consumptionKwh: number
   pricingModel: PricingModel
   actual: HourRateCost | null
   comparison: HourRateCost | null
+  waterHeater: WaterHeaterPart | null
 }
 
 export interface PagedHourlyCost {
@@ -80,6 +102,7 @@ export interface DailyCostItem {
   pricingModel: PricingModel
   actual: DayCost | null
   comparison: DayCost | null
+  waterHeater: WaterHeaterPart | null
 }
 
 export interface DailyCost {
@@ -256,6 +279,7 @@ export interface MonthlyBill {
   strom: BillPart
   nettleie: BillPart
   total: BillAmounts
+  waterHeater: WaterHeaterBillPart | null
 }
 
 export type WaterHeaterMode = 'None' | 'Holiday' | 'Supercharge' | 'BlueBattery'

@@ -59,6 +59,7 @@ function withParts(
 export const july2026Bill: MonthlyBill = withParts(
   {
     month: '2026-07',
+    waterHeater: null,
     status: 'Final',
     pricingModel: 'NorgesPris',
     isComplete: true,
@@ -243,4 +244,24 @@ export function emptyBill(month: string, status: MonthlyBill['status'] = 'Final'
       .filter((l) => l.unit === 'kWh' || l.code !== 'CapacityCharge')
       .map(zero),
   )
+}
+
+/** The same bill with a water heater part (API spec 012); amounts and lines are not changed by it. */
+export function withWaterHeater(
+  bill: MonthlyBill,
+  part: Partial<NonNullable<MonthlyBill['waterHeater']>> = {},
+): MonthlyBill {
+  return {
+    ...bill,
+    waterHeater: {
+      kwh: 104.6,
+      cost: 94.12,
+      sampledMinutes: 15180,
+      capped: false,
+      firstHourUtc: '2026-07-18T18:00:00Z',
+      lastHourUtc: '2026-07-31T21:00:00Z',
+      estimate: false,
+      ...part,
+    },
+  }
 }

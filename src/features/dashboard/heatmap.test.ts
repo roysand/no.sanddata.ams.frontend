@@ -17,6 +17,7 @@ function hours(days: string[], kwh: (date: string, hour: number) => number): Hou
         pricingModel: 'Spot',
         actual: null,
         comparison: null,
+        waterHeater: null,
       })
     }
     return items

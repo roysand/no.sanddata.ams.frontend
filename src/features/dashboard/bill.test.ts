@@ -67,6 +67,7 @@ const bill = (strom: BillLine[], nettleie: BillLine[], patch: Partial<MonthlyBil
       vat: 0,
     },
     total: { soFar: 0, projected: 0, amount: 0, amountExclVat: 0, vat: 0 },
+    waterHeater: null,
     ...patch,
   }) satisfies MonthlyBill
 

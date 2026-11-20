@@ -1,5 +1,6 @@
-import type { ConsumptionItem, DailyCostItem, HourlyCostItem } from './types'
-import type { Slot, Unit } from './periods'
+import type { ConsumptionItem, DailyCostItem, HourlyCostItem, WaterHeaterPart } from './types'
+import { addDays, dayStart, type Slot, type Unit } from './periods'
+import { elapsedMinutes, isPartlyMeasured, restOf, sumParts } from './waterHeater'
 
 const MINUTE_MS = 60_000
 /** A reading older than this is not "now" any more. */
@@ -40,6 +41,12 @@ export interface UsagePoint {
   label: string
   current: number | null
   previous: number | null
+  /** Water heating in the chosen unit, for the current period only; null without a heater figure. */
+  heater: number | null
+  /** Everything else: current − heater, or all of current when there is no heater figure. */
+  rest: number | null
+  /** True when noticeably less of the slot's time than expected was sampled. */
+  partly: boolean
 }
 
 export interface UsageSeries {
@@ -52,6 +59,8 @@ export interface UsageSeries {
   deltaPercent: number | null
   hasCurrent: boolean
   hasPrevious: boolean
+  /** True when any slot of the current period has a water heating value. */
+  hasHeater: boolean
 }
 
 /** One raw API row reduced to what the chart needs: where it falls and how much it holds. */
@@ -60,30 +69,80 @@ export interface UsageRow {
   kwh: number
   /** null when the plan has no price for it. */
   nok: number | null
+  /** The water heater's part (API spec 012); absent or null when the row has none. */
+  heaterKwh?: number | null
+  heaterNok?: number | null
+  sampledMinutes?: number | null
+  /** The minutes the sampled minutes are judged against: the slot's length, or its minutes so far. */
+  expectedMinutes?: number
 }
 
-export function rowsFromHourly(items: HourlyCostItem[]): UsageRow[] {
-  return items.map((item) => ({
-    key: String(new Date(item.hourStart).getTime()),
-    kwh: item.consumptionKwh,
-    nok: item.actual?.cost ?? null,
-  }))
+const HOUR_IN_MS = 3_600_000
+
+function heaterFields(part: WaterHeaterPart | null) {
+  return {
+    heaterKwh: part?.kwh ?? null,
+    heaterNok: part?.cost ?? null,
+    sampledMinutes: part?.sampledMinutes ?? null,
+  }
 }
 
-/** Daily rows keyed by date, or by yyyy-MM when `byMonth` (the year view sums the days of a month). */
-export function rowsFromDaily(items: DailyCostItem[], byMonth: boolean): UsageRow[] {
-  const rows = new Map<string, UsageRow>()
+export function rowsFromHourly(items: HourlyCostItem[], now = new Date()): UsageRow[] {
+  return items.map((item) => {
+    const start = new Date(item.hourStart)
+    return {
+      key: String(start.getTime()),
+      kwh: item.consumptionKwh,
+      nok: item.actual?.cost ?? null,
+      ...heaterFields(item.waterHeater),
+      expectedMinutes: elapsedMinutes(start, new Date(start.getTime() + HOUR_IN_MS), now),
+    }
+  })
+}
+
+/** The minutes of an Oslo day, or its minutes so far when it is today. */
+const dayMinutes = (date: string, now: Date) =>
+  elapsedMinutes(dayStart(date), dayStart(addDays(date, 1)), now)
+
+/**
+ * Daily rows keyed by date, or by yyyy-MM when `byMonth` (the year view sums the days of a month). A month's heater
+ * part is the sum of its days' parts, judged against the minutes of the days that have one, so the days before the
+ * heater was connected don't make the month look partly measured.
+ */
+export function rowsFromDaily(
+  items: DailyCostItem[],
+  byMonth: boolean,
+  now = new Date(),
+): UsageRow[] {
+  const rows = new Map<string, { row: UsageRow; parts: WaterHeaterPart[] }>()
   for (const item of items) {
     const key = byMonth ? item.date.slice(0, 7) : item.date
     const cost = item.actual?.cost ?? null
-    const row = rows.get(key)
-    if (!row) rows.set(key, { key, kwh: item.consumptionKwh, nok: cost })
-    else {
+    const part = item.waterHeater
+    const expected = part ? dayMinutes(item.date, now) : 0
+    const entry = rows.get(key)
+    if (!entry) {
+      rows.set(key, {
+        row: {
+          key,
+          kwh: item.consumptionKwh,
+          nok: cost,
+          ...heaterFields(part),
+          expectedMinutes: expected,
+        },
+        parts: part ? [part] : [],
+      })
+    } else {
+      const { row } = entry
       row.kwh += item.consumptionKwh
       row.nok = cost === null ? row.nok : (row.nok ?? 0) + cost
+      if (part) entry.parts.push(part)
+      row.expectedMinutes = (row.expectedMinutes ?? 0) + expected
     }
   }
-  return [...rows.values()]
+  return [...rows.values()].map(({ row, parts }) =>
+    byMonth ? { ...row, ...heaterFields(sumParts(parts)) } : row,
+  )
 }
 
 function valuesBySlot(slots: Slot[], rows: UsageRow[], unit: Unit): (number | null)[] {
@@ -105,12 +164,25 @@ export function buildUsageSeries(
 ): UsageSeries {
   const current = valuesBySlot(currentSlots, currentRows, unit)
   const previous = valuesBySlot(previousSlots, previousRows, unit)
-  const points = currentSlots.map((slot, i) => ({
-    key: slot.key,
-    label: slot.label,
-    current: current[i],
-    previous: previous[i] ?? null,
-  }))
+  const rowsByKey = new Map(currentRows.map((row) => [row.key, row]))
+  const points: UsagePoint[] = currentSlots.map((slot, i) => {
+    const row = rowsByKey.get(slot.key)
+    const value = current[i]
+    // In kr, a part without a known cost gives no split for the slot.
+    const heater =
+      !row || value === null ? null : ((unit === 'kwh' ? row.heaterKwh : row.heaterNok) ?? null)
+    const sampled = row?.sampledMinutes ?? null
+    return {
+      key: slot.key,
+      label: slot.label,
+      current: value,
+      previous: previous[i] ?? null,
+      heater,
+      rest: heater === null ? value : restOf(value, heater),
+      partly:
+        heater !== null && sampled !== null && isPartlyMeasured(sampled, row?.expectedMinutes ?? 0),
+    }
+  })
 
   const last = current.reduce<number>((acc, value, i) => (value === null ? acc : i), -1)
   const upTo = points.slice(0, last + 1)
@@ -125,6 +197,7 @@ export function buildUsageSeries(
       previousTotal > 0 && last >= 0 ? ((total - previousTotal) / previousTotal) * 100 : null,
     hasCurrent: last >= 0,
     hasPrevious: previous.some((value) => value !== null),
+    hasHeater: points.some((point) => point.heater !== null),
   }
 }
 
@@ -232,7 +305,12 @@ export function buildRecentUsage(input: RecentUsageInput): RecentUsage {
   const kwh = totalKwh(current, startMs, startMs + elapsed)
   const previousKwh = totalKwh(previous, previousStartMs, previousStartMs + elapsed)
   const cost = costOver(current, input.currentRates, startMs, startMs + elapsed)
-  const previousCost = costOver(previous, input.previousRates, previousStartMs, previousStartMs + elapsed)
+  const previousCost = costOver(
+    previous,
+    input.previousRates,
+    previousStartMs,
+    previousStartMs + elapsed,
+  )
 
   return {
     points: currentKw.map((value, i) => ({

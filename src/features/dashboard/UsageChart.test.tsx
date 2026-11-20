@@ -298,3 +298,119 @@ describe('UsageChart stepping back', () => {
     expect(await screen.findByText('Yesterday', { selector: 'p' })).toBeInTheDocument()
   })
 })
+
+describe('UsageChart water heating', () => {
+  beforeEach(() => localStorage.clear())
+
+  type Part = { kwh: number; cost: number | null; sampledMinutes: number; capped: boolean }
+
+  /** Today's first three hours at 3,4 kWh and 3,10 kr, with `parts[i]` as hour i's water heater part. */
+  function useHeaterApi(parts: (Part | null)[]) {
+    const dayPlan = periodPlan('day', new Date())
+    server.use(
+      http.get('*/api/electricity-cost/hourly', ({ request }) => {
+        const isCurrent = new URL(request.url).searchParams.get('from') === dayPlan.current.fromUtc
+        const slots = (isCurrent ? dayPlan.current : dayPlan.previous).slots.slice(0, 3)
+        return HttpResponse.json({
+          items: slots.map((slot, i) => ({
+            hourStart: new Date(Number(slot.key)).toISOString(),
+            consumptionKwh: 3.4,
+            pricingModel: 'Spot',
+            actual: { ratePerKwh: 1, cost: 3.1 },
+            comparison: null,
+            ...(isCurrent ? { waterHeater: parts[i] ?? null } : {}),
+          })),
+          page: 1,
+          pageSize: 500,
+          totalCount: 3,
+        })
+      }),
+    )
+  }
+
+  const full = (kwh: number, cost: number | null): Part => ({
+    kwh,
+    cost,
+    sampledMinutes: 60,
+    capped: false,
+  })
+
+  async function selectFirstHour(user: ReturnType<typeof userEvent.setup>) {
+    await screen.findByText(/Today so far/)
+    const chart = screen.getByRole('group', { name: /Energy use|Cost/ })
+    chart.focus()
+    await user.keyboard('{ArrowRight}')
+  }
+
+  it('shows water heating and everything else for a selected hour, and a legend entry', async () => {
+    useHeaterApi([full(2.1, 1.9), null, null])
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await selectFirstHour(user)
+
+    expect(screen.getByText('Water heating', { selector: 'li' })).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Water heating 2,1 kWh · Everything else 1,3 kWh/),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the costs in NOK', async () => {
+    useHeaterApi([full(2.1, 1.9), null, null])
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+    await screen.findByText(/Today so far/)
+    await user.click(screen.getByRole('button', { name: 'NOK' }))
+
+    await selectFirstHour(user)
+
+    expect(
+      await screen.findByText(/Water heating 1,90\skr · Everything else 1,20\skr/),
+    ).toBeInTheDocument()
+  })
+
+  it('says when an hour was only partly measured', async () => {
+    useHeaterApi([{ kwh: 1, cost: 1, sampledMinutes: 40, capped: false }, null, null])
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await selectFirstHour(user)
+
+    expect(await screen.findByText(/Water heating 1 kWh \(partly measured\)/)).toBeInTheDocument()
+  })
+
+  it('says nothing about water heating for an hour without a part', async () => {
+    useHeaterApi([null, full(1, 1), null])
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await selectFirstHour(user)
+
+    expect(await screen.findByText(/3,4 kWh/, { selector: 'p[aria-live] b' })).toBeInTheDocument()
+    expect(screen.queryByText(/Water heating \d/)).not.toBeInTheDocument()
+  })
+
+  it('gives no split in NOK when the heater cost is unknown', async () => {
+    useHeaterApi([full(2.1, null), null, null])
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+    await screen.findByText(/Today so far/)
+    await user.click(screen.getByRole('button', { name: 'NOK' }))
+
+    await selectFirstHour(user)
+
+    expect(screen.queryByText(/Water heating \d/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Water heating', { selector: 'li' })).not.toBeInTheDocument()
+  })
+
+  it('looks as before without any water heater part', async () => {
+    useHeaterApi([null, null, null])
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await selectFirstHour(user)
+
+    expect(screen.queryByText('Water heating', { selector: 'li' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Water heating/)).not.toBeInTheDocument()
+  })
+})

@@ -4,8 +4,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNotFound, useWaterHeaterState } from './hooks'
 import { WaterHeaterCard } from './WaterHeaterCard'
+import { WaterHeaterEnergyCard } from './WaterHeaterEnergyCard'
 
-/** The Heater tab: the selected location's water heater, refreshed once a minute while the page is open. */
+/**
+ * The Heater tab: the selected location's water heater, refreshed once a minute while the page is open, and how much
+ * energy and money water heating took today and this month.
+ */
 export function WaterHeaterPage() {
   const { all, selected, isLoading, error } = useSelectedLocation()
   // Same query (and cache) as the card; read here only to tell "no heater" apart.
@@ -42,5 +46,11 @@ export function WaterHeaterPage() {
     )
   }
 
-  return <WaterHeaterCard locationId={selected.id} />
+  return (
+    <div className="space-y-4">
+      <WaterHeaterCard locationId={selected.id} />
+      {/* Not before the state has said there is a heater, so a location without one makes no extra requests. */}
+      {!state.isLoading && <WaterHeaterEnergyCard locationId={selected.id} />}
+    </div>
+  )
 }

@@ -3,7 +3,13 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
-import { NOT_SET, november2026Estimate, spotBill, withLine } from '../../test/bills'
+import {
+  NOT_SET,
+  november2026Estimate,
+  spotBill,
+  withLine,
+  withWaterHeater,
+} from '../../test/bills'
 import { server } from '../../test/server'
 import { plain } from '../../test/text'
 import { AuthContext, type AuthContextValue } from '../auth/context'
@@ -208,5 +214,31 @@ describe('ExpectedBillCard', () => {
       const spot = screen.getByText('Energy at spot price').closest('li')!
       expect(within(spot).getByText('may be too low')).toBeInTheDocument()
     })
+  })
+})
+
+describe('ExpectedBillCard water heating', () => {
+  it('says how much was water heating so far, and that it is not part of the estimate', async () => {
+    renderCard(withWaterHeater(estimate, { firstHourUtc: '2026-10-31T23:00:00Z' })) // 1 November in Oslo
+    await screen.findByText('Estimate')
+
+    expect(
+      screen.getByText(/^Water heating so far this month: 104,6 kWh · 94,12\skr$/),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Measured so far, not part of the estimate.')).toBeInTheDocument()
+  })
+
+  it('says since when when the heater was connected during the month', async () => {
+    renderCard(withWaterHeater(estimate, { firstHourUtc: '2026-11-19T18:00:00Z' }))
+    await screen.findByText('Estimate')
+
+    expect(screen.getByText(/^Water heating since 19\.11\.2026: 104,6 kWh/)).toBeInTheDocument()
+  })
+
+  it('has no line without a part', async () => {
+    renderCard(estimate)
+    await screen.findByText('Estimate')
+
+    expect(screen.queryByText(/Water heating/)).not.toBeInTheDocument()
   })
 })
