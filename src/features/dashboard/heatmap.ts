@@ -16,12 +16,36 @@ const WEEKDAY_NAMES = [
   'Sundays',
 ]
 
+/** The weekday's full name, for sentences ("for a Saturday at this hour"). */
+export const WEEKDAY_LONG = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const
+
 const osloParts = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Europe/Oslo',
   weekday: 'short',
   hour: '2-digit',
   hourCycle: 'h23',
 })
+
+/**
+ * The Oslo weekday (0 = Monday) and hour of an instant. The repeated hour on the night the clocks go back is the same
+ * hour twice, as the meter readings count it.
+ */
+export function osloWeekdayHour(at: Date): { weekday: number; hour: number } | null {
+  const parts = osloParts.formatToParts(at)
+  const part = (type: string) => parts.find((p) => p.type === type)?.value
+  const weekday = WEEKDAYS.findIndex((day) => day === part('weekday'))
+  const hour = Number(part('hour'))
+  if (weekday < 0 || !(hour >= 0 && hour < 24)) return null
+  return { weekday, hour }
+}
 
 export interface HeatCell {
   /** 0 = Monday … 6 = Sunday */
@@ -61,11 +85,9 @@ export const cellName = (cell: HeatCell) => `${WEEKDAY_NAMES[cell.weekday]} ${ho
 export function heatmapFrom(items: HourlyCostItem[]): Heatmap | null {
   const sums = Array.from({ length: 24 }, () => Array.from({ length: 7 }, () => ({ kwh: 0, n: 0 })))
   for (const item of items) {
-    const parts = osloParts.formatToParts(new Date(item.hourStart))
-    const part = (type: string) => parts.find((p) => p.type === type)?.value
-    const weekday = WEEKDAYS.findIndex((day) => day === part('weekday'))
-    const hour = Number(part('hour'))
-    if (weekday < 0 || !(hour >= 0 && hour < 24)) continue
+    const at = osloWeekdayHour(new Date(item.hourStart))
+    if (!at) continue
+    const { weekday, hour } = at
     sums[hour][weekday].kwh += item.consumptionKwh
     sums[hour][weekday].n += 1
   }
