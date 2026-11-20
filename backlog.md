@@ -29,11 +29,20 @@ bills, the Heater tab and the CSV export.
 
 ## Warnings
 
-Warn the household when it matters: close to the next capacity step during the month, very expensive hours tomorrow
-once the prices are published, and unusually high usage compared with the same time on other days. To reach the
-phone when the app is closed this needs web push, so the app must first become installable (a PWA: manifest and
-service worker, which it does not have today) and the backend must send the notifications. A first version could show
-the warnings inside the app only.
+**Built inside the app** (`specs/012-in-app-warnings/`, 2026-11-20): a banner on every page, for owners and viewers
+of the selected location, with three warnings worked out in the app:
+
+- this hour may lift the capacity step, with the kW to stay under
+- unusually high usage now, against the same hour and weekday over four weeks
+- the month projected over the Norgespris limit, or past it.
+
+Still open:
+
+- very expensive hours tomorrow once the prices are published
+- warning before the projection reaches the Norgespris limit, which needs the API to send the limit
+- reaching the phone when the app is closed. That needs web push, so the app must first become installable (a PWA:
+  manifest and service worker, which it does not have today), and the backend must send the notifications, which
+  moves the rules to the API.
 
 ## Usage against outdoor temperature
 

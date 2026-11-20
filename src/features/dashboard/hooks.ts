@@ -20,7 +20,8 @@ import { addDays, dayStart, periodPlan, type Period, type PeriodWindow } from '.
 import { heatmapDays, heatmapFrom } from './heatmap'
 import { standbyDays, standbyFrom } from './standby'
 import { RECENT_WINDOW_MS, rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
-import type { Consumption } from './types'
+import type { Consumption, HourlyCostItem } from './types'
+import { usualPower } from './usual'
 
 const ONE_MINUTE = 60_000
 
@@ -271,23 +272,37 @@ export function useStandby(locationId: string | undefined) {
 }
 
 /**
- * Average use per hour of each weekday over the last 4 finished weeks (672 hours, one page). It only changes when a
- * day ends, so it is fetched once an hour; the key holds the last day, so a new day fetches anew.
+ * The hourly figures of the last 4 finished weeks (672 hours, one page), shared by the heatmap and the usual power for
+ * the warnings (spec 012), so they make one request. They only change when a day ends, so they are fetched once an
+ * hour; the key holds the last day, so a new day fetches anew.
  */
-export function useHeatmap(locationId: string | undefined) {
+function fourWeeksQuery(locationId: string | undefined) {
   const days = heatmapDays(new Date())
   const first = days[0]
   const last = days[days.length - 1]
-  return useQuery({
+  return {
     queryKey: ['cost', 'heatmap', locationId, last],
     queryFn: async () => {
       const end = new Date(dayStart(addDays(last, 1)).getTime() - 1000).toISOString()
       const page = await getHourlyCostPage(locationId!, dayStart(first).toISOString(), end, 1, 1000)
-      return heatmapFrom(page.items)
+      return page.items
     },
     enabled: !!locationId,
     staleTime: 60 * ONE_MINUTE,
     refetchInterval: 60 * ONE_MINUTE,
+  }
+}
+
+/** Average use per hour of each weekday over the last 4 finished weeks. */
+export function useHeatmap(locationId: string | undefined) {
+  return useQuery({ ...fourWeeksQuery(locationId), select: heatmapFrom })
+}
+
+/** The usual power for this Oslo hour and weekday: the median of the last 4 weeks, from the heatmap's request. */
+export function useUsualPower(locationId: string | undefined, now: number) {
+  return useQuery({
+    ...fourWeeksQuery(locationId),
+    select: (items: HourlyCostItem[]) => usualPower(items, new Date(now)),
   })
 }
 

@@ -1,5 +1,5 @@
 import { dayStart } from './periods'
-import { cellName, heatmapDays, heatmapFrom, hourRange, level } from './heatmap'
+import { cellName, heatmapDays, heatmapFrom, hourRange, level, osloWeekdayHour } from './heatmap'
 import type { HourlyCostItem } from './types'
 
 const NOW = new Date('2026-11-19T10:00:00Z') // Thursday, 11:00 in Oslo
@@ -80,5 +80,18 @@ describe('labels', () => {
     expect(level(3, 1, 3)).toBe(1)
     expect(level(2, 1, 3)).toBe(0.5)
     expect(level(2, 2, 2)).toBe(0.5)
+  })
+})
+
+describe('osloWeekdayHour', () => {
+  it('gives the Oslo weekday and hour', () => {
+    // Saturday 21 November 2026, 14:30 in Oslo.
+    expect(osloWeekdayHour(new Date('2026-11-21T13:30:00Z'))).toEqual({ weekday: 5, hour: 14 })
+  })
+
+  it('gives the repeated hour twice on the night the clocks go back', () => {
+    // 25 October 2026: 02:00–03:00 happens first in summer time, then in winter time.
+    expect(osloWeekdayHour(new Date('2026-10-25T00:30:00Z'))).toEqual({ weekday: 6, hour: 2 })
+    expect(osloWeekdayHour(new Date('2026-10-25T01:30:00Z'))).toEqual({ weekday: 6, hour: 2 })
   })
 })
