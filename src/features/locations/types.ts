@@ -24,6 +24,10 @@ export interface LocationSummary {
    * with the other tabs. Absent from an API older than this field, which shows no Heater tab.
    */
   hasWaterHeater?: boolean
+  /** True when a Zaptec car charger is connected, so the Car tab shows. False when the API is older than spec 016. */
+  hasEvCharger: boolean
+  /** The location's "count the car charger with the house" setting. False when the API is older than spec 016. */
+  includeEvCharger: boolean
 }
 
 /** Someone with access to a location, as the admin lists show them. */

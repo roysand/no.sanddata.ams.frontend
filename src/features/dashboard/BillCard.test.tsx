@@ -10,6 +10,7 @@ import {
   november2026Estimate,
   spotBill,
   withLine,
+  withEvCharger,
   withWaterHeater,
 } from '../../test/bills'
 import { server } from '../../test/server'
@@ -289,5 +290,44 @@ describe('BillCard water heating', () => {
     await screen.findByText('Final')
 
     expect(screen.queryByText(/Water heating/)).not.toBeInTheDocument()
+  })
+})
+
+describe('BillCard car charging (spec 013)', () => {
+  const julyWith = (part: Parameters<typeof withEvCharger>[1]) => (month: string) =>
+    month === '2026-07' ? withEvCharger(july2026Bill, part) : byMonth[month]
+
+  it('says how much the car charged in the month and that it is not counted', async () => {
+    renderCard(julyWith({ firstHour: '2026-06-30T22:00:00Z', included: false }))
+    await screen.findByText('Final')
+
+    expect(
+      screen.getByText(/^Car charging in July 2026: 212,7 kWh · not counted with the house$/),
+    ).toBeInTheDocument()
+  })
+
+  it('says since when when charging began during the month', async () => {
+    renderCard(julyWith({ firstHour: '2026-07-18T18:00:00Z' }))
+    await screen.findByText('Final')
+
+    expect(
+      screen.getByText(/^Car charging since 18\.07\.2026: 212,7 kWh · counted with the house$/),
+    ).toBeInTheDocument()
+  })
+
+  it('has no line without a part', async () => {
+    renderCard((month) => byMonth[month])
+    await screen.findByText('Final')
+
+    expect(screen.queryByText(/Car charging/)).not.toBeInTheDocument()
+  })
+
+  it('changes no amount on the bill', async () => {
+    renderCard(julyWith({}))
+    await screen.findByText('Final')
+
+    expect(sectionText('Strøm (supplier)')).toContain(
+      'Sum Strøm333,86 kr excl. VAT + 83,47 kr VAT417,33 kr',
+    )
   })
 })

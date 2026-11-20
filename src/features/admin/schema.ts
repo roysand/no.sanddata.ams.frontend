@@ -321,3 +321,10 @@ export const waterHeaterSchema = z.object({
 })
 
 export type WaterHeaterFormValues = z.infer<typeof waterHeaterSchema>
+
+/** The charger picked from the list of the server's Zaptec chargers (API spec 016). */
+export const evChargerSchema = z.object({
+  chargerId: z.string().min(1, 'Pick a charger'),
+})
+
+export type EvChargerFormValues = z.infer<typeof evChargerSchema>

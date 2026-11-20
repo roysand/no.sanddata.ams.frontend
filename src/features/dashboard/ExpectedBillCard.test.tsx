@@ -8,6 +8,7 @@ import {
   november2026Estimate,
   spotBill,
   withLine,
+  withEvCharger,
   withWaterHeater,
 } from '../../test/bills'
 import { server } from '../../test/server'
@@ -240,5 +241,23 @@ describe('ExpectedBillCard water heating', () => {
     await screen.findByText('Estimate')
 
     expect(screen.queryByText(/Water heating/)).not.toBeInTheDocument()
+  })
+})
+
+describe('ExpectedBillCard car charging (spec 013)', () => {
+  it('says how much the car charged so far this month and that it is counted', async () => {
+    renderCard(withEvCharger(estimate, { firstHour: '2026-10-31T23:00:00Z' })) // 1 November in Oslo
+    await screen.findByText('Estimate')
+
+    expect(
+      screen.getByText(/^Car charging so far this month: 212,7 kWh · counted with the house$/),
+    ).toBeInTheDocument()
+  })
+
+  it('has no line without a part', async () => {
+    renderCard(estimate)
+    await screen.findByText('Estimate')
+
+    expect(screen.queryByText(/Car charging/)).not.toBeInTheDocument()
   })
 })

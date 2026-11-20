@@ -23,7 +23,9 @@ import type {
   PriceRateInput,
   PagedUsers,
   RotatedKey,
+  EvChargerSettings,
   WaterHeaterInput,
+  ZaptecCharger,
   WaterHeaterSettings,
 } from './types'
 
@@ -251,6 +253,40 @@ export function rotateSensorKey(locationId: string) {
 export async function removeWaterHeater(locationId: string): Promise<void> {
   try {
     await api.delete<void>(waterHeaterPath(locationId))
+  } catch (error) {
+    if (!isNotFound(error)) throw error
+  }
+}
+
+const evChargerPath = (locationId: string) => `/api/admin/locations/${locationId}/ev-charger`
+
+/** The chargers the server's Zaptec sign-in can see. 503 when the sign-in is not set up, is rejected or Zaptec is down. */
+export function getZaptecChargers() {
+  return api.get<ZaptecCharger[]>('/api/admin/ev-chargers')
+}
+
+/**
+ * The charger connected to a location, or `null` when there is none. The API answers 404 both for "not connected" and
+ * "no such location"; the dialog is open on a location that exists, so 404 means not connected.
+ */
+export async function getEvChargerSettings(locationId: string): Promise<EvChargerSettings | null> {
+  try {
+    return await api.get<EvChargerSettings>(evChargerPath(locationId))
+  } catch (error) {
+    if (isNotFound(error)) return null
+    throw error
+  }
+}
+
+/** Connects or replaces the charger; the API checks with Zaptec that its sign-in can see it first. */
+export function connectEvCharger(locationId: string, chargerId: string) {
+  return api.put<EvChargerSettings>(evChargerPath(locationId), { chargerId })
+}
+
+/** Removes the connection; the charging already read is kept. A 404 means it is already gone. */
+export async function removeEvCharger(locationId: string): Promise<void> {
+  try {
+    await api.delete<void>(evChargerPath(locationId))
   } catch (error) {
     if (!isNotFound(error)) throw error
   }

@@ -19,6 +19,7 @@ body {
   --color-usage: var(--usage);
   --color-usage-ghost: var(--usage-ghost);
   --color-water-heater: var(--water-heater);
+  --color-ev-charger: var(--ev-charger);
   --color-peak-average: var(--peak-average);
   --color-norgespris: var(--norgespris);
   --font-heading: var(--font-sans);
@@ -106,6 +107,8 @@ body {
   --usage-ghost: oklch(0.65 0.02 262);
   /* water heating inside the usage chart: warm, apart from the blue usage in hue and lightness */
   --water-heater: oklch(0.68 0.16 45);
+  /* car charging inside the usage chart: violet, apart from the blue usage and the orange water heating */
+  --ev-charger: oklch(0.6 0.18 305);
   /* the average line on the tariff peaks chart */
   --peak-average: oklch(0.74 0.17 148);
   /* Norgespris line: black (white in dark mode), drawn solid and thick so it stands apart from the dashed price lines. */
@@ -153,6 +156,7 @@ body {
   --usage: oklch(0.75 0.14 262);
   --usage-ghost: oklch(0.55 0.03 262);
   --water-heater: oklch(0.75 0.13 45);
+  --ev-charger: oklch(0.72 0.15 305);
   --peak-average: oklch(0.8 0.16 148);
   --norgespris: oklch(1 0 0);
 }

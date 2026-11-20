@@ -60,6 +60,8 @@ export const july2026Bill: MonthlyBill = withParts(
   {
     month: '2026-07',
     waterHeater: null,
+    totalKwh: null,
+    evCharger: null,
     status: 'Final',
     pricingModel: 'NorgesPris',
     isComplete: true,
@@ -261,6 +263,25 @@ export function withWaterHeater(
       firstHourUtc: '2026-07-18T18:00:00Z',
       lastHourUtc: '2026-07-31T21:00:00Z',
       estimate: false,
+      ...part,
+    },
+  }
+}
+
+/** The same bill with a car charger part (API spec 016); amounts and lines are not changed by it. */
+export function withEvCharger(
+  bill: MonthlyBill,
+  part: Partial<NonNullable<MonthlyBill['evCharger']>> = {},
+): MonthlyBill {
+  return {
+    ...bill,
+    evCharger: {
+      kwh: 212.7,
+      estimated: false,
+      included: true,
+      hoursWithoutMeterReading: 0,
+      firstHour: '2026-07-01T06:00:00Z',
+      lastHour: '2026-07-31T21:00:00Z',
       ...part,
     },
   }

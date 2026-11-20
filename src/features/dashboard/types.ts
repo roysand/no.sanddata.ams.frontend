@@ -40,6 +40,10 @@ export interface CurrentRateCost {
 export interface CurrentHourCost {
   hourStart: string
   consumptionKwhSoFar: number
+  /** The meter's kWh so far plus the car's when it is counted with the house (API spec 016). */
+  totalKwhSoFar: number
+  /** Only set when a charging session ended in this hour: Zaptec gives completed sessions only. */
+  evCharger: EvChargerPart | null
   pricingModel: PricingModel
   /** null when price or exchange-rate data is not available yet */
   actual: CurrentRateCost | null
@@ -75,13 +79,49 @@ export interface WaterHeaterBillPart extends WaterHeaterPart {
   estimate: false
 }
 
+/**
+ * The car charger's part of an hour, a day or a month (API spec 016). The charger has its own supply, so its kWh are
+ * not in `consumptionKwh`. `consumptionKwh` and every cost stay the house's own; `totalKwh` adds the car only when
+ * `included`. null on the item means no charging data, never zeros.
+ */
+export interface EvChargerPart {
+  kwh: number
+  estimated: boolean
+  /** The location's "count the car charger with the house" setting, when the figures were asked for. */
+  included: boolean
+}
+
+export interface EvChargerDayPart extends EvChargerPart {
+  /** Charging hours with no house reading: in the day's car kWh, but without an item in the hourly list. */
+  hoursWithoutMeterReading: number
+}
+
+/** The car's part of a month's bill: the hours so far, never projected. */
+export interface EvChargerBillPart extends EvChargerDayPart {
+  /** UTC ISO; the first and last charging hour so far. */
+  firstHour: string
+  lastHour: string
+}
+
+/** One completed charging session. */
+export interface EvChargerSession {
+  /** UTC ISO */
+  start: string
+  end: string
+  kwh: number
+  estimated: boolean
+}
+
 export interface HourlyCostItem {
   hourStart: string
   consumptionKwh: number
+  /** `consumptionKwh` plus the car's kWh when the car is counted with the house; otherwise `consumptionKwh`. */
+  totalKwh: number
   pricingModel: PricingModel
   actual: HourRateCost | null
   comparison: HourRateCost | null
   waterHeater: WaterHeaterPart | null
+  evCharger: EvChargerPart | null
 }
 
 export interface PagedHourlyCost {
@@ -99,10 +139,13 @@ export interface DailyCostItem {
   /** Oslo calendar day, yyyy-MM-dd */
   date: string
   consumptionKwh: number
+  /** `consumptionKwh` plus the car's kWh (including hours without a house reading) when the car is counted. */
+  totalKwh: number
   pricingModel: PricingModel
   actual: DayCost | null
   comparison: DayCost | null
   waterHeater: WaterHeaterPart | null
+  evCharger: EvChargerDayPart | null
 }
 
 export interface DailyCost {
@@ -280,6 +323,9 @@ export interface MonthlyBill {
   nettleie: BillPart
   total: BillAmounts
   waterHeater: WaterHeaterBillPart | null
+  /** The meter's kWh so far plus the car's when counted; null from an API without spec 016. Never priced. */
+  totalKwh: number | null
+  evCharger: EvChargerBillPart | null
 }
 
 export type WaterHeaterMode = 'None' | 'Holiday' | 'Supercharge' | 'BlueBattery'

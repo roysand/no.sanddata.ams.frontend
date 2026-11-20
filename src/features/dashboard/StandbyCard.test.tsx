@@ -17,10 +17,12 @@ function hours(days: string[], priced = true): HourlyCostItem[] {
       return {
         hourStart: new Date(start + h * 3_600_000).toISOString(),
         consumptionKwh: kwh,
+        totalKwh: kwh,
         pricingModel: 'Spot' as const,
         actual: priced ? { ratePerKwh: 2, cost: kwh * 2 } : null,
         comparison: null,
         waterHeater: null,
+        evCharger: null,
       }
     })
   })

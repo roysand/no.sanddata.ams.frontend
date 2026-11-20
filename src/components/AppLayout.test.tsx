@@ -90,6 +90,19 @@ describe('AppLayout', () => {
     expect(screen.queryByRole('link', { name: /Heater/ })).not.toBeInTheDocument()
   })
 
+  it('shows the Car tab from the location list when the location has a car charger', async () => {
+    renderLayout({ ...home(true), hasEvCharger: true } as ReturnType<typeof home>)
+
+    expect(await screen.findByRole('link', { name: /Car/ })).toHaveAttribute('href', '/ev-charger')
+  })
+
+  it('has no Car tab without a car charger, or when an older API leaves the flag out', async () => {
+    renderLayout(home(true))
+
+    expect(await screen.findByRole('link', { name: /Heater/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Car/ })).not.toBeInTheDocument()
+  })
+
   it('shows the key reminder banner above the page for an administrator', async () => {
     server.use(
       http.get('*/api/admin/key-reminders', () =>

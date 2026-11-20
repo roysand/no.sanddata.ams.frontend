@@ -35,10 +35,12 @@ describe('hourTrend', () => {
   const yesterday = (cost: number | null): HourlyCostItem => ({
     hourStart: '2026-11-12T12:00:00Z',
     consumptionKwh: 2,
+    totalKwh: 2,
     pricingModel: 'Spot',
     actual: cost === null ? null : { ratePerKwh: 1, cost },
     comparison: null,
     waterHeater: null,
+    evCharger: null,
   })
 
   it('is down when this hour is cheaper than yesterday at the same point', () => {
@@ -135,18 +137,22 @@ describe('row builders', () => {
       {
         hourStart: '2026-11-13T10:00:00Z',
         consumptionKwh: 1.5,
+        totalKwh: 1.5,
         pricingModel: 'Spot',
         actual: { ratePerKwh: 1, cost: 1.5 },
         comparison: null,
         waterHeater: null,
+        evCharger: null,
       },
       {
         hourStart: '2026-11-13T11:00:00Z',
         consumptionKwh: 2,
+        totalKwh: 2,
         pricingModel: 'Spot',
         actual: null,
         comparison: null,
         waterHeater: null,
+        evCharger: null,
       },
     ])
 
@@ -160,26 +166,32 @@ describe('row builders', () => {
         {
           date: '2026-10-30',
           consumptionKwh: 10,
+          totalKwh: 10,
           pricingModel: 'Spot',
           actual: { cost: 12 },
           comparison: null,
           waterHeater: null,
+          evCharger: null,
         },
         {
           date: '2026-10-31',
           consumptionKwh: 5,
+          totalKwh: 5,
           pricingModel: 'Spot',
           actual: { cost: 6 },
           comparison: null,
           waterHeater: null,
+          evCharger: null,
         },
         {
           date: '2026-11-01',
           consumptionKwh: 7,
+          totalKwh: 7,
           pricingModel: 'Spot',
           actual: null,
           comparison: null,
           waterHeater: null,
+          evCharger: null,
         },
       ],
       true,
@@ -205,10 +217,12 @@ describe('buildRecentUsage', () => {
   const rate = (base: number, hourOffset: number, ratePerKwh: number | null): HourlyCostItem => ({
     hourStart: new Date(base + hourOffset * 3_600_000).toISOString(),
     consumptionKwh: 1,
+    totalKwh: 1,
     pricingModel: 'Spot',
     actual: ratePerKwh === null ? null : { ratePerKwh, cost: ratePerKwh },
     comparison: null,
     waterHeater: null,
+    evCharger: null,
   })
   const input = (overrides: Partial<Parameters<typeof buildRecentUsage>[0]> = {}) => ({
     current: [],
@@ -324,10 +338,12 @@ describe('water heating in the chart series', () => {
   ): HourlyCostItem => ({
     hourStart,
     consumptionKwh: kwh,
+    totalKwh: kwh,
     pricingModel: 'Spot',
     actual: cost === null ? null : { ratePerKwh: 1, cost },
     comparison: null,
     waterHeater,
+    evCharger: null,
   })
   const dayItem = (
     date: string,
@@ -336,10 +352,12 @@ describe('water heating in the chart series', () => {
   ): DailyCostItem => ({
     date,
     consumptionKwh: kwh,
+    totalKwh: kwh,
     pricingModel: 'Spot',
     actual: { cost: kwh },
     comparison: null,
     waterHeater,
+    evCharger: null,
   })
   const slots = (keys: string[]) => keys.map((key) => ({ key, label: key }))
   const LATER = new Date('2026-12-01T00:00:00Z')
@@ -428,5 +446,136 @@ describe('water heating in the chart series', () => {
       rest: 2,
       partly: false,
     })
+  })
+})
+
+describe('car charging in the chart series (spec 013)', () => {
+  const LATER = new Date('2026-12-01T00:00:00Z')
+  const slots = (keys: string[]) => keys.map((key) => ({ key, label: key }))
+  const car = (kwh: number, included: boolean) => ({ kwh, estimated: false, included })
+
+  /** House `house` kWh (cost = kWh), with an optional car part; `totalKwh` as the API gives it. */
+  const hourItem = (
+    hourStart: string,
+    house: number,
+    evCharger: { kwh: number; estimated: boolean; included: boolean } | null,
+    waterHeater: WaterHeaterPart | null = null,
+  ): HourlyCostItem => ({
+    hourStart,
+    consumptionKwh: house,
+    totalKwh: house + (evCharger?.included ? evCharger.kwh : 0),
+    pricingModel: 'Spot',
+    actual: { ratePerKwh: 1, cost: house },
+    comparison: null,
+    waterHeater,
+    evCharger,
+  })
+  const dayItem = (
+    date: string,
+    house: number,
+    evCharger: { kwh: number; estimated: boolean; included: boolean } | null,
+  ): DailyCostItem => ({
+    date,
+    consumptionKwh: house,
+    totalKwh: house + (evCharger?.included ? evCharger.kwh : 0),
+    pricingModel: 'Spot',
+    actual: { cost: house },
+    comparison: null,
+    waterHeater: null,
+    evCharger: evCharger && { ...evCharger, hoursWithoutMeterReading: 0 },
+  })
+
+  it('charts the total with the car, and keeps the cost the house’s own', () => {
+    const [row] = rowsFromHourly([hourItem('2026-11-20T18:00:00Z', 1, car(3, true))], LATER)
+
+    expect(row).toMatchObject({ kwh: 4, nok: 1, carKwh: 3 })
+  })
+
+  it('has no car part, and the house only, when the car is not counted', () => {
+    const [row] = rowsFromHourly([hourItem('2026-11-20T18:00:00Z', 1, car(3, false))], LATER)
+
+    expect(row).toMatchObject({ kwh: 1, nok: 1, carKwh: null })
+  })
+
+  it("sums the days' car parts for a month in the year view, and gives null without any", () => {
+    const rows = rowsFromDaily(
+      [
+        dayItem('2026-11-18', 20, null),
+        dayItem('2026-11-19', 20, car(10, true)),
+        dayItem('2026-11-20', 20, car(5, true)),
+        dayItem('2026-10-20', 20, null),
+      ],
+      true,
+      LATER,
+    )
+    const november = rows.find((row) => row.key === '2026-11')!
+    const october = rows.find((row) => row.key === '2026-10')!
+
+    expect(november).toMatchObject({ kwh: 75, carKwh: 15 })
+    expect(october.carKwh).toBeNull()
+  })
+
+  it('gives the car part in kWh and never in kr', () => {
+    const rows = rowsFromHourly([hourItem('2026-11-20T18:00:00Z', 1, car(3, true))], LATER)
+    const keys = rows.map((row) => row.key)
+
+    const kwh = buildUsageSeries(slots(keys), rows, slots(keys), [], 'kwh')
+    const nok = buildUsageSeries(slots(keys), rows, slots(keys), [], 'nok')
+
+    expect(kwh.points[0]).toMatchObject({ current: 4, car: 3, rest: 1 })
+    expect(kwh.hasCar).toBe(true)
+    expect(nok.points[0]).toMatchObject({ current: 1, car: null, rest: 1 })
+    expect(nok.hasCar).toBe(false)
+  })
+
+  it('takes both water heating and the car out of everything else, never below 0', () => {
+    const rows = rowsFromHourly(
+      [
+        hourItem('2026-11-20T18:00:00Z', 2, car(3, true), {
+          kwh: 0.5,
+          cost: 0.5,
+          sampledMinutes: 60,
+          capped: false,
+        }),
+        hourItem('2026-11-20T19:00:00Z', 0, car(3, true), {
+          kwh: 0.5,
+          cost: 0.5,
+          sampledMinutes: 60,
+          capped: false,
+        }),
+      ],
+      LATER,
+    )
+    const keys = rows.map((row) => row.key)
+
+    const series = buildUsageSeries(slots(keys), rows, slots(keys), [], 'kwh')
+
+    expect(series.points[0]).toMatchObject({ current: 5, heater: 0.5, car: 3, rest: 1.5 })
+    expect(series.points[1].rest).toBe(0)
+  })
+
+  it('has no car without parts', () => {
+    const rows = rowsFromHourly([hourItem('2026-11-20T18:00:00Z', 2, null)], LATER)
+    const keys = rows.map((row) => row.key)
+
+    const series = buildUsageSeries(slots(keys), rows, slots(keys), [], 'kwh')
+
+    expect(series.hasCar).toBe(false)
+    expect(series.points[0]).toMatchObject({ current: 2, car: null, rest: 2 })
+  })
+
+  it('compares with the previous period on the same basis', () => {
+    const current = rowsFromHourly([hourItem('2026-11-20T18:00:00Z', 1, car(3, true))], LATER)
+    const previous = rowsFromHourly([hourItem('2026-11-19T18:00:00Z', 1, car(2, true))], LATER)
+
+    const series = buildUsageSeries(
+      slots(current.map((row) => row.key)),
+      current,
+      slots(previous.map((row) => row.key)),
+      previous,
+      'kwh',
+    )
+
+    expect(series.points[0]).toMatchObject({ current: 4, previous: 3 })
   })
 })

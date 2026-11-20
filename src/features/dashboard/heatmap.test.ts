@@ -14,10 +14,12 @@ function hours(days: string[], kwh: (date: string, hour: number) => number): Hou
       items.push({
         hourStart: new Date(t).toISOString(),
         consumptionKwh: kwh(date, h),
+        totalKwh: kwh(date, h),
         pricingModel: 'Spot',
         actual: null,
         comparison: null,
         waterHeater: null,
+        evCharger: null,
       })
     }
     return items

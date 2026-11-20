@@ -1,4 +1,10 @@
-import type { ConsumptionItem, DailyCostItem, HourlyCostItem, WaterHeaterPart } from './types'
+import type {
+  ConsumptionItem,
+  DailyCostItem,
+  EvChargerPart,
+  HourlyCostItem,
+  WaterHeaterPart,
+} from './types'
 import { addDays, dayStart, type Slot, type Unit } from './periods'
 import { elapsedMinutes, isPartlyMeasured, restOf, sumParts } from './waterHeater'
 
@@ -43,7 +49,9 @@ export interface UsagePoint {
   previous: number | null
   /** Water heating in the chosen unit, for the current period only; null without a heater figure. */
   heater: number | null
-  /** Everything else: current − heater, or all of current when there is no heater figure. */
+  /** Car charging in kWh when it is counted with the house (spec 013); always null in kr. */
+  car: number | null
+  /** Everything else: current − heater − car, or all of current when there is neither. */
   rest: number | null
   /** True when noticeably less of the slot's time than expected was sampled. */
   partly: boolean
@@ -61,11 +69,14 @@ export interface UsageSeries {
   hasPrevious: boolean
   /** True when any slot of the current period has a water heating value. */
   hasHeater: boolean
+  /** True when any slot of the current period has a car charging value. */
+  hasCar: boolean
 }
 
 /** One raw API row reduced to what the chart needs: where it falls and how much it holds. */
 export interface UsageRow {
   key: string
+  /** The API's `totalKwh`: the house, plus the car when it is counted with the house (spec 013). */
   kwh: number
   /** null when the plan has no price for it. */
   nok: number | null
@@ -75,9 +86,14 @@ export interface UsageRow {
   sampledMinutes?: number | null
   /** The minutes the sampled minutes are judged against: the slot's length, or its minutes so far. */
   expectedMinutes?: number
+  /** The car's kWh when it is counted with the house; absent or null otherwise. Never priced. */
+  carKwh?: number | null
 }
 
 const HOUR_IN_MS = 3_600_000
+
+/** The car's kWh only when it is counted: then it is in `totalKwh`, so drawing it as a part keeps the bar's height. */
+const carKwhOf = (part: EvChargerPart | null) => (part?.included ? part.kwh : null)
 
 function heaterFields(part: WaterHeaterPart | null) {
   return {
@@ -92,9 +108,10 @@ export function rowsFromHourly(items: HourlyCostItem[], now = new Date()): Usage
     const start = new Date(item.hourStart)
     return {
       key: String(start.getTime()),
-      kwh: item.consumptionKwh,
+      kwh: item.totalKwh,
       nok: item.actual?.cost ?? null,
       ...heaterFields(item.waterHeater),
+      carKwh: carKwhOf(item.evCharger),
       expectedMinutes: elapsedMinutes(start, new Date(start.getTime() + HOUR_IN_MS), now),
     }
   })
@@ -119,22 +136,25 @@ export function rowsFromDaily(
     const key = byMonth ? item.date.slice(0, 7) : item.date
     const cost = item.actual?.cost ?? null
     const part = item.waterHeater
+    const car = carKwhOf(item.evCharger)
     const expected = part ? dayMinutes(item.date, now) : 0
     const entry = rows.get(key)
     if (!entry) {
       rows.set(key, {
         row: {
           key,
-          kwh: item.consumptionKwh,
+          kwh: item.totalKwh,
           nok: cost,
           ...heaterFields(part),
           expectedMinutes: expected,
+          carKwh: car,
         },
         parts: part ? [part] : [],
       })
     } else {
       const { row } = entry
-      row.kwh += item.consumptionKwh
+      row.kwh += item.totalKwh
+      if (car !== null) row.carKwh = (row.carKwh ?? 0) + car
       row.nok = cost === null ? row.nok : (row.nok ?? 0) + cost
       if (part) entry.parts.push(part)
       row.expectedMinutes = (row.expectedMinutes ?? 0) + expected
@@ -171,6 +191,8 @@ export function buildUsageSeries(
     // In kr, a part without a known cost gives no split for the slot.
     const heater =
       !row || value === null ? null : ((unit === 'kwh' ? row.heaterKwh : row.heaterNok) ?? null)
+    // The car is counted in kWh only: it is never priced.
+    const car = !row || value === null || unit !== 'kwh' ? null : (row.carKwh ?? null)
     const sampled = row?.sampledMinutes ?? null
     return {
       key: slot.key,
@@ -178,7 +200,8 @@ export function buildUsageSeries(
       current: value,
       previous: previous[i] ?? null,
       heater,
-      rest: heater === null ? value : restOf(value, heater),
+      car,
+      rest: heater === null && car === null ? value : restOf(value, (heater ?? 0) + (car ?? 0)),
       partly:
         heater !== null && sampled !== null && isPartlyMeasured(sampled, row?.expectedMinutes ?? 0),
     }
@@ -198,6 +221,7 @@ export function buildUsageSeries(
     hasCurrent: last >= 0,
     hasPrevious: previous.some((value) => value !== null),
     hasHeater: points.some((point) => point.heater !== null),
+    hasCar: points.some((point) => point.car !== null),
   }
 }
 

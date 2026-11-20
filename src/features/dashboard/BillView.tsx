@@ -153,6 +153,7 @@ export function BillInvoice({ bill }: { bill: MonthlyBill }) {
         </span>
       </div>
       <WaterHeaterBillNote bill={bill} />
+      <EvChargerBillNote bill={bill} />
       <IncompleteNote bill={bill} />
     </div>
   )
@@ -181,6 +182,28 @@ export function WaterHeaterBillNote({ bill }: { bill: MonthlyBill }) {
       </p>
       {estimate && <p>Measured so far, not part of the estimate.</p>}
     </div>
+  )
+}
+
+/**
+ * What the car charged in the month (API spec 016), below the water heating note. The car is never priced and adds to
+ * no sum: it only says whether its kWh are counted with the house's usage.
+ */
+export function EvChargerBillNote({ bill }: { bill: MonthlyBill }) {
+  const part = bill.evCharger
+  if (!part) return null
+  const fromMonthStart =
+    formatOsloDate(part.firstHour) === formatOsloDate(dayStart(`${bill.month}-01`).toISOString())
+  const period = !fromMonthStart
+    ? `since ${formatOsloDate(part.firstHour)}`
+    : bill.status === 'Estimate'
+      ? 'so far this month'
+      : `in ${formatMonth(bill.month)}`
+  return (
+    <p className="text-xs text-muted-foreground">
+      Car charging {period}: {formatKwh(part.kwh)} ·{' '}
+      {part.included ? 'counted with the house' : 'not counted with the house'}
+    </p>
   )
 }
 

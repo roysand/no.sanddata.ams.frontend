@@ -100,6 +100,7 @@ const config = {
   current: { label: 'This period', color: 'var(--usage)' },
   previous: { label: 'Previous period', color: 'var(--usage-ghost)' },
   heater: { label: 'Water heating', color: 'var(--water-heater)' },
+  car: { label: 'Car charging', color: 'var(--ev-charger)' },
   rest: { label: 'Everything else', color: 'var(--usage)' },
 } satisfies ChartConfig
 
@@ -276,10 +277,16 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
     current: point.current,
     previous: point.previous,
     heater: point.heater,
+    car: point.car,
+    // The car as a band just under the total line in the day view: from the total without it up to the total.
+    carBand:
+      point.car === null || point.current === null
+        ? null
+        : [point.current - point.car, point.current],
     rest: point.rest,
   }))
-  // Water heating is drawn only when the period has some, so the chart is unchanged without a heater.
-  const split = series.hasHeater
+  // Water heating and car charging are drawn only when the period has some, so the chart is unchanged without them.
+  const split = series.hasHeater || series.hasCar
   const bars = period !== 'day'
   const tickEvery = period === 'day' ? 6 : period === 'week' ? 1 : period === 'month' ? 7 : 2
   const shown = active !== null ? series.points[active] : null
@@ -386,25 +393,36 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                     </Bar>
                   )}
                   {split ? (
-                    // This period as one stacked bar: water heating at the bottom, everything else on top,
-                    // with the slot's total written in it as before.
+                    // This period as one stacked bar: water heating at the bottom, everything else above it and
+                    // car charging on top, with the slot's total written in it as before.
                     <>
-                      <Bar
-                        dataKey="heater"
-                        stackId="current"
-                        fill="var(--water-heater)"
-                        radius={[0, 0, 2, 2]}
-                        isAnimationActive={false}
-                      />
+                      {series.hasHeater && (
+                        <Bar
+                          dataKey="heater"
+                          stackId="current"
+                          fill="var(--water-heater)"
+                          radius={[0, 0, 2, 2]}
+                          isAnimationActive={false}
+                        />
+                      )}
                       <Bar
                         dataKey="rest"
                         stackId="current"
                         fill="var(--usage)"
-                        radius={[4, 4, 0, 0]}
+                        radius={series.hasCar ? [0, 0, 0, 0] : [4, 4, 0, 0]}
                         isAnimationActive={false}
                       >
                         <LabelList dataKey="current" content={BarValue} />
                       </Bar>
+                      {series.hasCar && (
+                        <Bar
+                          dataKey="car"
+                          stackId="current"
+                          fill="var(--ev-charger)"
+                          radius={[4, 4, 0, 0]}
+                          isAnimationActive={false}
+                        />
+                      )}
                     </>
                   ) : (
                     <Bar
@@ -433,7 +451,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                     isAnimationActive={false}
                     connectNulls
                   />
-                  {split && (
+                  {series.hasHeater && (
                     // Water heating as a filled area under the total; hours without a part leave a gap.
                     <Area
                       dataKey="heater"
@@ -441,6 +459,20 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                       stroke="var(--water-heater)"
                       strokeWidth={1}
                       fill="var(--water-heater)"
+                      fillOpacity={0.5}
+                      dot={false}
+                      activeDot={false}
+                      isAnimationActive={false}
+                    />
+                  )}
+                  {series.hasCar && (
+                    // Car charging as a band just under the total line; hours without charging leave a gap.
+                    <Area
+                      dataKey="carBand"
+                      type="monotone"
+                      stroke="var(--ev-charger)"
+                      strokeWidth={1}
+                      fill="var(--ev-charger)"
                       fillOpacity={0.5}
                       dot={false}
                       activeDot={false}
@@ -474,7 +506,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
             />
             {plan.current.title}
           </li>
-          {split && (
+          {series.hasHeater && (
             <li className="flex items-center gap-1.5">
               <span
                 aria-hidden="true"
@@ -485,6 +517,17 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                 }
               />
               Water heating
+            </li>
+          )}
+          {series.hasCar && (
+            <li className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={
+                  bars ? 'size-2.5 rounded-sm bg-ev-charger' : 'h-2 w-4 rounded-sm bg-ev-charger'
+                }
+              />
+              Car charging
             </li>
           )}
           {series.hasPrevious && (
@@ -510,12 +553,17 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
             <span>
               <b>{shown.label}</b> ·{' '}
               {shown.current === null ? 'no data yet' : <b>{format(unit, shown.current)}</b>}
-              {shown.heater !== null && (
+              {(shown.heater !== null || shown.car !== null) && (
                 <span>
-                  {' '}
-                  · Water heating {format(unit, shown.heater)}
-                  {shown.partly && ' (partly measured)'} · Everything else{' '}
-                  {format(unit, shown.rest ?? 0)}
+                  {[
+                    '',
+                    shown.car !== null && `Car charging ${format(unit, shown.car)}`,
+                    shown.heater !== null &&
+                      `Water heating ${format(unit, shown.heater)}${shown.partly ? ' (partly measured)' : ''}`,
+                    `Everything else ${format(unit, shown.rest ?? 0)}`,
+                  ]
+                    .filter((part) => part !== false)
+                    .join(' · ')}
                 </span>
               )}
               {series.hasPrevious && shown.previous !== null && (

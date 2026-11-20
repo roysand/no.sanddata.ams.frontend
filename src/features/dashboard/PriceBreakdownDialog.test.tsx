@@ -38,6 +38,8 @@ function hour(overrides: Partial<CurrentHourCost> = {}): CurrentHourCost {
   return {
     hourStart: '2026-11-16T12:00:00Z', // 13:00 in Oslo
     consumptionKwhSoFar: 1.2,
+    totalKwhSoFar: 1.2,
+    evCharger: null,
     pricingModel: 'Spot',
     actual: { ratePerKwh: SPOT.total, costSoFar: 1.5, parts: SPOT },
     comparison: { ratePerKwh: NORGESPRIS.total, costSoFar: 0.6, parts: NORGESPRIS },

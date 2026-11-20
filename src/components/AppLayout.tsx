@@ -7,8 +7,9 @@ import { TabBar } from './TabBar'
 
 export function AppLayout() {
   const { hasMultiple, selected } = useSelectedLocation()
-  // From the location list, which is loaded first anyway, so the Heater tab appears with the others.
+  // From the location list, which is loaded first anyway, so the Heater and Car tabs appear with the others.
   const hasWaterHeater = selected?.hasWaterHeater === true
+  const hasEvCharger = selected?.hasEvCharger === true
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col bg-background">
@@ -24,7 +25,11 @@ export function AppLayout() {
       <main className="flex-1 px-4 pt-2 pb-6">
         <Outlet />
       </main>
-      <TabBar hasMultipleLocations={hasMultiple} hasWaterHeater={hasWaterHeater} />
+      <TabBar
+        hasMultipleLocations={hasMultiple}
+        hasWaterHeater={hasWaterHeater}
+        hasEvCharger={hasEvCharger}
+      />
     </div>
   )
 }
