@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatKwh, formatNok, formatOsloDate, osloMonth } from './format'
@@ -16,11 +16,28 @@ const kwhAndCost = (part: WaterHeaterPart) =>
  * How much energy and money water heating took today and this month (API spec 012). Today is the sum of today's hourly
  * parts, the same ones the day chart draws; the month is the bill's part. Both come from the queries the Now page uses,
  * so moving between the tabs is served from the cache.
+ *
+ * Each time today's figures arrive, the bill is fetched again if it is older. Today refreshes more often than the bill,
+ * and while the heater runs at 2 kW a few minutes are enough to make an older month look smaller than today.
  */
 export function WaterHeaterEnergyCard({ locationId }: { locationId: string }) {
   const month = osloMonth(new Date())
   const today = useTodayHourlyCost(locationId)
   const bill = useMonthlyBill(locationId, month, true)
+  const { refetch: refetchBill, isFetching: billFetching, dataUpdatedAt: billUpdatedAt } = bill
+
+  const seenToday = useRef(today.dataUpdatedAt)
+
+  useEffect(() => {
+    const previous = seenToday.current
+    seenToday.current = today.dataUpdatedAt
+    // The first load fetches both anyway; only a later refresh of today needs the bill to catch up.
+    if (previous > 0 && !billFetching && billUpdatedAt < today.dataUpdatedAt) {
+      void refetchBill()
+    }
+    // Only a new set of today's figures should trigger this, not the bill's own changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today.dataUpdatedAt])
 
   return (
     <Card>
