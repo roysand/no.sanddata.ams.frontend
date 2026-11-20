@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  monthToNow,
   elapsedMinutes,
   isPartlyMeasured,
   osloDayMinutes,
@@ -7,7 +8,7 @@ import {
   shareOf,
   sumParts,
 } from './waterHeater'
-import type { WaterHeaterPart } from './types'
+import type { WaterHeaterBillPart, WaterHeaterPart } from './types'
 
 const part = (
   kwh: number,
@@ -107,5 +108,48 @@ describe('shareOf', () => {
 
   it('is at most all of it', () => {
     expect(shareOf(2, 1)).toBe(1)
+  })
+})
+
+describe('monthToNow', () => {
+  const p = (kwh: number, cost: number | null): WaterHeaterPart => ({
+    kwh,
+    cost,
+    sampledMinutes: 60,
+    capped: false,
+  })
+  const bill: WaterHeaterBillPart = {
+    ...p(4.69, 4.23),
+    firstHourUtc: '2026-11-19T18:00:00Z',
+    lastHourUtc: '2026-11-20T16:00:00Z',
+    estimate: false,
+  }
+  const hours = [
+    { hourStart: '2026-11-20T16:00:00Z', waterHeater: p(2, 1.8) },
+    { hourStart: '2026-11-20T17:00:00Z', waterHeater: p(0.8, 0.72) },
+  ]
+
+  it("adds only today's hours after the bill's last one", () => {
+    const month = monthToNow(bill, hours)
+    expect(month?.kwh).toBeCloseTo(5.49)
+    expect(month?.cost).toBeCloseTo(4.95)
+    expect(month?.firstHourUtc).toBe('2026-11-19T18:00:00Z')
+  })
+
+  it('is the bill as is when today has nothing later', () => {
+    expect(monthToNow(bill, hours.slice(0, 1))).toMatchObject({ kwh: 4.69, cost: 4.23 })
+  })
+
+  it("starts at today's first part when the bill has none yet", () => {
+    expect(
+      monthToNow(null, [{ hourStart: '2026-11-20T08:00:00Z', waterHeater: null }, ...hours]),
+    ).toMatchObject({
+      kwh: 2.8,
+      firstHourUtc: '2026-11-20T16:00:00Z',
+    })
+  })
+
+  it('is null when neither has a part, never zeros', () => {
+    expect(monthToNow(null, [{ hourStart: '2026-11-20T08:00:00Z', waterHeater: null }])).toBeNull()
   })
 })
