@@ -237,6 +237,8 @@ export function useWaterHeaterActions(locationId: string) {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: [...WATER_HEATER_KEY, locationId] }),
       queryClient.invalidateQueries({ queryKey: ['water-heater', 'state', locationId] }),
+      // The location list says whether there is a heater, which shows or hides the Heater tab.
+      queryClient.invalidateQueries({ queryKey: ['locations'] }),
     ])
   return {
     connect: useMutation({

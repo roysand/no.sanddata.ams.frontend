@@ -1,12 +1,12 @@
 import { Outlet } from 'react-router-dom'
-import { useHasWaterHeater } from '../features/dashboard'
 import { useSelectedLocation } from '../features/locations'
 import { Header } from './Header'
 import { TabBar } from './TabBar'
 
 export function AppLayout() {
   const { hasMultiple, selected } = useSelectedLocation()
-  const hasWaterHeater = useHasWaterHeater(selected?.id)
+  // From the location list, which is loaded first anyway, so the Heater tab appears with the others.
+  const hasWaterHeater = selected?.hasWaterHeater === true
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col bg-background">
