@@ -102,7 +102,8 @@ describe('WaterHeaterPage', () => {
 
     expect(await screen.findByText('Energy')).toBeInTheDocument()
     expect(await screen.findByText(/^1,5 kWh · 1,20 kr · 50 % of today's use$/)).toBeInTheDocument()
-    expect(await screen.findByText(/^104,6 kWh · 94,12 kr/)).toBeInTheDocument()
+    // The bill (104,6 kWh) ends before today's running hour, so the month adds it: 104,6 + 1,5.
+    expect(await screen.findByText(/^106,1 kWh · 95,32 kr/)).toBeInTheDocument()
   })
 
   it('says so when the selected location has no heater', async () => {

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import { november2026Estimate, withWaterHeater } from '../../test/bills'
 import { server } from '../../test/server'
@@ -34,9 +34,12 @@ const today = (
 ): PagedHourlyCost => ({ items, page: 1, pageSize: 500, totalCount: items.length })
 
 const month = osloMonth(new Date())
-/** The estimate fixture moved to this month, with a water heater part. */
+/** The estimate fixture moved to this month, with a water heater part that already covers today's hours. */
 const billWith = (patch: Parameters<typeof withWaterHeater>[1]) =>
-  withWaterHeater({ ...november2026Estimate(), month }, patch)
+  withWaterHeater(
+    { ...november2026Estimate(), month },
+    { lastHourUtc: '2026-11-20T01:00:00Z', ...patch },
+  )
 
 function serve(hourly: PagedHourlyCost, bill: MonthlyBill) {
   server.use(
@@ -113,27 +116,12 @@ describe('WaterHeaterEnergyCard', () => {
     expect(rowText('This month')).toMatch(/^104,6 kWh · 94,12 kr/)
   })
 
-  it("fetches the bill again when today's figures refresh, so the month never lags behind today", async () => {
-    let billCalls = 0
-    let monthKwh = 104.6
-    server.use(
-      http.get('*/api/electricity-cost/hourly', () => HttpResponse.json(today())),
-      http.get('*/api/electricity-cost/bill', () => {
-        billCalls += 1
-        return HttpResponse.json(billWith({ kwh: monthKwh }))
-      }),
-    )
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    renderCard(queryClient)
+  it("adds today's hours after the bill's last one, so the month never shows less than today", async () => {
+    // The bill's last hour is 23:00 UTC; today's 00:00 UTC hour (1,2 kWh, 1,10 kr) is not in it yet.
+    serve(today(), billWith({ kwh: 4.69, cost: 4.23, lastHourUtc: '2026-11-19T23:00:00Z' }))
+    renderCard()
 
-    await screen.findByText(/104,6 kWh/)
-    await screen.findByText(/% of today's use/)
-    expect(billCalls).toBe(1)
-
-    monthKwh = 105.1
-    await act(() => queryClient.refetchQueries({ queryKey: ['cost', 'hourly-today', 'l1'] }))
-
-    expect(await screen.findByText(/105,1 kWh/)).toBeInTheDocument()
-    expect(billCalls).toBe(2)
+    expect(await screen.findByText(/5,89 kWh/)).toBeInTheDocument()
+    expect(rowText('This month')).toMatch(/^5,89 kWh · 5,33 kr/)
   })
 })

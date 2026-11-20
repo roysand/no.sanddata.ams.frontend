@@ -1,5 +1,5 @@
 import { addDays, dayStart } from './periods'
-import type { WaterHeaterPart } from './types'
+import type { WaterHeaterBillPart, WaterHeaterPart } from './types'
 
 const MINUTE_MS = 60_000
 
@@ -52,4 +52,23 @@ export function elapsedMinutes(start: Date, end: Date, now: Date): number {
 export function shareOf(heaterKwh: number, totalKwh: number): number | null {
   if (totalKwh <= 0) return null
   return Math.min(1, heaterKwh / totalKwh)
+}
+
+/** The month's water heating up to now, with the first hour that has a part. */
+export type MonthToNow = WaterHeaterPart & { firstHourUtc: string }
+
+/**
+ * The bill's water heating plus today's hours after the bill's last one. The API's bill stops at the start of the
+ * running hour, while today's hours include it, so without this the month could show less than today. null when
+ * neither has a part, never zeros.
+ */
+export function monthToNow(
+  bill: WaterHeaterBillPart | null,
+  todayHours: { hourStart: string; waterHeater: WaterHeaterPart | null }[],
+): MonthToNow | null {
+  const after = bill ? Date.parse(bill.lastHourUtc) : -Infinity
+  const later = todayHours.filter((hour) => hour.waterHeater && Date.parse(hour.hourStart) > after)
+  const part = sumParts([bill, ...later.map((hour) => hour.waterHeater)])
+  if (!part) return null
+  return { ...part, firstHourUtc: bill?.firstHourUtc ?? later[0].hourStart }
 }
