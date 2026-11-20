@@ -11,6 +11,7 @@ The API can already do it: `POST /api/admin/locations/{id}/api-key/rotate` (Admi
 years like a new location's key (`ApiKeyCrypto.KeyLifetime`, 730 days). What is missing is a button for it in the
 app, at least in **Admin → Locations**, which shows the new key once (as `SensorKeyNotice` does on creation). Open
 points:
+
 - whether owners may rotate their own key too
 - whether the old key stops at once
 - a warning before a key expires, since an expired key silently stops the readings.
