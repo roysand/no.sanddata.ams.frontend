@@ -4,9 +4,10 @@ import type {
   EvChargerPart,
   HourlyCostItem,
   WaterHeaterPart,
+  WaterHeaterPowerStep,
 } from './types'
 import { addDays, dayStart, type Slot, type Unit } from './periods'
-import { elapsedMinutes, isPartlyMeasured, restOf, sumParts } from './waterHeater'
+import { elapsedMinutes, isPartlyMeasured, restOf, shareOf, sumParts } from './waterHeater'
 
 const MINUTE_MS = 60_000
 /** A reading older than this is not "now" any more. */
@@ -231,11 +232,29 @@ export const RECENT_HOURS = 3
 export const RECENT_WINDOW_MS = RECENT_HOURS * HOUR_MS
 export const RECENT_BUCKETS = RECENT_WINDOW_MS / BUCKET_MS
 
+/**
+ * The "Last 3 hours" window: 36 steps on whole 5 minutes of the clock, the last one going on now (spec 014, R1). Whole
+ * 5 minutes are the same in UTC and Oslo time, and they are where the water heater's steps start (API spec 017).
+ */
+export function recentWindow(now: Date): { startMs: number } {
+  return {
+    startMs: Math.floor(now.getTime() / BUCKET_MS) * BUCKET_MS - (RECENT_BUCKETS - 1) * BUCKET_MS,
+  }
+}
+
 export interface RecentPoint {
   label: string
-  /** Average power in kW over the 5 minutes, null when there is no reading. */
+  /** Average power in kW over the minutes with a reading in the 5 minutes, null when there is none. */
   current: number | null
   previous: number | null
+  /** The water heater's average kW in the step (spec 014); null without a step, or where the house has no reading. */
+  heater: number | null
+  /** What the chart draws: the heater, but never above the house (the two are measured apart). */
+  heaterDrawn: number | null
+  /** The house minus water heating, never below 0; null without a heater value. */
+  rest: number | null
+  /** A finished step with more than 2 minutes not sampled (spec 010's margin for 5 minutes). */
+  partly: boolean
 }
 
 export interface RecentCost {
@@ -256,17 +275,31 @@ export interface RecentUsage {
   costDeltaPercent: number | null
   hasCurrent: boolean
   hasPrevious: boolean
+  /** True when any step has a water heating value. */
+  hasHeater: boolean
+  /** kWh the heater used in the steps so far (Σ kW × sampled time); null without steps, never 0 (spec 014, US3). */
+  heaterKwh: number | null
+  /** Water heating's share (0–1) of the house's kWh over the same time; null when the house has none. */
+  heaterShare: number | null
 }
 
+/** More than this many unsampled seconds in a finished 5-minute step: max(2 minutes, 1 % of 5 minutes). */
+const PARTLY_AFTER_SECONDS = 120
+
+/**
+ * The average power per step over the minutes that have a reading (kWh per minute × 60), so the step going on now and
+ * a step with a missing minute read at their real power, as the water heater's steps do (spec 014, R2).
+ */
 function bucketKw(items: ConsumptionItem[], startMs: number): (number | null)[] {
-  const sums: (number | null)[] = Array(RECENT_BUCKETS).fill(null)
+  const sums: number[] = Array(RECENT_BUCKETS).fill(0)
+  const counts: number[] = Array(RECENT_BUCKETS).fill(0)
   for (const item of items) {
     const index = Math.floor((new Date(item.periodStart).getTime() - startMs) / BUCKET_MS)
     if (index < 0 || index >= RECENT_BUCKETS) continue
-    sums[index] = (sums[index] ?? 0) + item.consumptionKwh
+    sums[index] += item.consumptionKwh
+    counts[index] += 1
   }
-  // kWh in 5 minutes is 12 times the average power in kW.
-  return sums.map((sum) => (sum === null ? null : sum * 12))
+  return sums.map((sum, i) => (counts[i] === 0 ? null : (sum / counts[i]) * 60))
 }
 
 function inWindow(item: ConsumptionItem, startMs: number, endMs: number): boolean {
@@ -318,6 +351,18 @@ export interface RecentUsageInput {
   now: Date
   /** Turns the start of a 5-minute step into the clock time shown on the axis. */
   label: (ms: number) => string
+  /** The water heater's 5-minute steps in today's window (API spec 017); absent without a heater. */
+  heater?: WaterHeaterPowerStep[]
+}
+
+/** The heater steps by their place in the window; steps outside it are dropped. */
+function heaterBySlot(steps: WaterHeaterPowerStep[], startMs: number) {
+  const slots = new Map<number, WaterHeaterPowerStep>()
+  for (const step of steps) {
+    const index = Math.round((Date.parse(step.start) - startMs) / BUCKET_MS)
+    if (index >= 0 && index < RECENT_BUCKETS) slots.set(index, step)
+  }
+  return slots
 }
 
 /** The last three hours in 5-minute steps against the same three hours yesterday (same Oslo clock time). */
@@ -336,12 +381,24 @@ export function buildRecentUsage(input: RecentUsageInput): RecentUsage {
     previousStartMs + elapsed,
   )
 
-  return {
-    points: currentKw.map((value, i) => ({
-      label: input.label(startMs + i * BUCKET_MS),
+  const heater = heaterBySlot(input.heater ?? [], startMs)
+  const points = currentKw.map((value, i): RecentPoint => {
+    const stepStart = startMs + i * BUCKET_MS
+    const step = value === null ? undefined : heater.get(i)
+    const finished = stepStart + BUCKET_MS <= input.now.getTime()
+    return {
+      label: input.label(stepStart),
       current: value,
       previous: previousKw[i],
-    })),
+      heater: step?.powerKw ?? null,
+      heaterDrawn: step && value !== null ? Math.min(step.powerKw, value) : null,
+      rest: step && value !== null ? Math.max(0, value - step.powerKw) : null,
+      partly: !!step && finished && 300 - step.sampledSeconds > PARTLY_AFTER_SECONDS,
+    }
+  })
+
+  return {
+    points,
     totalKwh: kwh,
     previousKwh,
     deltaPercent: percent(kwh, previousKwh),
@@ -350,5 +407,39 @@ export function buildRecentUsage(input: RecentUsageInput): RecentUsage {
     costDeltaPercent: percent(cost.cost, previousCost.cost),
     hasCurrent: currentKw.some((value) => value !== null),
     hasPrevious: previousKw.some((value) => value !== null),
+    hasHeater: points.some((point) => point.heater !== null),
+    ...heaterEnergy(input.heater ?? [], startMs + elapsed, kwh),
   }
+}
+
+/** The heater's kWh in the steps that started before `endMs`, by the API's energy rule, and its share of `houseKwh`. */
+function heaterEnergy(steps: WaterHeaterPowerStep[], endMs: number, houseKwh: number) {
+  const counted = steps.filter((step) => Date.parse(step.start) < endMs)
+  if (counted.length === 0) return { heaterKwh: null, heaterShare: null }
+  const heaterKwh = counted.reduce(
+    (sum, step) => sum + (step.powerKw * step.sampledSeconds) / 3600,
+    0,
+  )
+  return { heaterKwh, heaterShare: shareOf(heaterKwh, houseKwh) }
+}
+
+const kwText = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 2 })
+
+/**
+ * The selected step's detail, after its clock time: "7,4 kW · Water heating 2 kW · Everything else 5,4 kW · yesterday
+ * 6,1 kW". Water heating is left out without a heater value, never "0 kW".
+ */
+export function recentDetailText(point: RecentPoint, hasPrevious: boolean): string {
+  if (point.current === null) return 'no reading'
+  const parts = [`${kwText.format(point.current)} kW`]
+  if (point.heater !== null) {
+    parts.push(
+      `Water heating ${kwText.format(point.heater)} kW${point.partly ? ' (partly measured)' : ''}`,
+      `Everything else ${kwText.format(point.rest ?? 0)} kW`,
+    )
+  }
+  if (hasPrevious && point.previous !== null) {
+    parts.push(`yesterday ${kwText.format(point.previous)} kW`)
+  }
+  return parts.join(' · ')
 }

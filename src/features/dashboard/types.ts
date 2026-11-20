@@ -328,6 +328,26 @@ export interface MonthlyBill {
   evCharger: EvChargerBillPart | null
 }
 
+/** The water heater's average power over 5 minutes (API spec 017), for the "Last 3 hours" chart. */
+export interface WaterHeaterPowerStep {
+  /** UTC ISO, on whole 5 minutes (the same in Oslo time). */
+  start: string
+  /** The average over the sampled time only, not over the whole 5 minutes. Not capped at the meter's power. */
+  powerKw: number
+  /** 1–300: how much of the 5 minutes was sampled. The step going on now covers only up to now. */
+  sampledSeconds: number
+}
+
+/** The heater's 5-minute steps in a window. A step without samples has no item: a gap, never 0 kW. */
+export interface WaterHeaterPower {
+  locationId: string
+  /** The window used, UTC ISO. */
+  from: string
+  to: string
+  stepSeconds: number
+  items: WaterHeaterPowerStep[]
+}
+
 export type WaterHeaterMode = 'None' | 'Holiday' | 'Supercharge' | 'BlueBattery'
 
 /** The OSO water heater's state, read from OSO when asked. A value OSO does not give is null, never 0. */

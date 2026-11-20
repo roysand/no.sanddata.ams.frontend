@@ -2,7 +2,13 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
 import { november2026Estimate } from '../../test/bills'
 import type { MonthlyBill } from './types'
-import { getCurrentHourCost, getDailyCost, getHourlyCost, getMonthlyBill } from './api'
+import {
+  getCurrentHourCost,
+  getDailyCost,
+  getHourlyCost,
+  getMonthlyBill,
+  getWaterHeaterPower,
+} from './api'
 
 /** An API without spec 016: no totalKwh, totalKwhSoFar or evCharger anywhere. */
 const hourWithout = {
@@ -94,5 +100,34 @@ describe('normalising the car charger fields (spec 013, research R1)', () => {
 
     expect(item.totalKwh).toBe(4.7)
     expect(item.evCharger).toEqual(evCharger)
+  })
+})
+
+describe('getWaterHeaterPower (spec 014)', () => {
+  it('asks for the window it is given and returns the 5-minute steps', async () => {
+    const asked: Record<string, string | null>[] = []
+    const items = [{ start: '2026-11-20T19:40:00Z', powerKw: 2.03, sampledSeconds: 300 }]
+    server.use(
+      http.get('*/api/locations/l1/water-heater/power', ({ request }) => {
+        const url = new URL(request.url)
+        asked.push({ from: url.searchParams.get('from'), to: url.searchParams.get('to') })
+        return HttpResponse.json({
+          locationId: 'l1',
+          from: '2026-11-20T17:40:00Z',
+          to: '2026-11-20T20:40:00Z',
+          stepSeconds: 300,
+          items,
+        })
+      }),
+    )
+
+    const power = await getWaterHeaterPower(
+      'l1',
+      '2026-11-20T17:40:00.000Z',
+      '2026-11-20T20:40:00.000Z',
+    )
+
+    expect(asked).toEqual([{ from: '2026-11-20T17:40:00.000Z', to: '2026-11-20T20:40:00.000Z' }])
+    expect(power.items).toEqual(items)
   })
 })

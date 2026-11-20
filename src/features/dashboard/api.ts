@@ -12,6 +12,7 @@ import type {
   MonthlyBill,
   NorgesPrisSaving,
   PagedHourlyCost,
+  WaterHeaterPower,
   WaterHeaterState,
 } from './types'
 
@@ -159,5 +160,12 @@ export function setEvChargerInclude(locationId: string, include: boolean) {
   return api.put<{ locationId: string; includeInTotals: boolean }>(
     `/api/locations/${locationId}/ev-charger/include`,
     { include },
+  )
+}
+
+/** The water heater's average power per 5 minutes in a window (API spec 017). Send `from` on whole 5 minutes. */
+export function getWaterHeaterPower(locationId: string, fromUtc: string, toUtc: string) {
+  return api.get<WaterHeaterPower>(
+    `/api/locations/${locationId}/water-heater/power?${query({ from: fromUtc, to: toUtc })}`,
   )
 }
