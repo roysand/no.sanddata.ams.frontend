@@ -20,6 +20,7 @@ import {
   getMinuteConsumption,
   getMonthlyBill,
   getNorgesPrisSaving,
+  getWaterHeaterPower,
   getWaterHeaterState,
   getEvChargerSessions,
   setEvChargerInclude,
@@ -28,7 +29,13 @@ import { osloDayStartUtc, osloMonth, osloToday, sameHourYesterday } from './form
 import { addDays, dayStart, periodPlan, type Period, type PeriodWindow } from './periods'
 import { heatmapDays, heatmapFrom } from './heatmap'
 import { standbyDays, standbyFrom } from './standby'
-import { RECENT_WINDOW_MS, rowsFromDaily, rowsFromHourly, type UsageRow } from './series'
+import {
+  RECENT_WINDOW_MS,
+  recentWindow,
+  rowsFromDaily,
+  rowsFromHourly,
+  type UsageRow,
+} from './series'
 import type { Consumption, HourlyCostItem } from './types'
 import { usualPower } from './usual'
 
@@ -179,7 +186,8 @@ export function useRecentUsage(locationId: string | undefined) {
   return useQuery({
     queryKey: ['consumption', 'recent', locationId],
     queryFn: async () => {
-      const startMs = Math.floor((Date.now() - RECENT_WINDOW_MS) / ONE_MINUTE) * ONE_MINUTE
+      // On whole 5 minutes, so the steps line up with the water heater's (spec 014).
+      const { startMs } = recentWindow(new Date())
       const previousStartMs = sameHourYesterday(new Date(startMs)).getTime()
       const iso = (ms: number) => new Date(ms).toISOString()
       // Hourly rows are keyed by the start of the hour, so ask from the hour the window begins in.
@@ -382,5 +390,29 @@ export function useEvChargerInclude(locationId: string) {
           queryClient.invalidateQueries({ queryKey }),
         ),
       ),
+  })
+}
+
+/**
+ * The water heater's 5-minute steps for the "Last 3 hours" window that starts at `startMs` (spec 014, research R3). A
+ * separate query, so a failure never holds back the house's power; asked for only for a location with a heater, once
+ * the house's query has given the window.
+ */
+export function useRecentWaterHeater(
+  locationId: string | undefined,
+  startMs: number | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['water-heater', 'power', locationId, startMs],
+    queryFn: () =>
+      getWaterHeaterPower(
+        locationId!,
+        new Date(startMs!).toISOString(),
+        new Date(startMs! + RECENT_WINDOW_MS).toISOString(),
+      ),
+    enabled: enabled && !!locationId && startMs !== undefined,
+    refetchInterval: ONE_MINUTE,
+    retry: false,
   })
 }

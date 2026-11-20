@@ -4,6 +4,8 @@ import {
   currentPowerKw,
   hourTrend,
   rowsFromDaily,
+  recentDetailText,
+  recentWindow,
   rowsFromHourly,
 } from './series'
 import type { DailyCostItem, HourlyCostItem, WaterHeaterPart } from './types'
@@ -577,5 +579,240 @@ describe('car charging in the chart series (spec 013)', () => {
     )
 
     expect(series.points[0]).toMatchObject({ current: 4, previous: 3 })
+  })
+})
+
+describe('recentWindow (spec 014, US2)', () => {
+  const FIVE_MIN = 5 * 60_000
+
+  it('puts the 36 steps on whole 5 minutes, the last one going on now', () => {
+    // 20:37:10 in Oslo (CET).
+    const { startMs } = recentWindow(new Date('2026-11-20T19:37:10Z'))
+
+    expect(startMs).toBe(Date.UTC(2026, 10, 20, 16, 40))
+    expect(new Date(startMs + 35 * FIVE_MIN).toISOString()).toBe('2026-11-20T19:35:00.000Z')
+  })
+
+  it('starts the last step at now when now is on whole 5 minutes', () => {
+    expect(recentWindow(new Date('2026-11-20T19:35:00Z')).startMs).toBe(
+      Date.UTC(2026, 10, 20, 16, 40),
+    )
+  })
+})
+
+describe('buildRecentUsage power per step (spec 014, research R2)', () => {
+  const START = Date.UTC(2026, 10, 13, 10, 0)
+  const minute = (offsetMin: number, kwh: number) => ({
+    periodStart: new Date(START + offsetMin * 60_000).toISOString(),
+    consumptionKwh: kwh,
+  })
+  const build = (current: { periodStart: string; consumptionKwh: number }[], now: number) =>
+    buildRecentUsage({
+      current,
+      previous: [],
+      currentRates: [],
+      previousRates: [],
+      startMs: START,
+      previousStartMs: START - 86_400_000,
+      now: new Date(now),
+      label: (ms) => new Date(ms).toISOString().slice(11, 16),
+    })
+
+  it('averages a step over the minutes that have a reading, so the step going on now does not dip', () => {
+    // 2 minutes at 0,1 kWh: 6 kW, not the 2,4 kW a 5-minute average gave.
+    const result = build([minute(0, 0.1), minute(1, 0.1)], START + 2 * 60_000)
+
+    expect(result.points[0].current).toBeCloseTo(6, 5)
+  })
+
+  it('gives the same power as before for a full step, and none for a step without readings', () => {
+    const result = build(
+      [0, 1, 2, 3, 4].map((m) => minute(m, 0.05)),
+      START + 3 * 3_600_000,
+    )
+
+    expect(result.points[0].current).toBeCloseTo(3, 5)
+    expect(result.points[1].current).toBeNull()
+    expect(result.totalKwh).toBeCloseTo(0.25, 5)
+  })
+})
+
+describe('buildRecentUsage water heating (spec 014, US1)', () => {
+  const START = Date.UTC(2026, 10, 20, 17, 0)
+  const MIN = 60_000
+  const AFTER = new Date(START + 3 * 3_600_000)
+  /** The house at `kw` for every minute of the 5-minute steps listed. */
+  const house = (kw: number, steps: number[]) =>
+    steps.flatMap((step) =>
+      [0, 1, 2, 3, 4].map((m) => ({
+        periodStart: new Date(START + (step * 5 + m) * MIN).toISOString(),
+        consumptionKwh: kw / 60,
+      })),
+    )
+  const step = (index: number, powerKw: number, sampledSeconds = 300) => ({
+    start: new Date(START + index * 5 * MIN).toISOString(),
+    powerKw,
+    sampledSeconds,
+  })
+  const build = (
+    current: { periodStart: string; consumptionKwh: number }[],
+    heater: ReturnType<typeof step>[] | undefined,
+    now = AFTER,
+  ) =>
+    buildRecentUsage({
+      current,
+      previous: [],
+      currentRates: [],
+      previousRates: [],
+      startMs: START,
+      previousStartMs: START - 86_400_000,
+      now,
+      label: (ms) => new Date(ms).toISOString().slice(11, 16),
+      heater,
+    })
+
+  it('puts each heater step on the house step of the same 5 minutes', () => {
+    const result = build(house(7.4, [2]), [step(2, 2)])
+
+    expect(result.points[2]).toMatchObject({ heater: 2, heaterDrawn: 2, partly: false })
+    expect(result.points[2].rest).toBeCloseTo(5.4, 5)
+    expect(result.hasHeater).toBe(true)
+  })
+
+  it('ignores steps outside the window', () => {
+    const result = build(house(5, [0, 35]), [step(-1, 2), step(36, 2)])
+
+    expect(result.points.every((point) => point.heater === null)).toBe(true)
+    expect(result.hasHeater).toBe(false)
+  })
+
+  it('has no heater value where the house has no reading', () => {
+    const result = build(house(5, [0]), [step(3, 2)])
+
+    expect(result.points[3]).toMatchObject({ heater: null, heaterDrawn: null, rest: null })
+  })
+
+  it('never draws the heater above the house, but keeps its own value for the detail', () => {
+    const result = build(house(2, [4]), [step(4, 3)])
+
+    expect(result.points[4]).toMatchObject({ heater: 3, heaterDrawn: 2, rest: 0 })
+  })
+
+  it('marks a finished step with more than 2 minutes unsampled as partly measured', () => {
+    const result = build(house(5, [1, 2]), [step(1, 2, 170), step(2, 2, 200)])
+
+    expect(result.points[1].partly).toBe(true)
+    expect(result.points[2].partly).toBe(false)
+  })
+
+  it('does not mark the step going on now as partly measured', () => {
+    const now = new Date(START + 10 * MIN + 170_000) // 2 min 50 s into step 2
+    const result = build(house(5, [2]), [step(2, 2, 170)], now)
+
+    expect(result.points[2].partly).toBe(false)
+  })
+
+  it('has no water heating without heater steps', () => {
+    for (const heater of [undefined, []]) {
+      const result = build(house(5, [0]), heater)
+      expect(result.hasHeater).toBe(false)
+      expect(result.points[0]).toMatchObject({ heater: null, heaterDrawn: null, rest: null })
+    }
+  })
+})
+
+describe('recentDetailText (spec 014, US1)', () => {
+  const point = (patch: Record<string, unknown>) => ({
+    label: '19:40',
+    current: 7.4,
+    previous: 6.1,
+    heater: null,
+    heaterDrawn: null,
+    rest: null,
+    partly: false,
+    ...patch,
+  })
+
+  it('gives the house, the water heating and everything else, then yesterday', () => {
+    expect(recentDetailText(point({ heater: 2, heaterDrawn: 2, rest: 5.4 }), true)).toBe(
+      '7,4 kW · Water heating 2 kW · Everything else 5,4 kW · yesterday 6,1 kW',
+    )
+  })
+
+  it('notes a partly measured step', () => {
+    expect(
+      recentDetailText(point({ heater: 2, heaterDrawn: 2, rest: 5.4, partly: true }), false),
+    ).toBe('7,4 kW · Water heating 2 kW (partly measured) · Everything else 5,4 kW')
+  })
+
+  it('says nothing about water heating without a heater value', () => {
+    expect(recentDetailText(point({}), true)).toBe('7,4 kW · yesterday 6,1 kW')
+  })
+
+  it('says when the house has no reading', () => {
+    expect(recentDetailText(point({ current: null, previous: null }), true)).toBe('no reading')
+  })
+})
+
+describe('buildRecentUsage water heating kWh (spec 014, US3)', () => {
+  const START = Date.UTC(2026, 10, 20, 17, 0)
+  const MIN = 60_000
+  const house = (kw: number, steps: number[]) =>
+    steps.flatMap((step) =>
+      [0, 1, 2, 3, 4].map((m) => ({
+        periodStart: new Date(START + (step * 5 + m) * MIN).toISOString(),
+        consumptionKwh: kw / 60,
+      })),
+    )
+  const step = (index: number, powerKw: number, sampledSeconds = 300) => ({
+    start: new Date(START + index * 5 * MIN).toISOString(),
+    powerKw,
+    sampledSeconds,
+  })
+  const build = (
+    current: { periodStart: string; consumptionKwh: number }[],
+    heater: ReturnType<typeof step>[] | undefined,
+    now: number,
+  ) =>
+    buildRecentUsage({
+      current,
+      previous: [],
+      currentRates: [],
+      previousRates: [],
+      startMs: START,
+      previousStartMs: START - 86_400_000,
+      now: new Date(now),
+      label: (ms) => new Date(ms).toISOString().slice(11, 16),
+      heater,
+    })
+  const twelve = Array.from({ length: 12 }, (_, i) => i)
+
+  it('sums kW × sampled time over the steps so far, with its share of the house', () => {
+    const result = build(
+      house(8, twelve),
+      twelve.map((i) => step(i, 2)),
+      START + 3_600_000,
+    )
+
+    expect(result.heaterKwh).toBeCloseTo(2, 5)
+    expect(result.heaterShare).toBeCloseTo(0.25, 5)
+  })
+
+  it('does not count steps after now', () => {
+    const result = build(house(8, [0]), [step(0, 2), step(20, 2)], START + 5 * MIN)
+
+    expect(result.heaterKwh).toBeCloseTo(2 / 12, 5)
+  })
+
+  it('caps the share at 100 %, and gives none without house kWh', () => {
+    expect(build(house(1, [0]), [step(0, 3)], START + 5 * MIN).heaterShare).toBe(1)
+    expect(build([], [step(0, 3)], START + 5 * MIN).heaterShare).toBeNull()
+  })
+
+  it('gives no water heating kWh without steps', () => {
+    const result = build(house(8, [0]), [], START + 5 * MIN)
+
+    expect(result.heaterKwh).toBeNull()
+    expect(result.heaterShare).toBeNull()
   })
 })

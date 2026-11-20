@@ -61,7 +61,7 @@ export function DashboardPage() {
   return (
     <div className="flex flex-col gap-4">
       <NowCard locationId={selected.id} />
-      <RecentUsage locationId={selected.id} />
+      <RecentUsage locationId={selected.id} hasWaterHeater={selected.hasWaterHeater === true} />
       <SavingCard
         locationId={selected.id}
         hasNorgesPriceAgreement={selected.hasNorgesPriceAgreement}

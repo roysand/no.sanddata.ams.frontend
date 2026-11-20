@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { renderWithQuery } from '../../test/render'
 import { server } from '../../test/server'
@@ -25,6 +25,8 @@ interface Setup {
   yesterdayRate?: number | null
   /** Today's hours are on Norgespris and the second one is partly above the monthly limit. */
   aboveLimit?: boolean
+  /** The heater's 5-minute steps for today's window ('fail' answers 500); left out, the endpoint is not served. */
+  heater?: { powerKw: number; sampledSeconds: number }[] | 'fail'
 }
 
 function useApi({
@@ -33,7 +35,9 @@ function useApi({
   todayRate = 1,
   yesterdayRate = 2,
   aboveLimit = false,
+  heater,
 }: Setup = {}) {
+  const heaterCalls = { count: 0 }
   const isToday = (url: URL) =>
     new Date(url.searchParams.get('to')!).getTime() > Date.now() - 60_000
 
@@ -80,7 +84,25 @@ function useApi({
         totalCount: 4,
       })
     }),
+    http.get('*/api/locations/:id/water-heater/power', ({ request }) => {
+      heaterCalls.count++
+      if (heater === 'fail') return HttpResponse.json({}, { status: 500 })
+      const url = new URL(request.url)
+      const from = new Date(url.searchParams.get('from')!).getTime()
+      return HttpResponse.json({
+        locationId: 'l1',
+        from: url.searchParams.get('from'),
+        to: url.searchParams.get('to'),
+        stepSeconds: 300,
+        // From the start of the window, where the consumption handler serves its ten minutes.
+        items: (heater ?? []).map((step, i) => ({
+          start: new Date(from + i * 5 * 60_000).toISOString(),
+          ...step,
+        })),
+      })
+    }),
   )
+  return heaterCalls
 }
 
 describe('RecentUsage', () => {
@@ -156,5 +178,85 @@ describe('RecentUsage', () => {
 
     expect(await screen.findByText('Cost incl. VAT')).toBeInTheDocument()
     expect(screen.queryByText(LIMIT)).not.toBeInTheDocument()
+  })
+})
+
+describe('RecentUsage steps on the clock (spec 014, US2)', () => {
+  it('asks for a window that starts on whole 5 minutes', async () => {
+    const froms: number[] = []
+    useApi()
+    server.use(
+      http.get('*/api/consumption', ({ request }) => {
+        froms.push(new Date(new URL(request.url).searchParams.get('from')!).getTime())
+        return HttpResponse.json({ granularity: 'minute', items: [] })
+      }),
+    )
+    renderWithQuery(<RecentUsage locationId="l1" />)
+
+    await screen.findByText('No readings in the last 3 hours')
+    expect(froms).toHaveLength(2)
+    for (const from of froms) expect(from % (5 * 60_000)).toBe(0)
+  })
+})
+
+describe('RecentUsage water heating (spec 014, US1)', () => {
+  const TWO_STEPS = [
+    { powerKw: 2, sampledSeconds: 300 },
+    { powerKw: 2, sampledSeconds: 300 },
+  ]
+
+  it('adds water heating to the legend for a location with a heater', async () => {
+    useApi({ heater: TWO_STEPS })
+    renderWithQuery(<RecentUsage locationId="l1" hasWaterHeater />)
+
+    expect(await screen.findByText('Water heating', { selector: 'li' })).toBeInTheDocument()
+  })
+
+  it('asks for nothing and looks as before without a heater', async () => {
+    const calls = useApi({ heater: TWO_STEPS })
+    renderWithQuery(<RecentUsage locationId="l1" />)
+
+    await screen.findAllByText(/vs yesterday/)
+    expect(screen.queryByText('Water heating', { selector: 'li' })).not.toBeInTheDocument()
+    expect(calls.count).toBe(0)
+  })
+
+  it('shows the house as normal and a note when the heater figures fail', async () => {
+    useApi({ heater: 'fail' })
+    renderWithQuery(<RecentUsage locationId="l1" hasWaterHeater />)
+
+    expect(await screen.findByText('Water heating could not be loaded.')).toBeInTheDocument()
+    expect(screen.getByText('Cost incl. VAT')).toBeInTheDocument()
+    expect(screen.getAllByText(/vs yesterday/)).toHaveLength(2)
+  })
+
+  it('shows no water heating and no note when the window has no heater steps', async () => {
+    const calls = useApi({ heater: [] })
+    renderWithQuery(<RecentUsage locationId="l1" hasWaterHeater />)
+
+    await screen.findAllByText(/vs yesterday/)
+    await waitFor(() => expect(calls.count).toBe(1))
+    expect(screen.queryByText('Water heating', { selector: 'li' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Water heating could not be loaded.')).not.toBeInTheDocument()
+  })
+})
+
+describe('RecentUsage water heating share (spec 014, US3)', () => {
+  it('says how much of the 3 hours was water heating', async () => {
+    useApi({ heater: [{ powerKw: 2, sampledSeconds: 300 }] })
+    renderWithQuery(<RecentUsage locationId="l1" hasWaterHeater />)
+
+    expect(
+      await screen.findByText(/^Water heating: [\d,]+ kWh of [\d,]+ kWh \(\d+ %\)$/),
+    ).toBeInTheDocument()
+  })
+
+  it('says nothing about it without heater steps', async () => {
+    const calls = useApi({ heater: [] })
+    renderWithQuery(<RecentUsage locationId="l1" hasWaterHeater />)
+
+    await screen.findAllByText(/vs yesterday/)
+    await waitFor(() => expect(calls.count).toBe(1))
+    expect(screen.queryByText(/^Water heating:/)).not.toBeInTheDocument()
   })
 })

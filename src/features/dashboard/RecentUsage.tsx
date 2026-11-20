@@ -6,16 +6,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { isolatedDot } from './chartDots'
 import { formatClock, formatNok } from './format'
 import { isAboveCap } from './cap'
-import { useRecentUsage } from './hooks'
-import { RECENT_HOURS, buildRecentUsage } from './series'
+import { useRecentUsage, useRecentWaterHeater } from './hooks'
+import { RECENT_HOURS, buildRecentUsage, recentDetailText } from './series'
 
 const config = {
   current: { label: `Last ${RECENT_HOURS} hours`, color: 'var(--usage)' },
   previous: { label: 'Yesterday', color: 'var(--usage-ghost)' },
+  heaterDrawn: { label: 'Water heating', color: 'var(--water-heater)' },
 } satisfies ChartConfig
 
 const kwh = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 2 })
-const kw = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 2 })
 
 function Delta({ percent }: { percent: number | null }) {
   if (percent === null) return null
@@ -32,9 +32,19 @@ function Delta({ percent }: { percent: number | null }) {
   )
 }
 
-/** Usage and cost over the last three hours, set against the same three hours yesterday. */
-export function RecentUsage({ locationId }: { locationId: string }) {
+/**
+ * Usage and cost over the last three hours, set against the same three hours yesterday. For a location with a water
+ * heater, water heating is drawn under the house's power (spec 014).
+ */
+export function RecentUsage({
+  locationId,
+  hasWaterHeater = false,
+}: {
+  locationId: string
+  hasWaterHeater?: boolean
+}) {
   const { data, isLoading, error } = useRecentUsage(locationId)
+  const water = useRecentWaterHeater(locationId, data?.startMs, hasWaterHeater)
   const [active, setActive] = useState<number | null>(null)
 
   const title = `Last ${RECENT_HOURS} hours`
@@ -75,6 +85,7 @@ export function RecentUsage({ locationId }: { locationId: string }) {
     previousStartMs: data.previousStartMs,
     now: new Date(),
     label: (ms) => formatClock(new Date(ms).toISOString()),
+    heater: water.data?.items,
   })
 
   if (!usage.hasCurrent) {
@@ -130,6 +141,13 @@ export function RecentUsage({ locationId }: { locationId: string }) {
               }`
             : 'No readings from yesterday to compare with'}
         </p>
+        {usage.heaterKwh !== null && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Water heating: {kwh.format(usage.heaterKwh)} kWh
+            {usage.heaterShare !== null &&
+              ` of ${kwh.format(usage.totalKwh)} kWh (${Math.round(usage.heaterShare * 100)} %)`}
+          </p>
+        )}
         {data.currentRates.some(
           (row) => row.pricingModel === 'NorgesPris' && isAboveCap(row.actual),
         ) && (
@@ -173,6 +191,20 @@ export function RecentUsage({ locationId }: { locationId: string }) {
               isAnimationActive={false}
               connectNulls
             />
+            {usage.hasHeater && (
+              // Water heating as a filled area under the house's power; steps without a figure leave a gap.
+              <Area
+                dataKey="heaterDrawn"
+                type="monotone"
+                stroke="var(--water-heater)"
+                strokeWidth={1}
+                fill="var(--water-heater)"
+                fillOpacity={0.5}
+                dot={false}
+                activeDot={false}
+                isAnimationActive={false}
+              />
+            )}
             <Area
               dataKey="current"
               type="monotone"
@@ -194,6 +226,12 @@ export function RecentUsage({ locationId }: { locationId: string }) {
             <span aria-hidden="true" className="h-0.5 w-4 bg-usage" />
             {title}
           </li>
+          {usage.hasHeater && (
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-2 w-4 rounded-sm bg-water-heater" />
+              Water heating
+            </li>
+          )}
           {usage.hasPrevious && (
             <li className="flex items-center gap-1.5">
               <span
@@ -205,6 +243,9 @@ export function RecentUsage({ locationId }: { locationId: string }) {
           )}
           <li>kW, average per 5 minutes</li>
         </ul>
+        {water.error && (
+          <p className="mt-1 text-xs text-muted-foreground">Water heating could not be loaded.</p>
+        )}
 
         <p
           className="mt-3 flex min-h-12 items-center rounded-xl bg-muted px-3.5 text-sm"
@@ -212,14 +253,7 @@ export function RecentUsage({ locationId }: { locationId: string }) {
         >
           {shown ? (
             <span>
-              <b>{shown.label}</b> ·{' '}
-              {shown.current === null ? 'no reading' : <b>{kw.format(shown.current)} kW</b>}
-              {usage.hasPrevious && shown.previous !== null && (
-                <span className="text-muted-foreground">
-                  {' '}
-                  · yesterday {kw.format(shown.previous)} kW
-                </span>
-              )}
+              <b>{shown.label}</b> · {recentDetailText(shown, usage.hasPrevious)}
             </span>
           ) : (
             'Touch the chart to see values.'
