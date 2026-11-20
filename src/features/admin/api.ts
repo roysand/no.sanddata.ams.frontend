@@ -14,6 +14,7 @@ import type {
   GridTariff,
   GridTariffRate,
   GridTariffRateInput,
+  KeyReminders,
   LocationPricing,
   LocationPricingInput,
   NorgesPrisRate,
@@ -21,6 +22,7 @@ import type {
   PriceRate,
   PriceRateInput,
   PagedUsers,
+  RotatedKey,
   WaterHeaterInput,
   WaterHeaterSettings,
 } from './types'
@@ -190,6 +192,15 @@ const waterHeaterPath = (locationId: string) => `/api/admin/locations/${location
 
 const isNotFound = (error: unknown) => error instanceof ApiError && error.status === 404
 
+/** An API without spec 015 leaves `keyExpiresOn` out; it is read as null (no date shown). */
+type RawWaterHeaterSettings = Omit<WaterHeaterSettings, 'keyExpiresOn'> & {
+  keyExpiresOn?: string | null
+}
+const withKeyExpiry = (settings: RawWaterHeaterSettings): WaterHeaterSettings => ({
+  ...settings,
+  keyExpiresOn: settings.keyExpiresOn ?? null,
+})
+
 /**
  * The heater connected to a location, or `null` when there is none. The API answers 404 both for "no heater" and
  * "no such location"; the dialog is open on a location that exists, so 404 means not connected.
@@ -198,7 +209,7 @@ export async function getWaterHeaterSettings(
   locationId: string,
 ): Promise<WaterHeaterSettings | null> {
   try {
-    return await api.get<WaterHeaterSettings>(waterHeaterPath(locationId))
+    return withKeyExpiry(await api.get<RawWaterHeaterSettings>(waterHeaterPath(locationId)))
   } catch (error) {
     if (isNotFound(error)) return null
     throw error
@@ -207,10 +218,33 @@ export async function getWaterHeaterSettings(
 
 /** Connects or replaces the heater; the API checks the pair with OSO first (up to 10 s). */
 export function connectWaterHeater(locationId: string, input: WaterHeaterInput) {
-  return api.put<WaterHeaterSettings>(waterHeaterPath(locationId), {
-    subscriptionKey: input.subscriptionKey,
-    deviceId: input.deviceId,
-  })
+  return api
+    .put<RawWaterHeaterSettings>(waterHeaterPath(locationId), {
+      subscriptionKey: input.subscriptionKey,
+      deviceId: input.deviceId,
+      keyExpiresOn: input.keyExpiresOn,
+    })
+    .then(withKeyExpiry)
+}
+
+/** Changes only the OSO key's expiry date (yyyy-MM-dd); the key is not needed and OSO is not called. */
+export function setWaterHeaterKeyExpiry(locationId: string, keyExpiresOn: string) {
+  return api
+    .put<RawWaterHeaterSettings>(`${waterHeaterPath(locationId)}/key-expiry`, { keyExpiresOn })
+    .then(withKeyExpiry)
+}
+
+/** The keys due within 30 days or expired, for administrators; soonest first. */
+export function getKeyReminders() {
+  return api.get<KeyReminders>('/api/admin/key-reminders')
+}
+
+/**
+ * Issues a new sensor key; the old one stops working at once. The new key is only in this answer: the caller shows it
+ * once and keeps it nowhere else.
+ */
+export function rotateSensorKey(locationId: string) {
+  return api.post<RotatedKey>(`/api/admin/locations/${locationId}/api-key/rotate`)
 }
 
 /** Removes the connection. A 404 means it is already gone, which is what was asked for. */

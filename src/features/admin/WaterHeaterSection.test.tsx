@@ -4,6 +4,8 @@ import { delay, http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
 import { renderWithQuery } from '../../test/render'
 import type { AdminLocation } from '../locations'
+import { osloToday } from '../dashboard'
+import { defaultKeyExpiresOn, KEY_EXPIRY_OUT_OF_RANGE } from './schema'
 import { WaterHeaterSection } from './WaterHeaterSection'
 import type { WaterHeaterSettings } from './types'
 
@@ -24,6 +26,7 @@ const CONNECTED: WaterHeaterSettings = {
   deviceIdHint: '4b8814…49499d',
   connectedAt: '2026-11-20T10:00:00Z',
   updatedAt: '2026-11-20T10:00:00Z',
+  keyExpiresOn: '2027-11-19',
 }
 
 const PATH = '*/api/admin/locations/:id/water-heater'
@@ -107,7 +110,14 @@ describe('WaterHeaterSection', () => {
     expect(screen.getByText('4b8814…49499d')).toBeInTheDocument()
     expect(screen.getByText(/20\.11\.2026/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Subscription key')).not.toBeInTheDocument()
-    expect(bodies).toEqual([{ subscriptionKey: 'secret-key', deviceId: '4b88147ab00649499d' }])
+    // The key's expiry date is sent too, one year from today unless changed (spec 011).
+    expect(bodies).toEqual([
+      {
+        subscriptionKey: 'secret-key',
+        deviceId: '4b88147ab00649499d',
+        keyExpiresOn: defaultKeyExpiresOn(),
+      },
+    ])
   })
 
   it('shows a rejection from OSO and keeps what was typed', async () => {
@@ -193,5 +203,94 @@ describe('WaterHeaterSection', () => {
     expect(key).toHaveAttribute('type', 'password')
     expect(key).toHaveAttribute('autocomplete', 'off')
     expect(screen.getByLabelText('Device id')).toHaveAttribute('autocomplete', 'off')
+  })
+})
+
+describe('WaterHeaterSection key expiry date', () => {
+  /** A connected heater whose key is valid until `keyExpiresOn`, and the date endpoint. */
+  function setupDate(keyExpiresOn: string | undefined, dateAnswer?: () => Response) {
+    let current: Record<string, unknown> = { ...CONNECTED, keyExpiresOn }
+    if (keyExpiresOn === undefined) delete current.keyExpiresOn
+    const dateBodies: unknown[] = []
+    server.use(
+      http.get(PATH, () => HttpResponse.json(current)),
+      http.put(`${PATH}/key-expiry`, async ({ request }) => {
+        const body = (await request.json()) as { keyExpiresOn: string }
+        dateBodies.push(body)
+        const answer = dateAnswer?.()
+        if (answer) return answer
+        current = { ...current, keyExpiresOn: body.keyExpiresOn }
+        return HttpResponse.json(current)
+      }),
+    )
+    renderWithQuery(<WaterHeaterSection location={home} />)
+    return { dateBodies }
+  }
+
+  const inDays = (days: number) => {
+    const [y, m, d] = osloToday().split('-').map(Number)
+    return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+  }
+  const shown = (date: string) => date.split('-').reverse().join('.')
+
+  it('shows the date the key is valid until, with no badge when it is far ahead', async () => {
+    setupDate('2027-11-19')
+
+    expect(await screen.findByText(/Key valid until 19\.11\.2027/)).toBeInTheDocument()
+    expect(screen.queryByText(/expires in/)).not.toBeInTheDocument()
+  })
+
+  it('marks a key that expires within 30 days', async () => {
+    setupDate(inDays(10))
+
+    expect(await screen.findByText('expires in 10 days')).toBeInTheDocument()
+  })
+
+  it('changes only the date', async () => {
+    const user = userEvent.setup()
+    const target = inDays(40)
+    const { dateBodies } = setupDate('2027-11-19')
+
+    await user.click(await screen.findByRole('button', { name: 'Change date' }))
+    const field = screen.getByLabelText('Key valid until')
+    expect(field).toHaveValue('2027-11-19')
+    await user.clear(field)
+    await user.type(field, target)
+    await user.click(screen.getByRole('button', { name: 'Save date' }))
+
+    expect(
+      await screen.findByText(new RegExp(`Key valid until ${shown(target)}`)),
+    ).toBeInTheDocument()
+    expect(dateBodies).toEqual([{ keyExpiresOn: target }])
+  })
+
+  it("shows the API's refusal of the date at the field", async () => {
+    const user = userEvent.setup()
+    setupDate('2027-11-19', () =>
+      HttpResponse.json({ errors: { generalErrors: [KEY_EXPIRY_OUT_OF_RANGE] } }, { status: 400 }),
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Change date' }))
+    await user.click(screen.getByRole('button', { name: 'Save date' }))
+
+    expect(await screen.findByText(KEY_EXPIRY_OUT_OF_RANGE)).toBeInTheDocument()
+    expect(screen.getByLabelText('Key valid until')).toBeInTheDocument()
+  })
+
+  it('shows no date and no Change date against an API without it', async () => {
+    setupDate(undefined)
+
+    expect(await screen.findByText('Connected')).toBeInTheDocument()
+    expect(screen.queryByText(/Key valid until/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Change date' })).not.toBeInTheDocument()
+  })
+
+  it('offers one year from today in the connect dialog', async () => {
+    const user = userEvent.setup()
+    setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Connect' }))
+
+    expect(screen.getByLabelText('Key valid until')).toHaveValue(defaultKeyExpiresOn())
   })
 })

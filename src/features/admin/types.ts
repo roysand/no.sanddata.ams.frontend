@@ -158,10 +158,50 @@ export interface WaterHeaterSettings {
   connectedAt: string
   /** UTC ISO; when the key or device id last changed. */
   updatedAt: string
+  /**
+   * yyyy-MM-dd, the last Oslo day the OSO key is valid (API spec 015). null from an API without it, which then shows no
+   * date.
+   */
+  keyExpiresOn: string | null
 }
 
 /** What the administrator types to connect a heater; sent once in the PUT body and kept nowhere else. */
 export interface WaterHeaterInput {
   deviceId: string
   subscriptionKey: string
+  /** yyyy-MM-dd, the last day the OSO key is valid. */
+  keyExpiresOn: string
+}
+
+/** Which key a reminder is about (API spec 015). */
+export type KeyKind = 'SensorKey' | 'WaterHeaterKey'
+
+/** A key that expires within 30 days or has expired, as the API counts it in Oslo days. */
+export interface KeyReminder {
+  locationId: string
+  locationName: string
+  kind: KeyKind
+  /** yyyy-MM-dd, the last valid Oslo day. */
+  expiresOn: string
+  /** UTC ISO, sensor keys only; null for a water heater key. */
+  expiresAt: string | null
+  /** expiresOn − today: 0 is the last day, negative means it has expired. */
+  daysLeft: number
+  expired: boolean
+}
+
+export interface KeyReminders {
+  /** yyyy-MM-dd in Oslo. */
+  today: string
+  windowDays: number
+  /** Soonest first; empty when nothing is due. */
+  items: KeyReminder[]
+}
+
+/** The answer of replacing a sensor key. `apiKey` is shown once and never stored, cached or logged. */
+export interface RotatedKey {
+  apiKey: string
+  hint: string
+  /** UTC ISO. */
+  expiresAt: string
 }

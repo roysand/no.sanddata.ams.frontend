@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,20 +16,41 @@ import {
   type LocationFormValues,
 } from '../locations'
 import { LocationAccessList } from './LocationAccessList'
+import { SensorKeySection } from './SensorKeySection'
 import { WaterHeaterSection } from './WaterHeaterSection'
 import { useUpdateLocationAsAdmin } from './hooks'
 
 const LOCATION_FIELDS = ['name', 'address', 'serialNumber', 'zone'] as const
 const FORM_ID = 'admin-location-form'
 
-/** Lets an administrator change every field of a location. The sensor key is shown as facts only. */
+/** The section each key reminder leads to (spec 011, research R4). */
+const KEY_SECTIONS = { sensor: 'sensor-key', heater: 'water-heater' } as const
+export type FocusKey = keyof typeof KEY_SECTIONS
+
+/**
+ * Lets an administrator change every field of a location, and replace its sensor key. `focusKey` scrolls to that key's
+ * section when the dialog is opened from a reminder.
+ */
 export function AdminLocationDialog({
   location,
   onClose,
+  focusKey,
 }: {
   location: AdminLocation
   onClose: () => void
+  focusKey?: FocusKey
 }) {
+  useEffect(() => {
+    if (!focusKey) return
+    // After the dialog's content is in the document.
+    const timer = setTimeout(() => {
+      const section = document.getElementById(KEY_SECTIONS[focusKey])
+      section?.scrollIntoView?.({ block: 'center' })
+      section?.querySelector<HTMLElement>('h3')?.focus()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [focusKey])
+
   const update = useUpdateLocationAsAdmin()
   const [serverError, setServerError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LocationFormValues, string>>>(
@@ -92,11 +113,7 @@ export function AdminLocationDialog({
 
           <WaterHeaterSection location={location} />
 
-          {location.apiKey && (
-            <p className="text-xs text-muted-foreground">
-              Sensor key …{location.apiKey.hint} · {location.apiKey.status}
-            </p>
-          )}
+          <SensorKeySection location={location} />
 
           {/* Next to the buttons, so a refusal is seen where Save was pressed. */}
           {serverError && (

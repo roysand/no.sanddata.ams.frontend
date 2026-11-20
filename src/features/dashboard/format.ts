@@ -206,6 +206,21 @@ export function formatAge(seconds: number): string {
 
 const osloDayKey = (at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: OSLO }).format(at)
 
+/** Today's Oslo calendar date as yyyy-MM-dd, the form date inputs and the API use. */
+export function osloToday(now = new Date()): string {
+  return osloDayKey(now)
+}
+
+/**
+ * A yyyy-MM-dd date moved by whole years on the calendar. 29 February becomes 28 February in a year without it, as
+ * the API's DateOnly.AddYears does.
+ */
+export function addYearsToDate(date: string, years: number): string {
+  const [y, m, d] = date.split('-').map(Number)
+  const lastDay = new Date(Date.UTC(y + years, m, 0)).getUTCDate()
+  return new Date(Date.UTC(y + years, m - 1, Math.min(d, lastDay))).toISOString().slice(0, 10)
+}
+
 /** "today 19:40", "tomorrow 19:40" or "25.11. 19:40", in Oslo time. */
 export function formatOsloDateTime(isoUtc: string, now = new Date()): string {
   const at = new Date(isoUtc)

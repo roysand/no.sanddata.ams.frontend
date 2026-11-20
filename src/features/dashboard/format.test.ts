@@ -9,6 +9,8 @@ import {
   formatMonth,
   formatOsloDate,
   formatOsloDateTime,
+  osloToday,
+  addYearsToDate,
   osloMonth,
   sameHourYesterday,
 } from './format'
@@ -138,5 +140,23 @@ describe('formatOsloDateTime', () => {
     // Saturday 28 March 2026 23:30 Oslo; Sunday has only 23 hours, so 24 hours later is already Monday.
     const lateSaturday = new Date('2026-03-28T22:30:00Z')
     expect(formatOsloDateTime('2026-03-29T10:00:00Z', lateSaturday)).toBe('tomorrow 12:00')
+  })
+})
+
+describe('osloToday', () => {
+  it('is the Oslo calendar date, which can be a day ahead of UTC', () => {
+    expect(osloToday(new Date('2026-11-19T22:30:00Z'))).toBe('2026-11-19')
+    expect(osloToday(new Date('2026-11-19T23:30:00Z'))).toBe('2026-11-20')
+  })
+})
+
+describe('addYearsToDate', () => {
+  it('moves by calendar years', () => {
+    expect(addYearsToDate('2026-11-20', 1)).toBe('2027-11-20')
+    expect(addYearsToDate('2026-11-20', 5)).toBe('2031-11-20')
+  })
+
+  it('turns 29 February into 28 February in a year without it', () => {
+    expect(addYearsToDate('2028-02-29', 1)).toBe('2029-02-28')
   })
 })

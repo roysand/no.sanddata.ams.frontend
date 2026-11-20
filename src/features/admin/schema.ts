@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { addYearsToDate, osloToday } from '../dashboard'
 import { decimalsOf, parseAmount } from './norgesPris'
 import { percentDecimals, percentToFraction } from './pricing'
 import type { CapacityStepTableInput, PriceRateKind } from './types'
@@ -258,6 +259,48 @@ export function toCapacityStepTableInput(
   }
 }
 
+/** A real calendar date in yyyy-MM-dd: 2027-02-30 is not one. */
+function isCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [y, m, d] = value.split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
+}
+
+/** The water heater key's expiry date offered by default: OSO keys are valid for one year. */
+export const defaultKeyExpiresOn = () => addYearsToDate(osloToday(), 1)
+
+/** The date picker's limits, as hints: from tomorrow to five years ahead (the schema still checks). */
+export function keyExpiryLimits(today = osloToday()): { min: string; max: string } {
+  const [y, m, d] = today.split('-').map(Number)
+  const tomorrow = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
+  return { min: tomorrow, max: addYearsToDate(today, 5) }
+}
+
+// The last day the OSO key is valid. Mirrors API spec 015 FR-003: after today in Oslo and at most five years ahead.
+// Dates compare as yyyy-MM-dd strings, and today is read when the form is validated.
+const keyExpiresOnField = z
+  .string()
+  .refine(isCalendarDate, 'Enter a date')
+  .refine((value) => value > osloToday(), 'The key must be valid after today')
+  .refine((value) => value <= addYearsToDate(osloToday(), 5), 'At most five years ahead')
+
+export const keyExpirySchema = z.object({ keyExpiresOn: keyExpiresOnField })
+
+/**
+ * The API's refusal of an out-of-range date (WaterHeater.KeyExpiryOutOfRange). It arrives as a general error, so the
+ * forms recognise it by this text, which must match the API's, and show it at the date field.
+ */
+export const KEY_EXPIRY_OUT_OF_RANGE =
+  "The key's expiry date must be after today and at most five years ahead"
+
+/** True when an API error is about the key's expiry date, so it belongs at the date field. */
+export function isKeyExpiryError(code: string, message: string): boolean {
+  return code === 'WaterHeater.KeyExpiryOutOfRange' || message === KEY_EXPIRY_OUT_OF_RANGE
+}
+
+export type KeyExpiryFormValues = z.infer<typeof keyExpirySchema>
+
 // Same rules as the API's water heater validator (spec 011), so mistakes are caught before OSO is asked. The key is
 // not trimmed: a stray space is reported instead of being removed silently.
 const WATER_HEATER_MAX = 200
@@ -274,6 +317,7 @@ export const waterHeaterSchema = z.object({
     .min(1, 'Subscription key is required')
     .max(WATER_HEATER_MAX, 'At most 200 characters')
     .regex(/^\S+$/, 'The key cannot contain spaces'),
+  keyExpiresOn: keyExpiresOnField,
 })
 
 export type WaterHeaterFormValues = z.infer<typeof waterHeaterSchema>

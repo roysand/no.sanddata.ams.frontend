@@ -14,9 +14,15 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
-import { waterHeaterSchema, type WaterHeaterFormValues } from './schema'
+import {
+  defaultKeyExpiresOn,
+  isKeyExpiryError,
+  keyExpiryLimits,
+  waterHeaterSchema,
+  type WaterHeaterFormValues,
+} from './schema'
 
-const FIELDS = ['deviceId', 'subscriptionKey'] as const
+const FIELDS = ['deviceId', 'subscriptionKey', 'keyExpiresOn'] as const
 
 /**
  * Connects or replaces a location's OSO water heater. Closing the dialog unmounts the form, which drops the typed key;
@@ -45,8 +51,9 @@ export function ConnectWaterHeaterDialog({
     formState: { errors },
   } = useForm<WaterHeaterFormValues>({
     resolver: zodResolver(waterHeaterSchema),
-    defaultValues: { deviceId: '', subscriptionKey: '' },
+    defaultValues: { deviceId: '', subscriptionKey: '', keyExpiresOn: defaultKeyExpiresOn() },
   })
+  const limits = keyExpiryLimits()
 
   const onSubmit = async (values: WaterHeaterFormValues) => {
     setServerError(null)
@@ -56,6 +63,10 @@ export function ConnectWaterHeaterDialog({
     } catch (error) {
       if (!(error instanceof ApiError)) {
         setServerError('Could not connect the water heater')
+        return
+      }
+      if (isKeyExpiryError(error.code, error.message)) {
+        setError('keyExpiresOn', { message: error.message })
         return
       }
       const fieldErrors = error.fieldErrors ?? {}
@@ -108,6 +119,23 @@ export function ConnectWaterHeaterDialog({
             />
             {errors.subscriptionKey && (
               <p className="text-sm text-destructive">{errors.subscriptionKey.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="waterHeaterKeyExpiresOn">Key valid until</Label>
+            <Input
+              id="waterHeaterKeyExpiresOn"
+              type="date"
+              min={limits.min}
+              max={limits.max}
+              aria-describedby="waterHeaterKeyExpiresOnHint"
+              {...register('keyExpiresOn')}
+            />
+            <p id="waterHeaterKeyExpiresOnHint" className="text-xs text-muted-foreground">
+              OSO keys are valid for one year. Check the date in the OSO portal.
+            </p>
+            {errors.keyExpiresOn && (
+              <p className="text-sm text-destructive">{errors.keyExpiresOn.message}</p>
             )}
           </div>
 
