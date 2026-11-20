@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { AdminLocation } from '../locations'
-import { AdminLocationDialog } from './AdminLocationDialog'
+import { AdminLocationDialog, type FocusKey } from './AdminLocationDialog'
 import { useAdminLocations } from './hooks'
 
 function ownersOf(location: AdminLocation) {
@@ -27,7 +28,12 @@ function viewerCount(location: AdminLocation) {
 export function AdminLocationsPage() {
   const locations = useAdminLocations()
   const [filter, setFilter] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
+  // A key reminder links here with ?edit={id}&key=sensor|heater: open that location at that key (spec 011).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const linkedKey = searchParams.get('key')
+  const focusKey: FocusKey | undefined =
+    linkedKey === 'sensor' || linkedKey === 'heater' ? linkedKey : undefined
+  const [editingId, setEditingId] = useState<string | null>(() => searchParams.get('edit'))
   // Looked up on every render so the open dialog shows access changes as soon as the list reloads.
   const editing = locations.data?.find((location) => location.id === editingId)
 
@@ -112,7 +118,17 @@ export function AdminLocationsPage() {
         </CardContent>
       </Card>
 
-      {editing && <AdminLocationDialog location={editing} onClose={() => setEditingId(null)} />}
+      {editing && (
+        <AdminLocationDialog
+          location={editing}
+          focusKey={focusKey}
+          onClose={() => {
+            setEditingId(null)
+            // So the back button doesn't open it again.
+            if (searchParams.size > 0) setSearchParams({}, { replace: true })
+          }}
+        />
+      )}
     </div>
   )
 }

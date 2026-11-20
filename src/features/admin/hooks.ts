@@ -14,6 +14,8 @@ import {
   deletePriceRate,
   deleteUser,
   removeWaterHeater,
+  rotateSensorKey,
+  setWaterHeaterKeyExpiry,
   getAdminLocations,
   getCapacitySteps,
   getGridTariffs,
@@ -21,6 +23,7 @@ import {
   getNorgesPrisRates,
   getPriceRates,
   getUsers,
+  getKeyReminders,
   getWaterHeaterSettings,
   resetPassword,
   setAdmin,
@@ -40,6 +43,8 @@ const NORGESPRIS_KEY = ['admin', 'norgespris']
 const LOCATION_PRICING_KEY = ['admin', 'location-pricing']
 const GRID_TARIFFS_KEY = ['admin', 'grid-tariffs']
 const PRICE_RATES_KEY = ['admin', 'price-rates']
+const KEY_REMINDERS_KEY = ['admin', 'key-reminders']
+const ONE_HOUR = 60 * 60 * 1000
 
 export function useUsers(page: number, search: string) {
   return useQuery({
@@ -105,6 +110,8 @@ export function useUpdateLocationAsAdmin() {
         queryClient.invalidateQueries({ queryKey: ADMIN_LOCATIONS_KEY }),
         queryClient.invalidateQueries({ queryKey: ['locations'] }),
         queryClient.invalidateQueries({ queryKey: USERS_KEY }),
+        // An inactive location's keys leave the reminder list.
+        queryClient.invalidateQueries({ queryKey: KEY_REMINDERS_KEY }),
       ]),
   })
 }
@@ -239,6 +246,7 @@ export function useWaterHeaterActions(locationId: string) {
       queryClient.invalidateQueries({ queryKey: ['water-heater', 'state', locationId] }),
       // The location list says whether there is a heater, which shows or hides the Heater tab.
       queryClient.invalidateQueries({ queryKey: ['locations'] }),
+      queryClient.invalidateQueries({ queryKey: KEY_REMINDERS_KEY }),
     ])
   return {
     connect: useMutation({
@@ -248,4 +256,48 @@ export function useWaterHeaterActions(locationId: string) {
     }),
     remove: useMutation({ mutationFn: () => removeWaterHeater(locationId), onSuccess: refresh }),
   }
+}
+
+/**
+ * The keys due within 30 days or expired, for the reminder banner. Only administrators ask (`enabled`); an error (an
+ * older API, offline) is not retried and simply shows no banner. Keys change rarely, so once an hour is enough.
+ */
+export function useKeyReminders(enabled: boolean) {
+  return useQuery({
+    queryKey: KEY_REMINDERS_KEY,
+    queryFn: getKeyReminders,
+    enabled,
+    retry: false,
+    refetchInterval: ONE_HOUR,
+  })
+}
+
+/** Changes only the water heater key's expiry date, and refreshes the heater section and the reminders. */
+export function useSetKeyExpiry(locationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (keyExpiresOn: string) => setWaterHeaterKeyExpiry(locationId, keyExpiresOn),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...WATER_HEATER_KEY, locationId] }),
+        queryClient.invalidateQueries({ queryKey: KEY_REMINDERS_KEY }),
+      ]),
+  })
+}
+
+/**
+ * Replaces a location's sensor key. The new key is the mutation's `data` only: `gcTime: 0` drops it from the mutation
+ * cache at once, and the dialog calls `reset()` when it closes, so it is never kept after being shown.
+ */
+export function useRotateSensorKey(locationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => rotateSensorKey(locationId),
+    gcTime: 0,
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ADMIN_LOCATIONS_KEY }),
+        queryClient.invalidateQueries({ queryKey: KEY_REMINDERS_KEY }),
+      ]),
+  })
 }

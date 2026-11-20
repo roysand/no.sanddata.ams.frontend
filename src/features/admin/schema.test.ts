@@ -1,4 +1,10 @@
-import { createUserSchema, resetPasswordSchema, waterHeaterSchema } from './schema'
+import {
+  createUserSchema,
+  defaultKeyExpiresOn,
+  keyExpirySchema,
+  resetPasswordSchema,
+  waterHeaterSchema,
+} from './schema'
 
 const valid = {
   firstName: 'Ola',
@@ -34,7 +40,12 @@ describe('createUserSchema', () => {
 })
 
 describe('waterHeaterSchema', () => {
-  const pair = { deviceId: '4b88147ab00649499d', subscriptionKey: 'a1b2c3d4e5' }
+  // A date a year ahead, so these cases test only the pair.
+  const pair = {
+    deviceId: '4b88147ab00649499d',
+    subscriptionKey: 'a1b2c3d4e5',
+    keyExpiresOn: defaultKeyExpiresOn(),
+  }
   const messages = (input: Partial<typeof pair>) => {
     const result = waterHeaterSchema.safeParse({ ...pair, ...input })
     return result.success ? [] : result.error.issues.map((issue) => issue.message)
@@ -67,5 +78,45 @@ describe('waterHeaterSchema', () => {
     const result = waterHeaterSchema.safeParse({ ...pair, deviceId: ' 4B8814ab ' })
     expect(result.success && result.data.deviceId).toBe('4B8814ab')
     expect(messages({ subscriptionKey: ' key' })).toContain('The key cannot contain spaces')
+  })
+})
+
+describe('the water heater key expiry date', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-20T10:00:00Z'))
+  })
+  afterEach(() => vi.useRealTimers())
+
+  const ok = (keyExpiresOn: string) => keyExpirySchema.safeParse({ keyExpiresOn }).success
+  const message = (keyExpiresOn: string) => {
+    const result = keyExpirySchema.safeParse({ keyExpiresOn })
+    return result.success ? null : result.error.issues[0].message
+  }
+
+  it('must be after today in Oslo', () => {
+    expect(message('2026-11-20')).toBe('The key must be valid after today')
+    expect(ok('2026-11-21')).toBe(true)
+  })
+
+  it('may be at most five years ahead', () => {
+    expect(ok('2031-11-20')).toBe(true)
+    expect(message('2031-11-21')).toBe('At most five years ahead')
+  })
+
+  it('must be a real date', () => {
+    expect(message('2027-02-30')).toBe('Enter a date')
+    expect(message('')).toBe('Enter a date')
+  })
+
+  it('defaults to one year from today, and is part of the connect form', () => {
+    expect(defaultKeyExpiresOn()).toBe('2027-11-20')
+    expect(
+      waterHeaterSchema.safeParse({
+        deviceId: '4b88',
+        subscriptionKey: 'k',
+        keyExpiresOn: '2026-11-20',
+      }).success,
+    ).toBe(false)
   })
 })

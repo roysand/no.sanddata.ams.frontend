@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
+import { MemoryRouter } from 'react-router-dom'
 import { renderWithQuery } from '../../test/render'
 import type { AdminLocation } from '../locations'
 import { AdminLocationsPage } from './AdminLocationsPage'
@@ -88,7 +89,11 @@ function setup(putFails = false) {
 
 async function openAccess() {
   const user = userEvent.setup()
-  renderWithQuery(<AdminLocationsPage />)
+  renderWithQuery(
+    <MemoryRouter>
+      <AdminLocationsPage />
+    </MemoryRouter>,
+  )
   await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
   return user
 }

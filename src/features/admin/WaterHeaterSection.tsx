@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatOsloDate } from '../dashboard'
+import { formatOsloDate, osloToday } from '../dashboard'
 import type { AdminLocation } from '../locations'
 import { ConnectWaterHeaterDialog } from './ConnectWaterHeaterDialog'
+import { ExpiryBadge } from './ExpiryBadge'
+import { KeyExpiryDialog } from './KeyExpiryDialog'
+import { daysUntilDate } from './keyReminders'
 import { RemoveWaterHeaterDialog } from './RemoveWaterHeaterDialog'
 import { useWaterHeaterActions, useWaterHeaterSettings } from './hooks'
 
@@ -19,6 +22,7 @@ export function WaterHeaterSection({ location }: { location: AdminLocation }) {
   const [formMode, setFormMode] = useState<'connect' | 'replace' | null>(null)
   const [isConfirmingRemove, setConfirmingRemove] = useState(false)
   const [removeError, setRemoveError] = useState<string | null>(null)
+  const [isChangingDate, setChangingDate] = useState(false)
 
   const closeForm = () => {
     actions.connect.reset()
@@ -38,8 +42,10 @@ export function WaterHeaterSection({ location }: { location: AdminLocation }) {
   const heater = settings.data
 
   return (
-    <section className="space-y-3" aria-label="Water heater">
-      <h3 className="text-sm font-medium">Water heater</h3>
+    <section id="water-heater" className="space-y-3" aria-label="Water heater">
+      <h3 className="text-sm font-medium" tabIndex={-1}>
+        Water heater
+      </h3>
 
       {settings.isLoading ? (
         <Skeleton className="h-5 w-2/3" />
@@ -57,6 +63,21 @@ export function WaterHeaterSection({ location }: { location: AdminLocation }) {
               {heater.updatedAt !== heater.connectedAt &&
                 ` · changed ${formatOsloDate(heater.updatedAt)}`}
             </span>
+            {heater.keyExpiresOn && (
+              <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {/* Noon UTC is the same calendar day in Oslo, so the date never shifts. */}
+                Key valid until {formatOsloDate(`${heater.keyExpiresOn}T12:00:00Z`)}
+                <ExpiryBadge daysLeft={daysUntilDate(heater.keyExpiresOn, osloToday())} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setChangingDate(true)}
+                >
+                  Change date
+                </Button>
+              </span>
+            )}
           </span>
           <span className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setFormMode('replace')}>
@@ -91,6 +112,15 @@ export function WaterHeaterSection({ location }: { location: AdminLocation }) {
           isPending={actions.connect.isPending}
           onDone={closeForm}
           onCancel={closeForm}
+        />
+      )}
+
+      {isChangingDate && heater?.keyExpiresOn && (
+        <KeyExpiryDialog
+          locationId={location.id}
+          locationName={location.name}
+          current={heater.keyExpiresOn}
+          onClose={() => setChangingDate(false)}
         />
       )}
 

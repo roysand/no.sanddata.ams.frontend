@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { renderWithQuery } from '../../test/render'
 import type { AdminLocation } from '../locations'
 import { AdminLocationsPage } from './AdminLocationsPage'
@@ -57,7 +58,11 @@ function setup(locations: AdminLocation[] = [cabin, office]) {
 describe('AdminLocationsPage', () => {
   it('lists every location with owner, viewer count and status', async () => {
     setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
 
     const cabinRow = (await screen.findByText('Cabin')).closest('tr')!
     expect(within(cabinRow).getByText('owner@sanddata.no')).toBeInTheDocument()
@@ -73,7 +78,11 @@ describe('AdminLocationsPage', () => {
   it('narrows the list with the filter', async () => {
     setup()
     const user = userEvent.setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
     await screen.findByText('Cabin')
 
     await user.type(screen.getByLabelText('Filter locations'), 'storgata')
@@ -94,7 +103,11 @@ describe('AdminLocationsPage', () => {
       }),
     )
     const user = userEvent.setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.click(screen.getByRole('combobox', { name: 'Price zone' }))
@@ -122,7 +135,11 @@ describe('AdminLocationsPage', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     const dialog = screen.getByRole('dialog')
@@ -147,11 +164,17 @@ describe('AdminLocationsPage', () => {
   it('shows the key facts but never a key', async () => {
     setup()
     const user = userEvent.setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
 
-    expect(screen.getByText(/Sensor key …a972/)).toBeInTheDocument()
+    // The sensor key has its own section since spec 011: the hint and status, never the key.
+    const sensorKey = screen.getByRole('region', { name: 'Sensor key' })
+    expect(within(sensorKey).getByText(/…a972 · /)).toBeInTheDocument()
   })
 
   it('shows the reason and keeps the values when the serial number is taken', async () => {
@@ -168,7 +191,11 @@ describe('AdminLocationsPage', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.clear(screen.getByLabelText('Serial number'))
@@ -190,7 +217,11 @@ describe('AdminLocationsPage', () => {
       }),
     )
     const user = userEvent.setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.click(screen.getByLabelText('Active'))
@@ -213,7 +244,11 @@ describe('AdminLocationsPage', () => {
       }),
     )
     const user = userEvent.setup()
-    renderWithQuery(<AdminLocationsPage />)
+    renderWithQuery(
+      <MemoryRouter>
+        <AdminLocationsPage />
+      </MemoryRouter>,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Edit Cabin' }))
     await user.click(screen.getByLabelText('Active'))
@@ -222,5 +257,49 @@ describe('AdminLocationsPage', () => {
 
     await screen.findByRole('button', { name: 'Edit Cabin' })
     expect(body.isActive).toBe(false)
+  })
+
+  describe('opened from a key reminder', () => {
+    /** Shows the current search, so a test can see the link's parameters go when the dialog closes. */
+    function Search() {
+      return <output aria-label="search">{useLocation().search}</output>
+    }
+
+    function renderAt(url: string) {
+      renderWithQuery(
+        <MemoryRouter initialEntries={[url]}>
+          <AdminLocationsPage />
+          <Search />
+        </MemoryRouter>,
+      )
+    }
+
+    it("opens the linked location's dialog once the list has loaded", async () => {
+      setup()
+      renderAt('/admin/locations?edit=loc-1&key=sensor')
+
+      expect(await screen.findByRole('dialog')).toHaveTextContent('Cabin')
+      expect(screen.getByRole('region', { name: 'Sensor key' })).toBeInTheDocument()
+    })
+
+    it('clears the link when the dialog is closed, so Back does not open it again', async () => {
+      setup()
+      const user = userEvent.setup()
+      renderAt('/admin/locations?edit=loc-1&key=heater')
+
+      await screen.findByRole('dialog')
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('search')).toHaveTextContent(/^$/)
+    })
+
+    it('ignores a location that is not in the list', async () => {
+      setup()
+      renderAt('/admin/locations?edit=nope&key=sensor')
+
+      expect(await screen.findByRole('button', { name: 'Edit Cabin' })).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   })
 })
