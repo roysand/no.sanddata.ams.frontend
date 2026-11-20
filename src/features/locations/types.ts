@@ -19,6 +19,11 @@ export interface LocationSummary {
   isActive: boolean
   role: LocationRole
   meters: MeterSummary[]
+  /**
+   * True when an OSO water heater is connected (from the database, without reading the heater), so the Heater tab shows
+   * with the other tabs. Absent from an API older than this field, which shows no Heater tab.
+   */
+  hasWaterHeater?: boolean
 }
 
 /** Someone with access to a location, as the admin lists show them. */

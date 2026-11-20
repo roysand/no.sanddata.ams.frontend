@@ -309,22 +309,6 @@ export function useWaterHeaterState(locationId: string | undefined) {
   })
 }
 
-/**
- * Whether a location has a water heater, for the bottom tab. Shares the state query's cache, but without polling and
- * with a long stale time, so only the open heater page polls OSO. True while the heater is connected but unreadable
- * (502/503), false on 404 and while not yet known.
- */
-export function useHasWaterHeater(locationId: string | undefined): boolean {
-  const { data, error } = useQuery({
-    queryKey: ['water-heater', 'state', locationId],
-    queryFn: () => getWaterHeaterState(locationId!),
-    enabled: !!locationId,
-    retry: false,
-    staleTime: 5 * ONE_MINUTE,
-  })
-  return !!data || (!!error && !isNotFound(error))
-}
-
 /** The current time, refreshed every `intervalMs`, for text that moves on between fetches ("updated 2 minutes ago"). */
 export function useNow(intervalMs: number): number {
   const [now, setNow] = useState(() => Date.now())

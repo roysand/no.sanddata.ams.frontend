@@ -99,6 +99,10 @@ Phase 0 of [plan.md](plan.md). The Technical Context had no open questions; thes
   the tab (the heater exists, it is just unreadable); a 404 hides it. Connecting or removing in Admin invalidates the
   key, so the tab appears or disappears without a reload. The page says "No water heater is connected at …" when
   reached for a location without one (by switching location while on it, or by URL).
+- **Changed 2026-11-20**: the tab appeared later than the other three, because it waited for the API to read OSO on
+  every page load. The location list now carries `hasWaterHeater` (from the database, no OSO call), and `AppLayout`
+  reads it, so the tab appears with the others; `useHasWaterHeater` is gone. Connecting or removing in Admin also
+  invalidates `['locations']`.
 - **Rationale**: Roy wanted the heater one tap away from the bottom of the screen rather than in the long Now page.
 - **Alternatives**: The card on Now after `RecentUsage` (the first version); the tab plus the card on Now; a bottom
   sheet opened from a button on Now.
