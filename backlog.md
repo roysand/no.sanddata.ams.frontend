@@ -4,7 +4,18 @@ Ideas and deferred work that is not yet specified.
 
 ## Sensor key rotation
 
-Rotate or replace a lost sensor (API) key used by the MQTTForwarder app. Deferred from `specs/001-location-meter-onboarding` (see "out of scope" in its spec.md). Open points: who may rotate (admin only, or owner), how the new key is shown once, and how the old key is invalidated.
+Rotate or replace a lost sensor (API) key used by the MQTTForwarder app. Deferred from
+`specs/001-location-meter-onboarding` (see "out of scope" in its spec.md).
+
+The API can already do it: `POST /api/admin/locations/{id}/api-key/rotate` (Admin only) issues a new key, valid for 2
+years like a new location's key (`ApiKeyCrypto.KeyLifetime`, 730 days). What is missing is a button for it in the
+app, at least in **Admin → Locations**, which shows the new key once (as `SensorKeyNotice` does on creation). Open
+points:
+- whether owners may rotate their own key too
+- whether the old key stops at once
+- a warning before a key expires, since an expired key silently stops the readings.
+
+Found while writing `NewLocationSetup.md` (2026-11-20).
 
 ## OSO water heater
 
