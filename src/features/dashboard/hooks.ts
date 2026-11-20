@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query'
 import { ApiError } from '../../lib/apiClient'
 import {
   getCapacityCharge,
@@ -14,8 +21,10 @@ import {
   getMonthlyBill,
   getNorgesPrisSaving,
   getWaterHeaterState,
+  getEvChargerSessions,
+  setEvChargerInclude,
 } from './api'
-import { osloDayStartUtc, sameHourYesterday } from './format'
+import { osloDayStartUtc, osloMonth, osloToday, sameHourYesterday } from './format'
 import { addDays, dayStart, periodPlan, type Period, type PeriodWindow } from './periods'
 import { heatmapDays, heatmapFrom } from './heatmap'
 import { standbyDays, standbyFrom } from './standby'
@@ -332,4 +341,46 @@ export function useNow(intervalMs: number): number {
     return () => clearInterval(id)
   }, [intervalMs])
   return now
+}
+
+/**
+ * The month's days so far, for the Car tab's "Today" and "This month" (spec 013, research R5). One answer gives both,
+ * so the month is never less than today. Every 15 minutes: Zaptec's sessions are read that often.
+ */
+export function useCarMonth(locationId: string | undefined) {
+  const now = new Date()
+  const month = osloMonth(now)
+  return useQuery({
+    queryKey: ['ev-charger', 'month', locationId, month],
+    queryFn: () => getDailyCostRange(locationId!, `${month}-01`, osloToday(now)),
+    enabled: !!locationId,
+    refetchInterval: 15 * ONE_MINUTE,
+  })
+}
+
+/** The completed charging sessions of the last 30 days, every 15 minutes. */
+export function useEvChargerSessions(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ['ev-charger', 'sessions', locationId],
+    queryFn: () => getEvChargerSessions(locationId!),
+    enabled: !!locationId,
+    refetchInterval: 15 * ONE_MINUTE,
+  })
+}
+
+/**
+ * Saves the "count the car charger with the house" setting (research R6). Every usage figure follows it, so on success
+ * the location list (which holds the setting), the charts, the costs and the Car tab are fetched again.
+ */
+export function useEvChargerInclude(locationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (include: boolean) => setEvChargerInclude(locationId, include),
+    onSuccess: () =>
+      Promise.all(
+        [['locations'], ['usage'], ['cost'], ['ev-charger']].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
+  })
 }

@@ -1,7 +1,7 @@
 import { getDailyCostRange, getHourlyCostPage } from './api'
 import { modelLabel, otherModel } from './format'
 import { addDays, dayStart } from './periods'
-import type { DailyCostItem, HourlyCostItem, WaterHeaterPart } from './types'
+import type { DailyCostItem, EvChargerPart, HourlyCostItem, WaterHeaterPart } from './types'
 import { restOf } from './waterHeater'
 
 export type Resolution = 'hour' | 'day'
@@ -35,6 +35,18 @@ const WATER_HEATER_HEADERS = [
   'Everything else cost (kr)',
   'Water heating sampled minutes',
 ]
+
+/**
+ * Car charging (API spec 016), after the water heater columns so files read by position keep working. Usage (kWh)
+ * stays the house's own; these say what the car charged and whether it is counted with the house.
+ */
+const EV_CHARGER_HEADERS = ['Car charging (kWh)', 'Car counted with the house']
+
+/** Two empty cells without charging (never 0). */
+function carCells(part: EvChargerPart | null) {
+  if (!part) return ['', '']
+  return [number(part.kwh, 3), part.included ? 'Yes' : 'No']
+}
 
 /** Empty cells without a part (never 0); the rest is total − water heating before rounding. */
 function heaterCells(totalKwh: number, totalCost: number | null, part: WaterHeaterPart | null) {
@@ -75,6 +87,7 @@ export function hourlyCsv(items: HourlyCostItem[]): string {
       'Other price (kr/kWh)',
       'Other cost (kr)',
       ...WATER_HEATER_HEADERS,
+      ...EV_CHARGER_HEADERS,
     ],
     ...items.map((item) => [
       osloTime.format(new Date(item.hourStart)),
@@ -87,6 +100,7 @@ export function hourlyCsv(items: HourlyCostItem[]): string {
       number(item.comparison?.ratePerKwh, 4),
       number(item.comparison?.cost, 2),
       ...heaterCells(item.consumptionKwh, item.actual?.cost ?? null, item.waterHeater),
+      ...carCells(item.evCharger),
     ]),
   ])
 }
@@ -101,6 +115,7 @@ export function dailyCsv(items: DailyCostItem[]): string {
       'Other model',
       'Other cost (kr)',
       ...WATER_HEATER_HEADERS,
+      ...EV_CHARGER_HEADERS,
     ],
     ...items.map((item) => [
       item.date,
@@ -110,6 +125,7 @@ export function dailyCsv(items: DailyCostItem[]): string {
       modelLabel(otherModel(item.pricingModel)),
       number(item.comparison?.cost, 2),
       ...heaterCells(item.consumptionKwh, item.actual?.cost ?? null, item.waterHeater),
+      ...carCells(item.evCharger),
     ]),
   ])
 }

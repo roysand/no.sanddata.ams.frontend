@@ -16,6 +16,8 @@ const home: LocationSummary = {
   isActive: true,
   role: 'Owner',
   meters: [],
+  hasEvCharger: false,
+  includeEvCharger: false,
 }
 
 function setup(location = home) {

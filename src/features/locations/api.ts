@@ -1,8 +1,17 @@
 import { api } from '../../lib/apiClient'
 import type { CreatedLocation, LocationInput, LocationSummary, Meter, MeterInput } from './types'
 
-export function getLocations() {
-  return api.get<LocationSummary[]>('/api/locations')
+/** An API older than spec 016 leaves the car charger flags out; they are read as false. */
+type RawLocationSummary = Omit<LocationSummary, 'hasEvCharger' | 'includeEvCharger'> &
+  Partial<Pick<LocationSummary, 'hasEvCharger' | 'includeEvCharger'>>
+
+export async function getLocations(): Promise<LocationSummary[]> {
+  const locations = await api.get<RawLocationSummary[]>('/api/locations')
+  return locations.map((location) => ({
+    ...location,
+    hasEvCharger: location.hasEvCharger === true,
+    includeEvCharger: location.includeEvCharger === true,
+  }))
 }
 
 /** The caller creates a location that belongs to them; the API links it and returns the sensor key once. */

@@ -414,3 +414,82 @@ describe('UsageChart water heating', () => {
     expect(screen.queryByText(/Water heating/)).not.toBeInTheDocument()
   })
 })
+
+describe('UsageChart car charging (spec 013)', () => {
+  beforeEach(() => localStorage.clear())
+
+  /** Today's first three hours: the house at 1,4 kWh and 1,40 kr; hour 0 charges 3 kWh, counted or not. */
+  function useCarApi(included: boolean) {
+    const dayPlan = periodPlan('day', new Date())
+    server.use(
+      http.get('*/api/electricity-cost/hourly', ({ request }) => {
+        const isCurrent = new URL(request.url).searchParams.get('from') === dayPlan.current.fromUtc
+        const slots = (isCurrent ? dayPlan.current : dayPlan.previous).slots.slice(0, 3)
+        return HttpResponse.json({
+          items: slots.map((slot, i) => {
+            const car = isCurrent && i === 0 ? { kwh: 3, estimated: false, included } : null
+            return {
+              hourStart: new Date(Number(slot.key)).toISOString(),
+              consumptionKwh: 1.4,
+              totalKwh: 1.4 + (car?.included ? car.kwh : 0),
+              pricingModel: 'Spot',
+              actual: { ratePerKwh: 1, cost: 1.4 },
+              comparison: null,
+              waterHeater: null,
+              evCharger: car,
+            }
+          }),
+          page: 1,
+          pageSize: 500,
+          totalCount: 3,
+        })
+      }),
+    )
+  }
+
+  async function selectFirstHour(user: ReturnType<typeof userEvent.setup>) {
+    await screen.findByText(/Today so far/)
+    const chart = screen.getByRole('group', { name: /Energy use|Cost/ })
+    chart.focus()
+    await user.keyboard('{ArrowRight}')
+  }
+
+  it('shows the car and everything else for a selected hour, and a legend entry', async () => {
+    useCarApi(true)
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await selectFirstHour(user)
+
+    expect(screen.getByText('Car charging', { selector: 'li' })).toBeInTheDocument()
+    expect(await screen.findByText(/4,4 kWh/, { selector: 'p[aria-live] b' })).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Car charging 3 kWh · Everything else 1,4 kWh/),
+    ).toBeInTheDocument()
+  })
+
+  it('never shows the car in NOK', async () => {
+    useCarApi(true)
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+    await screen.findByText(/Today so far/)
+    await user.click(screen.getByRole('button', { name: 'NOK' }))
+
+    await selectFirstHour(user)
+
+    expect(screen.queryByText('Car charging', { selector: 'li' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Car charging \d/)).not.toBeInTheDocument()
+  })
+
+  it('looks as before when the car is not counted with the house', async () => {
+    useCarApi(false)
+    const user = userEvent.setup()
+    renderWithQuery(<UsageChart locationId="l1" />)
+
+    await selectFirstHour(user)
+
+    expect(await screen.findByText(/1,4 kWh/, { selector: 'p[aria-live] b' })).toBeInTheDocument()
+    expect(screen.queryByText('Car charging', { selector: 'li' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Car charging/)).not.toBeInTheDocument()
+  })
+})

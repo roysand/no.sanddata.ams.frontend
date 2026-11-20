@@ -173,6 +173,29 @@ export interface WaterHeaterInput {
   keyExpiresOn: string
 }
 
+/** A Zaptec charger the server's Zaptec sign-in can see (API spec 016). Nothing is stored by listing them. */
+export interface ZaptecCharger {
+  chargerId: string
+  name: string
+  installationId: string
+  installationName: string
+}
+
+/** The Zaptec charger connected to a location. The Zaptec sign-in is the server's own, never sent or shown. */
+export interface EvChargerSettings {
+  locationId: string
+  chargerId: string
+  chargerName: string
+  installationId: string
+  installationName: string
+  /** UTC ISO. */
+  connectedAt: string
+  /** UTC ISO; how far the charging sessions have been read. null before the first read. */
+  readUpTo: string | null
+  /** The location's "count the car charger with the house" setting. */
+  includeInTotals: boolean
+}
+
 /** Which key a reminder is about (API spec 015). */
 export type KeyKind = 'SensorKey' | 'WaterHeaterKey'
 

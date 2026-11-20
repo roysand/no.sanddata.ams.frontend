@@ -8,10 +8,12 @@ const NOW = new Date('2026-11-21T13:20:00Z')
 const hour = (hourStart: string, kwh: number): HourlyCostItem => ({
   hourStart,
   consumptionKwh: kwh,
+  totalKwh: kwh,
   pricingModel: 'Spot',
   actual: null,
   comparison: null,
   waterHeater: null,
+  evCharger: null,
 })
 
 /** The hour 14–15 Oslo on the four Saturdays before NOW. */
@@ -47,5 +49,18 @@ describe('usualPower', () => {
 
   it('is null without a matching hour', () => {
     expect(usualPower([hour('2026-11-15T13:00:00Z', 1)], NOW)).toBeNull()
+  })
+})
+
+describe('the usual power stays the house’s own (spec 013, FR-021)', () => {
+  it('is the same when the car is counted with the house', () => {
+    const items = SATURDAYS.map((at, i) => hour(at, [0.8, 0.9, 1.0, 5.0][i]))
+    const withCar = items.map((item) => ({
+      ...item,
+      totalKwh: item.consumptionKwh + 7,
+      evCharger: { kwh: 7, estimated: false, included: true },
+    }))
+
+    expect(usualPower(withCar, NOW)).toEqual(usualPower(items, NOW))
   })
 })

@@ -18,10 +18,12 @@ const part = (kwh: number, cost: number | null): WaterHeaterPart => ({
 const hour = (i: number, kwh: number, waterHeater: WaterHeaterPart | null): HourlyCostItem => ({
   hourStart: new Date(Date.UTC(2026, 10, 19, 23 + i)).toISOString(),
   consumptionKwh: kwh,
+  totalKwh: kwh,
   pricingModel: 'Spot',
   actual: { ratePerKwh: 1, cost: kwh },
   comparison: null,
   waterHeater,
+  evCharger: null,
 })
 
 /** Today: 13,5 kWh, of which 4,2 kWh (3,80 kr) water heating. */

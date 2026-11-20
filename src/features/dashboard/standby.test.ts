@@ -10,10 +10,12 @@ function day(date: string, kwh: (hour: number) => number, rate: number | null = 
   return Array.from({ length: hours }, (_, h): HourlyCostItem => ({
     hourStart: new Date(start + h * 3_600_000).toISOString(),
     consumptionKwh: kwh(h),
+    totalKwh: kwh(h),
     pricingModel: 'Spot',
     actual: rate === null ? null : { ratePerKwh: rate, cost: kwh(h) * rate },
     comparison: null,
     waterHeater: null,
+    evCharger: null,
   }))
 }
 
@@ -91,5 +93,19 @@ describe('standbyFrom', () => {
   it('needs at least 3 days', () => {
     expect(standbyFrom([...day(days[0], night(0.3)), ...day(days[1], night(0.3))], NOW)).toBeNull()
     expect(standbyFrom([], NOW)).toBeNull()
+  })
+})
+
+describe('standby stays the house’s own (spec 013, FR-021)', () => {
+  it('is the same when the car is counted with the house', () => {
+    const days = standbyDays(NOW)
+    const items = days.slice(0, 5).flatMap((date) => day(date, night(0.3)))
+    const withCar = items.map((item) => ({
+      ...item,
+      totalKwh: item.consumptionKwh + 7,
+      evCharger: { kwh: 7, estimated: false, included: true },
+    }))
+
+    expect(standbyFrom(withCar, NOW)).toEqual(standbyFrom(items, NOW))
   })
 })

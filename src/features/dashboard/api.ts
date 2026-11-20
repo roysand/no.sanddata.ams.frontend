@@ -6,6 +6,7 @@ import type {
   DailyCost,
   DailyCostItem,
   DayPrices,
+  EvChargerSession,
   HourlyCostItem,
   LatestMeasurement,
   MonthlyBill,
@@ -14,24 +15,34 @@ import type {
   WaterHeaterState,
 } from './types'
 
-/** An API without spec 012 leaves `waterHeater` out; it is read as null (no heater figure) everywhere. */
-type WithOptionalWaterHeater<T extends { waterHeater: unknown }> = Omit<T, 'waterHeater'> & {
-  waterHeater?: T['waterHeater']
-}
-type RawPagedHourlyCost = Omit<PagedHourlyCost, 'items'> & {
-  items: WithOptionalWaterHeater<HourlyCostItem>[]
-}
-type RawDailyCost = { items: WithOptionalWaterHeater<DailyCostItem>[] }
+/**
+ * An API without spec 012 leaves `waterHeater` out, and one without spec 016 leaves `totalKwh`, `totalKwhSoFar` and
+ * `evCharger` out. They are read as no heater figure, the house's kWh and no car figure everywhere.
+ */
+type Older<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+type RawHourlyItem = Older<HourlyCostItem, 'waterHeater' | 'totalKwh' | 'evCharger'>
+type RawDailyItem = Older<DailyCostItem, 'waterHeater' | 'totalKwh' | 'evCharger'>
+type RawPagedHourlyCost = Omit<PagedHourlyCost, 'items'> & { items: RawHourlyItem[] }
+type RawDailyCost = { items: RawDailyItem[] }
+type RawCurrentHourCost = Older<CurrentHourCost, 'totalKwhSoFar' | 'evCharger'>
+type RawMonthlyBill = Older<MonthlyBill, 'waterHeater' | 'totalKwh' | 'evCharger'>
 
-function withWaterHeater<T extends { waterHeater?: unknown }>(item: T) {
-  return { ...item, waterHeater: item.waterHeater ?? null }
+function withParts<T extends RawHourlyItem | RawDailyItem>(item: T) {
+  return {
+    ...item,
+    totalKwh: item.totalKwh ?? item.consumptionKwh,
+    waterHeater: item.waterHeater ?? null,
+    evCharger: item.evCharger ?? null,
+  }
 }
 
 const normaliseHourly = (raw: RawPagedHourlyCost): PagedHourlyCost => ({
   ...raw,
-  items: raw.items.map(withWaterHeater),
+  items: raw.items.map((item) => withParts(item)),
 })
-const normaliseDaily = (raw: RawDailyCost): DailyCost => ({ items: raw.items.map(withWaterHeater) })
+const normaliseDaily = (raw: RawDailyCost): DailyCost => ({
+  items: raw.items.map((item) => withParts(item)),
+})
 
 function query(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()
@@ -41,8 +52,14 @@ function query(params: Record<string, string | number | undefined>): string {
   return search.toString()
 }
 
-export function getCurrentHourCost(locationId: string) {
-  return api.get<CurrentHourCost>(`/api/electricity-cost/current?${query({ locationId })}`)
+export function getCurrentHourCost(locationId: string): Promise<CurrentHourCost> {
+  return api
+    .get<RawCurrentHourCost>(`/api/electricity-cost/current?${query({ locationId })}`)
+    .then((raw) => ({
+      ...raw,
+      totalKwhSoFar: raw.totalKwhSoFar ?? raw.consumptionKwhSoFar,
+      evCharger: raw.evCharger ?? null,
+    }))
 }
 
 /** Hourly cost from `fromUtc` (ISO) until `toUtc`, or until now when omitted. */
@@ -116,15 +133,31 @@ export function getCapacityCharge(locationId: string, month: string) {
 }
 
 /** The bill of a month (yyyy-MM), line by line as the invoice: final for an ended month, an estimate for the current. */
-export function getMonthlyBill(locationId: string, month: string) {
+export function getMonthlyBill(locationId: string, month: string): Promise<MonthlyBill> {
   return api
-    .get<WithOptionalWaterHeater<MonthlyBill>>(
-      `/api/electricity-cost/bill?${query({ locationId, month })}`,
-    )
-    .then(withWaterHeater)
+    .get<RawMonthlyBill>(`/api/electricity-cost/bill?${query({ locationId, month })}`)
+    .then((raw) => ({
+      ...raw,
+      waterHeater: raw.waterHeater ?? null,
+      totalKwh: raw.totalKwh ?? null,
+      evCharger: raw.evCharger ?? null,
+    }))
 }
 
 /** The water heater's state, read from OSO now. 404 when the location has no heater (or is not visible). */
 export function getWaterHeaterState(locationId: string) {
   return api.get<WaterHeaterState>(`/api/locations/${locationId}/water-heater`)
+}
+
+/** The completed charging sessions of the last 30 days (the API's default range), newest first (API spec 016). */
+export function getEvChargerSessions(locationId: string) {
+  return api.get<{ items: EvChargerSession[] }>(`/api/locations/${locationId}/ev-charger/sessions`)
+}
+
+/** The location's "count the car charger with the house" setting. Owner or Admin; a viewer gets 403. */
+export function setEvChargerInclude(locationId: string, include: boolean) {
+  return api.put<{ locationId: string; includeInTotals: boolean }>(
+    `/api/locations/${locationId}/ev-charger/include`,
+    { include },
+  )
 }

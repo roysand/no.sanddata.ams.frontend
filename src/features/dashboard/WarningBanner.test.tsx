@@ -33,6 +33,8 @@ const hjemme: LocationSummary = {
   isActive: true,
   role: 'Owner',
   meters: [],
+  hasEvCharger: false,
+  includeEvCharger: false,
 }
 
 function renderBanner(figures: WarningFigures = {}) {
@@ -71,6 +73,8 @@ describe('WarningBanner capacity step', () => {
       current: {
         hourStart: '2026-11-20T10:00:00Z',
         consumptionKwhSoFar: 11.5,
+        totalKwhSoFar: 11.5,
+        evCharger: null,
         pricingModel: 'Spot',
         actual: null,
         comparison: null,

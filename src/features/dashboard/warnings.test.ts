@@ -33,6 +33,8 @@ const capacity = (
 const current = (soFar: number, hourStart = HOUR_START): CurrentHourCost => ({
   hourStart,
   consumptionKwhSoFar: soFar,
+  totalKwhSoFar: soFar,
+  evCharger: null,
   pricingModel: 'Spot',
   actual: null,
   comparison: null,
@@ -41,10 +43,12 @@ const current = (soFar: number, hourStart = HOUR_START): CurrentHourCost => ({
 const hour = (hourStart: string, kwh: number): HourlyCostItem => ({
   hourStart,
   consumptionKwh: kwh,
+  totalKwh: kwh,
   pricingModel: 'Spot',
   actual: null,
   comparison: null,
   waterHeater: null,
+  evCharger: null,
 })
 
 const OTHER_DAYS = [

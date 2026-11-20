@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { basisText, isUncertain, isVatExemptBill, PART_TITLES } from './bill'
-import { BillPartView, IncompleteNote, WaterHeaterBillNote } from './BillView'
+import { BillPartView, EvChargerBillNote, IncompleteNote, WaterHeaterBillNote } from './BillView'
 import { stepLabel } from './capacity'
 import { formatMonth, formatNok, osloMonth } from './format'
 import { useMonthlyBill } from './hooks'
@@ -73,6 +73,7 @@ function Estimate({ bill }: { bill: MonthlyBill }) {
       </div>
 
       <WaterHeaterBillNote bill={bill} />
+      <EvChargerBillNote bill={bill} />
 
       <div className="space-y-1 text-xs text-muted-foreground">
         {basis && (

@@ -15,6 +15,8 @@ const location = (id: string, name: string, role: LocationRole): LocationSummary
   isActive: true,
   role,
   meters: [],
+  hasEvCharger: false,
+  includeEvCharger: false,
 })
 
 function card(name: string) {

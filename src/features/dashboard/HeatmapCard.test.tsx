@@ -19,10 +19,12 @@ function hours(days: string[]): HourlyCostItem[] {
     return Array.from({ length: 24 }, (_, h) => ({
       hourStart: new Date(start + h * 3_600_000).toISOString(),
       consumptionKwh: weekday === 'Mon' && h === 18 ? 3 : weekday === 'Wed' && h === 3 ? 0.2 : 1,
+      totalKwh: weekday === 'Mon' && h === 18 ? 3 : weekday === 'Wed' && h === 3 ? 0.2 : 1,
       pricingModel: 'Spot' as const,
       actual: null,
       comparison: null,
       waterHeater: null,
+      evCharger: null,
     }))
   })
 }

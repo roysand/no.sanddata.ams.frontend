@@ -48,6 +48,8 @@ export function warningHandlers(figures: WarningFigures = {}) {
     current = {
       hourStart: new Date().toISOString(),
       consumptionKwhSoFar: 0,
+      totalKwhSoFar: 0,
+      evCharger: null,
       pricingModel: 'Spot',
       actual: null,
       comparison: null,
@@ -86,10 +88,12 @@ const NOW = WARNING_NOW
 export const hour = (hourStart: string, kwh: number): HourlyCostItem => ({
   hourStart,
   consumptionKwh: kwh,
+  totalKwh: kwh,
   pricingModel: 'Spot',
   actual: null,
   comparison: null,
   waterHeater: null,
+  evCharger: null,
 })
 
 /** The 5–10 kW step, with the month's other best days at 9,5, 9,2 and 8,0 kW. */
@@ -117,6 +121,8 @@ export const CAPACITY_DUE: WarningFigures = {
   current: {
     hourStart: '2026-11-20T10:00:00Z',
     consumptionKwhSoFar: 6,
+    totalKwhSoFar: 6,
+    evCharger: null,
     pricingModel: 'Spot',
     actual: null,
     comparison: null,

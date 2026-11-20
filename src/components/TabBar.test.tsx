@@ -2,10 +2,19 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TabBar } from './TabBar'
 
-function renderTabs(path: string, hasMultipleLocations: boolean, hasWaterHeater = false) {
+function renderTabs(
+  path: string,
+  hasMultipleLocations: boolean,
+  hasWaterHeater = false,
+  hasEvCharger = false,
+) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <TabBar hasMultipleLocations={hasMultipleLocations} hasWaterHeater={hasWaterHeater} />
+      <TabBar
+        hasMultipleLocations={hasMultipleLocations}
+        hasWaterHeater={hasWaterHeater}
+        hasEvCharger={hasEvCharger}
+      />
     </MemoryRouter>,
   )
 }
@@ -44,5 +53,27 @@ describe('TabBar', () => {
     const tabs = screen.getAllByRole('link').map((link) => link.textContent)
     expect(tabs).toEqual(['Now', 'History', 'Heater', 'Location'])
     expect(screen.getByRole('link', { name: 'Heater' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('has no Car tab for a location without a car charger', () => {
+    renderTabs('/', false, true)
+
+    expect(screen.queryByRole('link', { name: 'Car' })).not.toBeInTheDocument()
+  })
+
+  it('adds a Car tab after Heater when the location has a car charger', () => {
+    renderTabs('/ev-charger', false, true, true)
+
+    const tabs = screen.getAllByRole('link').map((link) => link.textContent)
+    expect(tabs).toEqual(['Now', 'History', 'Heater', 'Car', 'Location'])
+    expect(screen.getByRole('link', { name: 'Car' })).toHaveAttribute('href', '/ev-charger')
+    expect(screen.getByRole('link', { name: 'Car' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('navigation', { name: 'Main' })).toHaveClass('grid-cols-5')
+  })
+
+  it('has one column per tab', () => {
+    renderTabs('/', false, false, true)
+
+    expect(screen.getByRole('navigation', { name: 'Main' })).toHaveClass('grid-cols-4')
   })
 })

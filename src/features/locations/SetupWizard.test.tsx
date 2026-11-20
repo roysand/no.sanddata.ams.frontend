@@ -17,6 +17,8 @@ const created = {
     isActive: true,
     hasNorgesPriceAgreement: false,
     meters: [],
+    hasEvCharger: false,
+    includeEvCharger: false,
   },
   apiKey: 'SECRET-SENSOR-KEY',
 }
@@ -31,6 +33,8 @@ const cabin: LocationSummary = {
   isActive: true,
   role: 'Owner',
   meters: [],
+  hasEvCharger: false,
+  includeEvCharger: false,
 }
 
 function renderWizard() {

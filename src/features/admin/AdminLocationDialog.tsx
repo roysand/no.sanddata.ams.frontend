@@ -17,6 +17,7 @@ import {
 } from '../locations'
 import { LocationAccessList } from './LocationAccessList'
 import { SensorKeySection } from './SensorKeySection'
+import { EvChargerSection } from './EvChargerSection'
 import { WaterHeaterSection } from './WaterHeaterSection'
 import { useUpdateLocationAsAdmin } from './hooks'
 
@@ -113,6 +114,8 @@ export function AdminLocationDialog({
 
           <WaterHeaterSection location={location} />
 
+          <EvChargerSection location={location} />
+
           <SensorKeySection location={location} />
 
           {/* Next to the buttons, so a refusal is seen where Save was pressed. */}
@@ -122,7 +125,7 @@ export function AdminLocationDialog({
             </p>
           )}
 
-          {/* Access and Water heater save on their own; these buttons are for the location fields above. */}
+          {/* Access, Water heater and Car charger save on their own; these buttons are for the location fields above. */}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

@@ -4,6 +4,7 @@ import {
   addGridTariffRate,
   addNorgesPrisRate,
   addPriceRate,
+  connectEvCharger,
   connectWaterHeater,
   createGridTariff,
   createLocationForUser,
@@ -13,6 +14,7 @@ import {
   deleteNorgesPrisRate,
   deletePriceRate,
   deleteUser,
+  removeEvCharger,
   removeWaterHeater,
   rotateSensorKey,
   setWaterHeaterKeyExpiry,
@@ -24,7 +26,9 @@ import {
   getPriceRates,
   getUsers,
   getKeyReminders,
+  getEvChargerSettings,
   getWaterHeaterSettings,
+  getZaptecChargers,
   resetPassword,
   setAdmin,
   setLocationLink,
@@ -300,4 +304,46 @@ export function useRotateSensorKey(locationId: string) {
         queryClient.invalidateQueries({ queryKey: KEY_REMINDERS_KEY }),
       ]),
   })
+}
+
+const EV_CHARGER_KEY = ['admin', 'ev-charger']
+
+/** The car charger connected to a location, or `null` when none is. */
+export function useEvChargerSettings(locationId: string) {
+  return useQuery({
+    queryKey: [...EV_CHARGER_KEY, locationId],
+    queryFn: () => getEvChargerSettings(locationId),
+  })
+}
+
+/** The chargers the server's Zaptec sign-in sees, asked for only while the connect dialog is open. */
+export function useZaptecChargers(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin', 'ev-chargers'],
+    queryFn: getZaptecChargers,
+    enabled,
+    retry: false,
+    staleTime: 0,
+  })
+}
+
+/**
+ * Connect (or replace) and remove. Both refresh the Admin view, the location list (which shows or hides the Car tab
+ * and holds the checkbox) and the Car tab's figures.
+ */
+export function useEvChargerActions(locationId: string) {
+  const queryClient = useQueryClient()
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: [...EV_CHARGER_KEY, locationId] }),
+      queryClient.invalidateQueries({ queryKey: ['locations'] }),
+      queryClient.invalidateQueries({ queryKey: ['ev-charger'] }),
+    ])
+  return {
+    connect: useMutation({
+      mutationFn: (chargerId: string) => connectEvCharger(locationId, chargerId),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({ mutationFn: () => removeEvCharger(locationId), onSuccess: refresh }),
+  }
 }

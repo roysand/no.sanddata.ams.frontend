@@ -16,6 +16,8 @@ const other = { ratePerKwh: 1.5, costSoFar: 3, parts }
 const current = (pricingModel: 'Spot' | 'NorgesPris'): CurrentHourCost => ({
   hourStart: '2026-11-10T13:00:00Z',
   consumptionKwhSoFar: 2,
+  totalKwhSoFar: 2,
+  evCharger: null,
   pricingModel,
   actual: own,
   comparison: other,
