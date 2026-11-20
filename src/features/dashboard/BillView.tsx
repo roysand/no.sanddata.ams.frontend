@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '../auth/useAuth'
-import { formatNok } from './format'
+import { formatKwh, formatMonth, formatNok, formatOsloDate } from './format'
+import { dayStart } from './periods'
 import {
   formatQuantity,
   formatUnitPrice,
@@ -151,7 +152,34 @@ export function BillInvoice({ bill }: { bill: MonthlyBill }) {
           {formatNok(bill.total.amount)}
         </span>
       </div>
+      <WaterHeaterBillNote bill={bill} />
       <IncompleteNote bill={bill} />
+    </div>
+  )
+}
+
+/**
+ * Water heating's part of the month, below the total (API spec 012). It is part of the energy cost, never a bill
+ * line, and it is measured, never projected, so it is set apart in small text and adds to no sum.
+ */
+export function WaterHeaterBillNote({ bill }: { bill: MonthlyBill }) {
+  const part = bill.waterHeater
+  if (!part) return null
+  const estimate = bill.status === 'Estimate'
+  const fromMonthStart =
+    formatOsloDate(part.firstHourUtc) === formatOsloDate(dayStart(`${bill.month}-01`).toISOString())
+  const period = !fromMonthStart
+    ? `since ${formatOsloDate(part.firstHourUtc)}`
+    : estimate
+      ? 'so far this month'
+      : `in ${formatMonth(bill.month)}`
+  return (
+    <div className="text-xs text-muted-foreground">
+      <p>
+        Water heating {period}: {formatKwh(part.kwh)}
+        {part.cost !== null && ` · ${formatNok(part.cost)}`}
+      </p>
+      {estimate && <p>Measured so far, not part of the estimate.</p>}
     </div>
   )
 }

@@ -10,6 +10,7 @@ import {
   november2026Estimate,
   spotBill,
   withLine,
+  withWaterHeater,
 } from '../../test/bills'
 import { server } from '../../test/server'
 import { plain } from '../../test/text'
@@ -242,3 +243,51 @@ describe('BillCard', () => {
 
 const fmt = (value: number) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK' }).format(value)
+
+describe('BillCard water heating', () => {
+  const july = (part: Parameters<typeof withWaterHeater>[1]) => (month: string) =>
+    month === '2026-07' ? withWaterHeater(july2026Bill, part) : byMonth[month]
+
+  it('says how much of the month was water heating, below the total', async () => {
+    renderCard(july({ firstHourUtc: '2026-06-30T22:00:00Z' })) // 1 July 00:00 in Oslo
+    await screen.findByText('Final')
+
+    expect(
+      screen.getByText(/^Water heating in July 2026: 104,6 kWh · 94,12\skr$/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/not part of the estimate/)).not.toBeInTheDocument()
+  })
+
+  it('says since when when the heater was connected during the month', async () => {
+    renderCard(july({ firstHourUtc: '2026-07-18T18:00:00Z' }))
+    await screen.findByText('Final')
+
+    expect(screen.getByText(/^Water heating since 18\.07\.2026: 104,6 kWh/)).toBeInTheDocument()
+  })
+
+  it('leaves the cost out when it is unknown', async () => {
+    renderCard(july({ cost: null }))
+    await screen.findByText('Final')
+
+    expect(screen.getByText(/^Water heating since 18\.07\.2026: 104,6 kWh$/)).toBeInTheDocument()
+  })
+
+  it('changes no amount on the bill', async () => {
+    renderCard(july({}))
+    await screen.findByText('Final')
+
+    expect(sectionText('Strøm (supplier)')).toContain(
+      'Sum Strøm333,86 kr excl. VAT + 83,47 kr VAT417,33 kr',
+    )
+    expect(plain(document.body.textContent)).toContain(
+      'Total including VAT488,12 kr excl. VAT + 185,43 kr VAT673,55 kr',
+    )
+  })
+
+  it('has no line without a part', async () => {
+    renderCard()
+    await screen.findByText('Final')
+
+    expect(screen.queryByText(/Water heating/)).not.toBeInTheDocument()
+  })
+})

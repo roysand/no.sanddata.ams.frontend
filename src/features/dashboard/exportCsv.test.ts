@@ -9,6 +9,7 @@ const hour = (hourStart: string, kwh = 1.2345): HourlyCostItem => ({
   pricingModel: 'Spot',
   actual: { ratePerKwh: 1.23456, cost: 1.524 },
   comparison: null,
+  waterHeater: null,
 })
 
 describe('hourlyCsv', () => {
@@ -16,10 +17,10 @@ describe('hourlyCsv', () => {
     const lines = hourlyCsv([hour('2026-11-18T13:00:00Z')]).split('\r\n')
 
     expect(lines[0]).toBe(
-      'Start (Oslo time);Start (UTC);Usage (kWh);Price model;Price (kr/kWh);Cost (kr);Other model;Other price (kr/kWh);Other cost (kr)',
+      'Start (Oslo time);Start (UTC);Usage (kWh);Price model;Price (kr/kWh);Cost (kr);Other model;Other price (kr/kWh);Other cost (kr);Water heating (kWh);Water heating cost (kr);Everything else (kWh);Everything else cost (kr);Water heating sampled minutes',
     )
     expect(lines[1]).toBe(
-      '2026-11-18 14:00;2026-11-18T13:00:00.000Z;1,235;Spot price;1,2346;1,52;Norgespris;;',
+      '2026-11-18 14:00;2026-11-18T13:00:00.000Z;1,235;Spot price;1,2346;1,52;Norgespris;;;;;;;',
     )
   })
 
@@ -41,11 +42,53 @@ describe('dailyCsv', () => {
         pricingModel: 'NorgesPris',
         actual: { cost: 40 },
         comparison: { cost: 45.555 },
+        waterHeater: null,
       },
     ]).split('\r\n')
 
-    expect(lines[0]).toBe('Date;Usage (kWh);Price model;Cost (kr);Other model;Other cost (kr)')
-    expect(lines[1]).toBe('2026-11-17;30,500;Norgespris;40,00;Spot price;45,56')
+    expect(lines[0]).toBe(
+      'Date;Usage (kWh);Price model;Cost (kr);Other model;Other cost (kr);Water heating (kWh);Water heating cost (kr);Everything else (kWh);Everything else cost (kr);Water heating sampled minutes',
+    )
+    expect(lines[1]).toBe('2026-11-17;30,500;Norgespris;40,00;Spot price;45,56;;;;;')
+  })
+})
+
+describe('water heating columns', () => {
+  const heated = (cost: number | null): HourlyCostItem => ({
+    hourStart: '2026-11-20T05:00:00Z',
+    consumptionKwh: 3.412,
+    pricingModel: 'NorgesPris',
+    actual: { ratePerKwh: 0.9134, cost: 3.1166 },
+    comparison: null,
+    waterHeater: { kwh: 2.104, cost, sampledMinutes: 60, capped: false },
+  })
+  const lastFive = (line: string) => line.split(';').slice(-5).join(';')
+
+  it('writes water heating and everything else, which add up to the usage and the cost', () => {
+    const [, row] = hourlyCsv([heated(1.9218)]).split('\r\n')
+
+    expect(lastFive(row)).toBe('2,104;1,92;1,308;1,19;60')
+  })
+
+  it('leaves the cost cells empty when the heater cost is unknown', () => {
+    const [, row] = hourlyCsv([heated(null)]).split('\r\n')
+
+    expect(lastFive(row)).toBe('2,104;;1,308;;60')
+  })
+
+  it('writes the day sums in the daily file', () => {
+    const [, row] = dailyCsv([
+      {
+        date: '2026-11-20',
+        consumptionKwh: 61.87,
+        pricingModel: 'NorgesPris',
+        actual: { cost: 55.21 },
+        comparison: null,
+        waterHeater: { kwh: 9.41, cost: 8.47, sampledMinutes: 1431, capped: false },
+      },
+    ]).split('\r\n')
+
+    expect(lastFive(row)).toBe('9,410;8,47;52,460;46,74;1431')
   })
 })
 

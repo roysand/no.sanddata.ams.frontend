@@ -99,6 +99,8 @@ function BarValue({ x = 0, y = 0, width = 0, height = 0, value }: BarLabelProps)
 const config = {
   current: { label: 'This period', color: 'var(--usage)' },
   previous: { label: 'Previous period', color: 'var(--usage-ghost)' },
+  heater: { label: 'Water heating', color: 'var(--water-heater)' },
+  rest: { label: 'Everything else', color: 'var(--usage)' },
 } satisfies ChartConfig
 
 export function UsageChart({ locationId, large = false }: { locationId: string; large?: boolean }) {
@@ -273,7 +275,11 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
     label: point.label,
     current: point.current,
     previous: point.previous,
+    heater: point.heater,
+    rest: point.rest,
   }))
+  // Water heating is drawn only when the period has some, so the chart is unchanged without a heater.
+  const split = series.hasHeater
   const bars = period !== 'day'
   const tickEvery = period === 'day' ? 6 : period === 'week' ? 1 : period === 'month' ? 7 : 2
   const shown = active !== null ? series.points[active] : null
@@ -379,14 +385,37 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                       <LabelList dataKey="previous" content={BarValue} />
                     </Bar>
                   )}
-                  <Bar
-                    dataKey="current"
-                    fill="var(--usage)"
-                    radius={[4, 4, 2, 2]}
-                    isAnimationActive={false}
-                  >
-                    <LabelList dataKey="current" content={BarValue} />
-                  </Bar>
+                  {split ? (
+                    // This period as one stacked bar: water heating at the bottom, everything else on top,
+                    // with the slot's total written in it as before.
+                    <>
+                      <Bar
+                        dataKey="heater"
+                        stackId="current"
+                        fill="var(--water-heater)"
+                        radius={[0, 0, 2, 2]}
+                        isAnimationActive={false}
+                      />
+                      <Bar
+                        dataKey="rest"
+                        stackId="current"
+                        fill="var(--usage)"
+                        radius={[4, 4, 0, 0]}
+                        isAnimationActive={false}
+                      >
+                        <LabelList dataKey="current" content={BarValue} />
+                      </Bar>
+                    </>
+                  ) : (
+                    <Bar
+                      dataKey="current"
+                      fill="var(--usage)"
+                      radius={[4, 4, 2, 2]}
+                      isAnimationActive={false}
+                    >
+                      <LabelList dataKey="current" content={BarValue} />
+                    </Bar>
+                  )}
                 </>
               ) : (
                 <>
@@ -404,6 +433,20 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                     isAnimationActive={false}
                     connectNulls
                   />
+                  {split && (
+                    // Water heating as a filled area under the total; hours without a part leave a gap.
+                    <Area
+                      dataKey="heater"
+                      type="monotone"
+                      stroke="var(--water-heater)"
+                      strokeWidth={1}
+                      fill="var(--water-heater)"
+                      fillOpacity={0.5}
+                      dot={false}
+                      activeDot={false}
+                      isAnimationActive={false}
+                    />
+                  )}
                   <Area
                     dataKey="current"
                     type="monotone"
@@ -431,6 +474,19 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
             />
             {plan.current.title}
           </li>
+          {split && (
+            <li className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={
+                  bars
+                    ? 'size-2.5 rounded-sm bg-water-heater'
+                    : 'h-2 w-4 rounded-sm bg-water-heater'
+                }
+              />
+              Water heating
+            </li>
+          )}
           {series.hasPrevious && (
             <li className="flex items-center gap-1.5">
               <span
@@ -454,6 +510,14 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
             <span>
               <b>{shown.label}</b> ·{' '}
               {shown.current === null ? 'no data yet' : <b>{format(unit, shown.current)}</b>}
+              {shown.heater !== null && (
+                <span>
+                  {' '}
+                  · Water heating {format(unit, shown.heater)}
+                  {shown.partly && ' (partly measured)'} · Everything else{' '}
+                  {format(unit, shown.rest ?? 0)}
+                </span>
+              )}
               {series.hasPrevious && shown.previous !== null && (
                 <span className="text-muted-foreground">
                   {' '}

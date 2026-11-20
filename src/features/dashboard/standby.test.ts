@@ -13,6 +13,7 @@ function day(date: string, kwh: (hour: number) => number, rate: number | null = 
     pricingModel: 'Spot',
     actual: rate === null ? null : { ratePerKwh: rate, cost: kwh(h) * rate },
     comparison: null,
+    waterHeater: null,
   }))
 }
 

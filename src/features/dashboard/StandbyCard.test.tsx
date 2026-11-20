@@ -20,6 +20,7 @@ function hours(days: string[], priced = true): HourlyCostItem[] {
         pricingModel: 'Spot' as const,
         actual: priced ? { ratePerKwh: 2, cost: kwh * 2 } : null,
         comparison: null,
+        waterHeater: null,
       }
     })
   })

@@ -6,7 +6,7 @@ import {
   rowsFromDaily,
   rowsFromHourly,
 } from './series'
-import type { HourlyCostItem } from './types'
+import type { DailyCostItem, HourlyCostItem, WaterHeaterPart } from './types'
 
 const NOW = new Date('2026-11-13T12:24:30Z')
 
@@ -38,6 +38,7 @@ describe('hourTrend', () => {
     pricingModel: 'Spot',
     actual: cost === null ? null : { ratePerKwh: 1, cost },
     comparison: null,
+    waterHeater: null,
   })
 
   it('is down when this hour is cheaper than yesterday at the same point', () => {
@@ -137,6 +138,7 @@ describe('row builders', () => {
         pricingModel: 'Spot',
         actual: { ratePerKwh: 1, cost: 1.5 },
         comparison: null,
+        waterHeater: null,
       },
       {
         hourStart: '2026-11-13T11:00:00Z',
@@ -144,10 +146,11 @@ describe('row builders', () => {
         pricingModel: 'Spot',
         actual: null,
         comparison: null,
+        waterHeater: null,
       },
     ])
 
-    expect(rows[0]).toEqual({ key: String(Date.UTC(2026, 10, 13, 10)), kwh: 1.5, nok: 1.5 })
+    expect(rows[0]).toMatchObject({ key: String(Date.UTC(2026, 10, 13, 10)), kwh: 1.5, nok: 1.5 })
     expect(rows[1].nok).toBeNull()
   })
 
@@ -160,6 +163,7 @@ describe('row builders', () => {
           pricingModel: 'Spot',
           actual: { cost: 12 },
           comparison: null,
+          waterHeater: null,
         },
         {
           date: '2026-10-31',
@@ -167,6 +171,7 @@ describe('row builders', () => {
           pricingModel: 'Spot',
           actual: { cost: 6 },
           comparison: null,
+          waterHeater: null,
         },
         {
           date: '2026-11-01',
@@ -174,12 +179,13 @@ describe('row builders', () => {
           pricingModel: 'Spot',
           actual: null,
           comparison: null,
+          waterHeater: null,
         },
       ],
       true,
     )
 
-    expect(rows).toEqual([
+    expect(rows).toMatchObject([
       { key: '2026-10', kwh: 15, nok: 18 },
       { key: '2026-11', kwh: 7, nok: null },
     ])
@@ -202,6 +208,7 @@ describe('buildRecentUsage', () => {
     pricingModel: 'Spot',
     actual: ratePerKwh === null ? null : { ratePerKwh, cost: ratePerKwh },
     comparison: null,
+    waterHeater: null,
   })
   const input = (overrides: Partial<Parameters<typeof buildRecentUsage>[0]> = {}) => ({
     current: [],
@@ -299,5 +306,127 @@ describe('buildRecentUsage', () => {
 
     expect(result.hasCurrent).toBe(false)
     expect(result.totalKwh).toBe(0)
+  })
+})
+
+describe('water heating in the chart series', () => {
+  const part = (kwh: number, cost: number | null, sampledMinutes = 60): WaterHeaterPart => ({
+    kwh,
+    cost,
+    sampledMinutes,
+    capped: false,
+  })
+  const hourItem = (
+    hourStart: string,
+    kwh: number,
+    cost: number | null,
+    waterHeater: WaterHeaterPart | null,
+  ): HourlyCostItem => ({
+    hourStart,
+    consumptionKwh: kwh,
+    pricingModel: 'Spot',
+    actual: cost === null ? null : { ratePerKwh: 1, cost },
+    comparison: null,
+    waterHeater,
+  })
+  const dayItem = (
+    date: string,
+    kwh: number,
+    waterHeater: WaterHeaterPart | null,
+  ): DailyCostItem => ({
+    date,
+    consumptionKwh: kwh,
+    pricingModel: 'Spot',
+    actual: { cost: kwh },
+    comparison: null,
+    waterHeater,
+  })
+  const slots = (keys: string[]) => keys.map((key) => ({ key, label: key }))
+  const LATER = new Date('2026-12-01T00:00:00Z')
+
+  it('reads the hour part and judges the minutes against the hour, or the minutes so far', () => {
+    const rows = rowsFromHourly(
+      [
+        hourItem('2026-11-20T10:00:00Z', 3.4, 3.1, part(2.1, 1.9, 60)),
+        hourItem('2026-11-20T11:00:00Z', 1, 1, part(0.2, 0.2, 25)),
+      ],
+      new Date('2026-11-20T11:26:00Z'),
+    )
+
+    expect(rows[0]).toMatchObject({
+      heaterKwh: 2.1,
+      heaterNok: 1.9,
+      sampledMinutes: 60,
+      expectedMinutes: 60,
+    })
+    expect(rows[1].expectedMinutes).toBe(26)
+  })
+
+  it('sums the days of a month and judges them against the days that have a part', () => {
+    const rows = rowsFromDaily(
+      [
+        dayItem('2026-11-18', 20, null),
+        dayItem('2026-11-19', 20, part(2, 1.8, 250)),
+        dayItem('2026-11-20', 20, part(5, null, 1440)),
+      ],
+      true,
+      LATER,
+    )
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ kwh: 60, heaterKwh: 7, heaterNok: null, sampledMinutes: 1690 })
+    expect(rows[0].expectedMinutes).toBe(2880)
+  })
+
+  it('judges a clock-change day against its own length', () => {
+    const [row] = rowsFromDaily([dayItem('2026-10-25', 20, part(2, 2, 1500))], false, LATER)
+
+    expect(row.expectedMinutes).toBe(1500)
+  })
+
+  it('gives the current points water heating and the rest in kWh', () => {
+    const rows = rowsFromHourly(
+      [
+        hourItem('2026-11-20T10:00:00Z', 3.412, 3.1166, part(2.104, 1.9218, 60)),
+        hourItem('2026-11-20T11:00:00Z', 1, 1, null),
+        hourItem('2026-11-20T12:00:00Z', 1, 1, part(0.5, 0.5, 40)),
+      ],
+      LATER,
+    )
+    const keys = rows.map((row) => row.key)
+    const series = buildUsageSeries(slots(keys), rows, slots(keys), rows, 'kwh')
+
+    expect(series.hasHeater).toBe(true)
+    expect(series.points[0].heater).toBe(2.104)
+    expect(series.points[0].rest).toBeCloseTo(1.308, 10)
+    expect(series.points[0].partly).toBe(false)
+    expect(series.points[1]).toMatchObject({ heater: null, rest: 1, partly: false })
+    expect(series.points[2].partly).toBe(true)
+  })
+
+  it('gives no split in kr when the heater cost is unknown', () => {
+    const rows = rowsFromHourly([hourItem('2026-11-20T10:00:00Z', 2, 2, part(1, null))], LATER)
+    const keys = rows.map((row) => row.key)
+
+    const series = buildUsageSeries(slots(keys), rows, slots(keys), [], 'nok')
+
+    expect(series.points[0]).toMatchObject({ current: 2, heater: null, rest: 2 })
+    expect(series.hasHeater).toBe(false)
+  })
+
+  it('has no water heating without parts', () => {
+    const rows = rowsFromHourly([hourItem('2026-11-20T10:00:00Z', 2, 2, null)], LATER)
+    const keys = rows.map((row) => row.key)
+
+    const series = buildUsageSeries(slots(keys), rows, slots(keys), rows, 'kwh')
+
+    expect(series.hasHeater).toBe(false)
+    expect(series.points[0]).toMatchObject({
+      current: 2,
+      previous: 2,
+      heater: null,
+      rest: 2,
+      partly: false,
+    })
   })
 })

@@ -22,6 +22,7 @@ function hours(days: string[]): HourlyCostItem[] {
       pricingModel: 'Spot' as const,
       actual: null,
       comparison: null,
+      waterHeater: null,
     }))
   })
 }

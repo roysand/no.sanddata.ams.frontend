@@ -1,7 +1,8 @@
 import { getDailyCostRange, getHourlyCostPage } from './api'
 import { modelLabel, otherModel } from './format'
 import { addDays, dayStart } from './periods'
-import type { DailyCostItem, HourlyCostItem } from './types'
+import type { DailyCostItem, HourlyCostItem, WaterHeaterPart } from './types'
+import { restOf } from './waterHeater'
 
 export type Resolution = 'hour' | 'day'
 
@@ -24,6 +25,27 @@ const number = (value: number | null | undefined, decimals: number) =>
 
 function cell(value: string): string {
   return /[;"\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
+/** Water heating and everything else, after the existing columns so files read by position keep working. */
+const WATER_HEATER_HEADERS = [
+  'Water heating (kWh)',
+  'Water heating cost (kr)',
+  'Everything else (kWh)',
+  'Everything else cost (kr)',
+  'Water heating sampled minutes',
+]
+
+/** Empty cells without a part (never 0); the rest is total − water heating before rounding. */
+function heaterCells(totalKwh: number, totalCost: number | null, part: WaterHeaterPart | null) {
+  if (!part) return ['', '', '', '', '']
+  return [
+    number(part.kwh, 3),
+    number(part.cost, 2),
+    number(restOf(totalKwh, part.kwh), 3),
+    number(restOf(totalCost, part.cost), 2),
+    String(part.sampledMinutes),
+  ]
 }
 
 const toCsv = (rows: string[][]) =>
@@ -52,6 +74,7 @@ export function hourlyCsv(items: HourlyCostItem[]): string {
       'Other model',
       'Other price (kr/kWh)',
       'Other cost (kr)',
+      ...WATER_HEATER_HEADERS,
     ],
     ...items.map((item) => [
       osloTime.format(new Date(item.hourStart)),
@@ -63,13 +86,22 @@ export function hourlyCsv(items: HourlyCostItem[]): string {
       modelLabel(otherModel(item.pricingModel)),
       number(item.comparison?.ratePerKwh, 4),
       number(item.comparison?.cost, 2),
+      ...heaterCells(item.consumptionKwh, item.actual?.cost ?? null, item.waterHeater),
     ]),
   ])
 }
 
 export function dailyCsv(items: DailyCostItem[]): string {
   return toCsv([
-    ['Date', 'Usage (kWh)', 'Price model', 'Cost (kr)', 'Other model', 'Other cost (kr)'],
+    [
+      'Date',
+      'Usage (kWh)',
+      'Price model',
+      'Cost (kr)',
+      'Other model',
+      'Other cost (kr)',
+      ...WATER_HEATER_HEADERS,
+    ],
     ...items.map((item) => [
       item.date,
       number(item.consumptionKwh, 3),
@@ -77,6 +109,7 @@ export function dailyCsv(items: DailyCostItem[]): string {
       number(item.actual?.cost, 2),
       modelLabel(otherModel(item.pricingModel)),
       number(item.comparison?.cost, 2),
+      ...heaterCells(item.consumptionKwh, item.actual?.cost ?? null, item.waterHeater),
     ]),
   ])
 }

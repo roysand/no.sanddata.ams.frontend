@@ -4,13 +4,34 @@ import type {
   Consumption,
   CurrentHourCost,
   DailyCost,
+  DailyCostItem,
   DayPrices,
+  HourlyCostItem,
   LatestMeasurement,
   MonthlyBill,
   NorgesPrisSaving,
   PagedHourlyCost,
   WaterHeaterState,
 } from './types'
+
+/** An API without spec 012 leaves `waterHeater` out; it is read as null (no heater figure) everywhere. */
+type WithOptionalWaterHeater<T extends { waterHeater: unknown }> = Omit<T, 'waterHeater'> & {
+  waterHeater?: T['waterHeater']
+}
+type RawPagedHourlyCost = Omit<PagedHourlyCost, 'items'> & {
+  items: WithOptionalWaterHeater<HourlyCostItem>[]
+}
+type RawDailyCost = { items: WithOptionalWaterHeater<DailyCostItem>[] }
+
+function withWaterHeater<T extends { waterHeater?: unknown }>(item: T) {
+  return { ...item, waterHeater: item.waterHeater ?? null }
+}
+
+const normaliseHourly = (raw: RawPagedHourlyCost): PagedHourlyCost => ({
+  ...raw,
+  items: raw.items.map(withWaterHeater),
+})
+const normaliseDaily = (raw: RawDailyCost): DailyCost => ({ items: raw.items.map(withWaterHeater) })
 
 function query(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()
@@ -26,9 +47,11 @@ export function getCurrentHourCost(locationId: string) {
 
 /** Hourly cost from `fromUtc` (ISO) until `toUtc`, or until now when omitted. */
 export function getHourlyCost(locationId: string, fromUtc: string, toUtc?: string) {
-  return api.get<PagedHourlyCost>(
-    `/api/electricity-cost/hourly?${query({ locationId, from: fromUtc, to: toUtc, pageSize: 500 })}`,
-  )
+  return api
+    .get<RawPagedHourlyCost>(
+      `/api/electricity-cost/hourly?${query({ locationId, from: fromUtc, to: toUtc, pageSize: 500 })}`,
+    )
+    .then(normaliseHourly)
 }
 
 /** One page of hourly cost between two instants (ISO, both included), for paging through long ranges. */
@@ -39,14 +62,18 @@ export function getHourlyCostPage(
   page: number,
   pageSize: number,
 ) {
-  return api.get<PagedHourlyCost>(
-    `/api/electricity-cost/hourly?${query({ locationId, from: fromUtc, to: toUtc, page, pageSize })}`,
-  )
+  return api
+    .get<RawPagedHourlyCost>(
+      `/api/electricity-cost/hourly?${query({ locationId, from: fromUtc, to: toUtc, page, pageSize })}`,
+    )
+    .then(normaliseHourly)
 }
 
 /** Daily cost; the API defaults to the last 7 Oslo days. */
 export function getDailyCost(locationId: string) {
-  return api.get<DailyCost>(`/api/electricity-cost/daily?${query({ locationId })}`)
+  return api
+    .get<RawDailyCost>(`/api/electricity-cost/daily?${query({ locationId })}`)
+    .then(normaliseDaily)
 }
 
 /** Per-minute consumption from `fromUtc` until `toUtc`, or until now when omitted. */
@@ -63,9 +90,11 @@ export function getDayPrices(locationId: string, date?: string) {
 
 /** Daily cost for Oslo dates `fromDate` to `toDate` (yyyy-MM-dd, both included). */
 export function getDailyCostRange(locationId: string, fromDate: string, toDate: string) {
-  return api.get<DailyCost>(
-    `/api/electricity-cost/daily?${query({ locationId, from: fromDate, to: toDate })}`,
-  )
+  return api
+    .get<RawDailyCost>(
+      `/api/electricity-cost/daily?${query({ locationId, from: fromDate, to: toDate })}`,
+    )
+    .then(normaliseDaily)
 }
 
 /** The newest reading for a location, or null when it has none yet (the API answers 204). */
@@ -88,7 +117,11 @@ export function getCapacityCharge(locationId: string, month: string) {
 
 /** The bill of a month (yyyy-MM), line by line as the invoice: final for an ended month, an estimate for the current. */
 export function getMonthlyBill(locationId: string, month: string) {
-  return api.get<MonthlyBill>(`/api/electricity-cost/bill?${query({ locationId, month })}`)
+  return api
+    .get<WithOptionalWaterHeater<MonthlyBill>>(
+      `/api/electricity-cost/bill?${query({ locationId, month })}`,
+    )
+    .then(withWaterHeater)
 }
 
 /** The water heater's state, read from OSO now. 404 when the location has no heater (or is not visible). */
