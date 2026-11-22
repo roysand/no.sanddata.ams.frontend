@@ -239,8 +239,9 @@ cabin's limit line, then its expensive hours.
 - [x] T025 Update the doc comments in `WarningBanner.tsx` and `AppLayout.tsx` from "the selected location's warnings"
       to spec 015's: capacity and usage for the selected location, Norgespris for every location.
 - [x] T026 Run `npm test`, `npm run build` and `npm run lint`, and fix what they find; run Prettier on the changed files.
-- [ ] T027 Manual checks from quickstart.md 1–7 against the API with spec 018 deployed, including 375 px in light and
+- [x] T027 Manual checks from quickstart.md 1–7 against the API with spec 018 deployed, including 375 px in light and
       dark mode (SC-005). Tick them here when done.
+  - Checked by Roy on 2026-11-22 against `ams-api.sanddata.eu`: all fine.
 
 ---
 
