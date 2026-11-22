@@ -88,7 +88,7 @@ describe('WaterHeaterPage', () => {
     )
     renderPage()
 
-    expect(await screen.findByText('333 of 360 l')).toBeInTheDocument()
+    expect(await screen.findByText('of 360 l · 40 °C water')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Water heater' })).toBeInTheDocument()
   })
 

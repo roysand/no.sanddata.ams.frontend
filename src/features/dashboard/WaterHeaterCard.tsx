@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatAge, formatCelsius, formatKw, formatOsloDateTime } from './format'
 import { isNotFound, useNow, useWaterHeaterState } from './hooks'
 import type { WaterHeaterState } from './types'
+import { WaterHeaterTank } from './WaterHeaterTank'
 
 /** The API calls a reading stale after 15 minutes; between fetches the card counts on from the last answer. */
 const STALE_AFTER_SECONDS = 900
@@ -64,16 +65,24 @@ function HeaterFigures({ state, ageSeconds }: { state: WaterHeaterState; ageSeco
   const { hotWater, temperatures, specialMode } = state
   const { availableLitres40: available, maxLitres40: max } = hotWater
   const hasLitres = available !== null && max !== null && max > 0
-  const fill = hasLitres ? Math.min(Math.max(available / max, 0), 1) * 100 : 0
+  const percent = hasLitres ? Math.min(Math.max(available / max, 0), 1) * 100 : null
 
-  const supply = [
-    hotWater.showers !== null ? plural(hotWater.showers, 'shower', 'showers') : null,
-    hotWater.baths !== null ? plural(hotWater.baths, 'bath', 'baths') : null,
+  const tank = {
+    top: temperatures.topCelsius,
+    mid: temperatures.midCelsius,
+    low: temperatures.lowCelsius,
+  }
+  const hasTank = hasLitres || Object.values(tank).some((t) => t !== null)
+
+  // The tank shows the temperatures rounded, as OSO does; screen readers get them in full.
+  const readout = [
+    tank.top !== null ? `top ${formatCelsius(tank.top)}` : null,
+    tank.mid !== null ? `middle ${formatCelsius(tank.mid)}` : null,
+    tank.low !== null ? `bottom ${formatCelsius(tank.low)}` : null,
   ].filter((part) => part !== null)
 
-  const details = [
-    temperatures.midCelsius !== null ? `middle ${formatCelsius(temperatures.midCelsius)}` : null,
-    temperatures.lowCelsius !== null ? `bottom ${formatCelsius(temperatures.lowCelsius)}` : null,
+  const status = [
+    state.isHeating ? `Heating · ${formatKw(state.powerKw)}` : 'Not heating',
     state.setPointCelsius !== null ? `set to ${formatCelsius(state.setPointCelsius)}` : null,
   ].filter((part) => part !== null)
 
@@ -82,43 +91,54 @@ function HeaterFigures({ state, ageSeconds }: { state: WaterHeaterState; ageSeco
 
   return (
     <div className="space-y-4">
-      {hasLitres && (
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-2xl font-extrabold tabular-nums">
-              {available} of {max} l
-            </span>
-            <span className="text-xs text-muted-foreground">40 °C water</span>
-          </div>
-          <div
-            role="meter"
-            aria-label="Hot water"
-            aria-valuemin={0}
-            aria-valuemax={max}
-            aria-valuenow={available}
-            className="h-2 w-full overflow-hidden rounded-full bg-muted"
-          >
-            <div className="h-full rounded-full bg-primary" style={{ width: `${fill}%` }} />
-          </div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 space-y-4">
+          {hasLitres && (
+            <div>
+              <p className="text-4xl font-extrabold tabular-nums">
+                {available} <span className="text-xl font-bold">l</span>
+              </p>
+              <p className="text-xs text-muted-foreground">of {max} l · 40 °C water</p>
+            </div>
+          )}
+          {hotWater.showers !== null && (
+            <div>
+              <p className="text-2xl font-bold tabular-nums">
+                {hotWater.showers}{' '}
+                <span className="text-base font-semibold">
+                  {hotWater.showers === 1 ? 'shower' : 'showers'}
+                </span>
+              </p>
+              {hotWater.baths !== null && (
+                <p className="text-xs text-muted-foreground">
+                  or {plural(hotWater.baths, 'bath', 'baths')}
+                </p>
+              )}
+            </div>
+          )}
+          {hotWater.showers === null && hotWater.baths !== null && (
+            <p className="text-sm">{plural(hotWater.baths, 'bath', 'baths')}</p>
+          )}
         </div>
-      )}
 
-      {supply.length > 0 && <p className="text-sm">{supply.join(' · ')}</p>}
-
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        {temperatures.topCelsius !== null && (
-          <div>
-            <p className="text-xs text-muted-foreground">Top of the tank</p>
-            <p className="text-xl font-bold tabular-nums">
-              {formatCelsius(temperatures.topCelsius)}
-            </p>
+        {hasTank && (
+          <div
+            {...(hasLitres && {
+              role: 'meter',
+              'aria-valuemin': 0,
+              'aria-valuemax': max,
+              'aria-valuenow': available,
+              'aria-valuetext': `${available} of ${max} l, ${Math.round(percent!)} %`,
+            })}
+            aria-label="Hot water"
+          >
+            <WaterHeaterTank temperatures={tank} percent={percent} isHeating={state.isHeating} />
+            {readout.length > 0 && <span className="sr-only">Tank: {readout.join(', ')}</span>}
           </div>
         )}
-        <p className="text-sm font-medium">
-          {state.isHeating ? `Heating · ${formatKw(state.powerKw)}` : 'Not heating'}
-        </p>
       </div>
-      {details.length > 0 && <p className="text-xs text-muted-foreground">{details.join(' · ')}</p>}
+
+      <p className="text-sm font-medium">{status.join(' · ')}</p>
 
       {showMode && (
         <p className="text-sm">
