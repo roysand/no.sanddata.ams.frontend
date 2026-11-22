@@ -7,6 +7,7 @@ import {
   getDailyCost,
   getHourlyCost,
   getMonthlyBill,
+  getNorgesPrisStatus,
   getWaterHeaterPower,
 } from './api'
 
@@ -129,5 +130,30 @@ describe('getWaterHeaterPower (spec 014)', () => {
 
     expect(asked).toEqual([{ from: '2026-11-20T17:40:00.000Z', to: '2026-11-20T20:40:00.000Z' }])
     expect(power.items).toEqual(items)
+  })
+})
+
+describe('getNorgesPrisStatus (spec 015)', () => {
+  it('reads the status of every location', async () => {
+    const item = {
+      locationId: 'l2',
+      month: '2026-11',
+      limitKwh: 1000,
+      kwhSoFar: 1084,
+      projectedKwh: 1240,
+      overLimit: true,
+      overLimitKwh: 84,
+      norgesPrisPricePerKwh: 0.5,
+      resetsAt: '2026-11-30T23:00:00Z',
+    }
+    server.use(
+      http.get('*/api/electricity-cost/norgespris-status', () =>
+        HttpResponse.json({ asOf: '2026-11-22T11:00:00Z', items: [item] }),
+      ),
+    )
+
+    const status = await getNorgesPrisStatus()
+
+    expect(status.items).toEqual([item])
   })
 })

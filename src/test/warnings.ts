@@ -4,9 +4,11 @@ import type {
   ConsumptionItem,
   CurrentHourCost,
   HourlyCostItem,
+  HourPrice,
   MonthlyBill,
+  NorgesPrisStatusItem,
 } from '../features/dashboard/types'
-import { november2026Estimate, spotBill, withLine } from './bills'
+import { november2026Estimate, spotBill } from './bills'
 
 /**
  * Everything the warnings banner (spec 012) reads, for MSW. The defaults are quiet: no warning is due. A field set to
@@ -22,6 +24,10 @@ export interface WarningFigures {
   /** Four weeks of hourly figures (the heatmap's request, pageSize 1000). */
   fourWeeks?: HourlyCostItem[] | 'fail'
   bill?: MonthlyBill | 'fail'
+  /** The Norgespris status of every location (spec 015). */
+  status?: NorgesPrisStatusItem[] | 'fail'
+  /** Tomorrow's (2026-11-21) hourly prices per location id; other days and ids answer an empty day. */
+  prices?: Record<string, HourPrice[] | 'fail'>
 }
 
 const QUIET_CAPACITY: CapacityCharge = {
@@ -57,6 +63,8 @@ export function warningHandlers(figures: WarningFigures = {}) {
     minutes = [],
     fourWeeks = [],
     bill = spotBill(november2026Estimate()),
+    status = [],
+    prices = {},
   } = figures
   return [
     http.get('*/api/electricity-cost/capacity', () =>
@@ -76,6 +84,20 @@ export function warningHandlers(figures: WarningFigures = {}) {
     http.get('*/api/electricity-cost/bill', () =>
       bill === 'fail' ? fail() : HttpResponse.json(bill),
     ),
+    http.get('*/api/electricity-cost/norgespris-status', () =>
+      status === 'fail'
+        ? fail()
+        : HttpResponse.json({ asOf: WARNING_NOW.toISOString(), items: status }),
+    ),
+    http.get('*/api/electricity-cost/prices', ({ request }) => {
+      const params = new URL(request.url).searchParams
+      const date = params.get('date')
+      const id = params.get('locationId') ?? ''
+      const items = date === WARNING_TOMORROW ? (prices[id] ?? []) : []
+      return items === 'fail'
+        ? fail()
+        : HttpResponse.json({ date, zone: 'NO1', pricingModel: 'NorgesPris', items })
+    }),
   ]
 }
 
@@ -84,6 +106,8 @@ export function warningHandlers(figures: WarningFigures = {}) {
 /** Friday 20 November 2026, 11:30 in Oslo: 30 minutes into the hour 11–12. */
 export const WARNING_NOW = new Date('2026-11-20T10:30:00Z')
 const NOW = WARNING_NOW
+/** The Oslo day after WARNING_NOW. */
+export const WARNING_TOMORROW = '2026-11-21'
 
 export const hour = (hourStart: string, kwh: number): HourlyCostItem => ({
   hourStart,
@@ -147,20 +171,35 @@ export const fridaysAt = (kwh: number): HourlyCostItem[] =>
 
 export const USAGE_DUE: WarningFigures = { minutes: minutesAt(3.8), fourWeeks: fridaysAt(0.9) }
 
-/** This month's expected bill with `total` kWh in all, `within` of them within the Norgespris limit. */
-export const billWith = (total: number, within: number, projectedKwh: number): MonthlyBill => {
-  const estimate = withLine(
-    withLine(november2026Estimate(), 'SpotEnergy', { quantity: total }),
-    'NorgesPrisCredit',
-    { quantity: within },
-  )
-  return {
-    ...estimate,
-    projection: estimate.projection && { ...estimate.projection, kwh: projectedKwh },
-  }
-}
+/** The cabin's Norgespris month (`l2`, holiday home, 1 000 kWh at 0,50 kr): 600 kWh so far, projected 900. */
+export const statusItem = (
+  overrides: Partial<NorgesPrisStatusItem> = {},
+): NorgesPrisStatusItem => ({
+  locationId: 'l2',
+  month: '2026-11',
+  limitKwh: 1000,
+  kwhSoFar: 600,
+  projectedKwh: 900,
+  overLimit: false,
+  overLimitKwh: 0,
+  norgesPrisPricePerKwh: 0.5,
+  resetsAt: '2026-11-30T23:00:00Z',
+  ...overrides,
+})
 
-export const NORGESPRIS_DUE: WarningFigures = { bill: billWith(1240, 1000, 600) }
+/** Tomorrow's 24 Oslo hours (2026-11-21, UTC+1), each at `spot(hour)` kr spot energy. */
+export const tomorrowPrices = (spot: (hour: number) => number | null): HourPrice[] =>
+  Array.from({ length: 24 }, (_, h) => ({
+    hourStart: new Date(Date.UTC(2026, 10, 20, 23 + h)).toISOString(),
+    ratePerKwh: 0.5,
+    spotRatePerKwh: spot(h),
+    spotEnergyPricePerKwh: spot(h),
+  }))
+
+/** Hjemme (`l1`, 5 000 kWh) below 90 % and projected over its limit. */
+export const NORGESPRIS_DUE: WarningFigures = {
+  status: [statusItem({ locationId: 'l1', limitKwh: 5000, kwhSoFar: 2000, projectedKwh: 5600 })],
+}
 
 /** All three warnings due at once. */
 export const ALL_DUE: WarningFigures = { ...CAPACITY_DUE, ...USAGE_DUE, ...NORGESPRIS_DUE }

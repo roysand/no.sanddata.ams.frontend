@@ -1,11 +1,18 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from '../app/ThemeProvider'
 import { AuthContext, type AuthContextValue } from '../features/auth/context'
 import { renderWithQuery } from '../test/render'
 import { server } from '../test/server'
-import { ALL_DUE, WARNING_NOW, warningHandlers, type WarningFigures } from '../test/warnings'
+import {
+  ALL_DUE,
+  statusItem,
+  WARNING_NOW,
+  warningHandlers,
+  type WarningFigures,
+} from '../test/warnings'
 import { AppLayout } from './AppLayout'
 
 const authAs = (roles: string[]): AuthContextValue => ({
@@ -37,7 +44,11 @@ const home = (hasWaterHeater?: boolean) => ({
 function renderLayout(
   location: ReturnType<typeof home> | ReturnType<typeof home>[],
   roles = ['User'],
-  { figures = {}, selectedId }: { figures?: WarningFigures; selectedId?: string } = {},
+  {
+    figures = {},
+    selectedId,
+    path = '/',
+  }: { figures?: WarningFigures; selectedId?: string; path?: string } = {},
 ) {
   const heaterReads = { count: 0 }
   server.use(
@@ -55,10 +66,11 @@ function renderLayout(
   renderWithQuery(
     <ThemeProvider>
       <AuthContext.Provider value={authAs(roles)}>
-        <MemoryRouter initialEntries={['/']}>
+        <MemoryRouter initialEntries={[path]}>
           <Routes>
             <Route element={<AppLayout />}>
               <Route path="/" element={<p>Now page</p>} />
+              <Route path="/history" element={<p>History page</p>} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -166,7 +178,7 @@ describe('AppLayout', () => {
       keyReminder()
       renderLayout(home(false), ['Admin'], { figures: ALL_DUE })
 
-      const warnings = await screen.findByRole('region', { name: 'Warnings for Hjemme' })
+      const warnings = await screen.findByRole('region', { name: 'Warnings' })
       const keys = await screen.findByRole('region', { name: 'Keys that expire soon' })
       expect(warnings.compareDocumentPosition(keys) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
@@ -174,16 +186,35 @@ describe('AppLayout', () => {
     it('shows them to a viewer too', async () => {
       renderLayout({ ...home(false), role: 'Viewer' }, ['User'], { figures: ALL_DUE })
 
-      expect(await screen.findByRole('region', { name: 'Warnings for Hjemme' })).toBeInTheDocument()
+      expect(await screen.findByRole('region', { name: 'Warnings' })).toBeInTheDocument()
     })
 
     it("shows the selected location's warnings", async () => {
       const hytta = { ...home(false), id: 'l2', name: 'Hytta', serialNumber: 'SN-l2' }
-      renderLayout([home(false), hytta], ['User'], { figures: ALL_DUE, selectedId: 'l2' })
+      renderLayout([home(false), hytta], ['User'], {
+        figures: { ...ALL_DUE, status: [] },
+        selectedId: 'l2',
+      })
 
-      const warnings = await screen.findByRole('region', { name: 'Warnings for Hytta' })
+      const warnings = await screen.findByRole('region', { name: 'Warnings' })
       expect(await screen.findByText(/Hytta uses 3,8 kW now/)).toBeInTheDocument()
       expect(warnings).not.toHaveTextContent('Hjemme')
+    })
+
+    it("shows the cabin's over-the-limit line on every page while Hjemme is selected, and selects the cabin", async () => {
+      const hytta = { ...home(false), id: 'l2', name: 'Hytta', serialNumber: 'SN-l2' }
+      renderLayout([home(false), hytta], ['User'], {
+        figures: { status: [statusItem({ kwhSoFar: 1084, overLimit: true })] },
+        selectedId: 'l1',
+        path: '/history',
+      })
+
+      const line = await screen.findByRole('link', { name: /^Hytta is over its Norgespris limit/ })
+      expect(screen.getByText('History page')).toBeInTheDocument()
+      await userEvent.click(line)
+
+      expect(await screen.findByText('Now page')).toBeInTheDocument()
+      expect(localStorage.getItem('ams.selectedLocation')).toBe('l2')
     })
 
     it('shows no warnings without a location', async () => {
@@ -207,7 +238,7 @@ describe('AppLayout', () => {
       )
 
       expect(await screen.findByText('Now page')).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: /Warnings for/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Warnings' })).not.toBeInTheDocument()
     })
   })
 })

@@ -11,6 +11,7 @@ import type {
   LatestMeasurement,
   MonthlyBill,
   NorgesPrisSaving,
+  NorgesPrisStatus,
   PagedHourlyCost,
   WaterHeaterPower,
   WaterHeaterState,
@@ -168,4 +169,9 @@ export function getWaterHeaterPower(locationId: string, fromUtc: string, toUtc: 
   return api.get<WaterHeaterPower>(
     `/api/locations/${locationId}/water-heater/power?${query({ from: fromUtc, to: toUtc })}`,
   )
+}
+
+/** The Norgespris month of every location the caller can see that has Norgespris (API spec 018). */
+export function getNorgesPrisStatus() {
+  return api.get<NorgesPrisStatus>('/api/electricity-cost/norgespris-status')
 }
