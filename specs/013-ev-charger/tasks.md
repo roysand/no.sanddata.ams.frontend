@@ -456,15 +456,18 @@ point.car` into the rows.
 - [x] T034 [P] Add the house-only guards (FR-021, research R11) in `src/features/dashboard/usual.test.ts` (the usual-power rule behind the usage warning) and
       `src/features/dashboard/standby.test.ts`. Hourly items with `totalKwh` greater than `consumptionKwh` (car
       included) give the same warnings and standby as without the car.
-- [ ] T035 [P] Check at 375 px and in dark mode with a location that has both a heater and a charger (SC-007):
+- [x] T035 [P] Check at 375 px and in dark mode with a location that has both a heater and a charger (SC-007):
   - The five tab labels don't wrap or overflow.
   - The car colour reads in both themes.
 
   Adjust `--ev-charger` or the tab padding in `src/index.css` / `src/components/TabBar.tsx` if needed.
 
 - [x] T036 Run `npm test`, `npm run build` and `npm run lint`. Run `npm run format` on the changed files.
-- [ ] T037 Walk through quickstart.md §1–6 against the deployed API. Then, in the API repo, remove
+- [x] T037 Walk through quickstart.md §1–6 against the deployed API. Then, in the API repo, remove
       `specs/_backlog/ev-charger-frontend.md`, as its note asks (a separate PR there).
+      Done 2026-11-22 on an iPhone in dark mode at Hjemme. Skipped, to keep the live setup working: §1's missing-sign-in
+      message (covered by tests) and §6, removing the charger. The API note was already removed (API commit 19a2878).
+      Found on the way: the checkbox gave no sign that it had saved; it now shows "Saving…" and "✓ Saved" (PR #51).
 
 ---
 
