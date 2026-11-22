@@ -243,12 +243,13 @@ reads nothing without steps (quickstart §3).
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T018 Run `npm test`, `npm run build` and `npm run lint`. Run `npm run format` on the changed files only.
-- [ ] T019 Check at 375 px and in dark mode:
+- [x] T019 Check at 375 px and in dark mode:
   - The orange area reads under the blue one.
   - The legend wraps cleanly with four entries.
   - The detail line fits on two lines at most.
-- [ ] T020 Walk through quickstart.md §1–5 against the deployed API. Then remove
+- [x] T020 Walk through quickstart.md §1–5 against the deployed API. Then remove
       `specs/_backlog/water-heater-power-frontend.md` in the API repo, as its note asks (a separate PR there).
+  Done 2026-11-22 on an iPhone in dark mode. The API note was already removed (API commit 2ffba52).
 
 ---
 
