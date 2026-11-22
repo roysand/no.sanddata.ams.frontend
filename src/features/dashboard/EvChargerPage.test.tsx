@@ -260,8 +260,10 @@ describe('EvChargerPage: count the car charger with the house', () => {
     // While saving, the box shows the value being sent.
     expect(box).toBeChecked()
     expect(bodies).toEqual([{ include: true }])
+    expect(screen.getByRole('status')).toHaveTextContent('Saving…')
     release()
     await waitFor(() => expect(calls.locations).toBeGreaterThan(before))
+    expect(await screen.findByText('Saved')).toBeInTheDocument()
   })
 
   it("goes back and shows the API's message when saving fails", async () => {
@@ -279,6 +281,7 @@ describe('EvChargerPage: count the car charger with the house', () => {
 
     expect(await screen.findByText('No car charger is connected')).toBeInTheDocument()
     expect(box).not.toBeChecked()
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument()
   })
 
   it('is read-only for a viewer', async () => {
