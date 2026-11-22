@@ -249,7 +249,7 @@ reads nothing without steps (quickstart §3).
   - The detail line fits on two lines at most.
 - [x] T020 Walk through quickstart.md §1–5 against the deployed API. Then remove
       `specs/_backlog/water-heater-power-frontend.md` in the API repo, as its note asks (a separate PR there).
-  Done 2026-11-22 on an iPhone in dark mode. The API note was already removed (API commit 2ffba52).
+      Done 2026-11-22 on an iPhone in dark mode. The API note was already removed (API commit 2ffba52).
 
 ---
 

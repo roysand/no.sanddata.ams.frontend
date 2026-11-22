@@ -465,9 +465,9 @@ point.car` into the rows.
 - [x] T036 Run `npm test`, `npm run build` and `npm run lint`. Run `npm run format` on the changed files.
 - [x] T037 Walk through quickstart.md §1–6 against the deployed API. Then, in the API repo, remove
       `specs/_backlog/ev-charger-frontend.md`, as its note asks (a separate PR there).
-  Done 2026-11-22 on an iPhone in dark mode at Hjemme. Skipped, to keep the live setup working: §1's missing-sign-in
-  message (covered by tests) and §6, removing the charger. The API note was already removed (API commit 19a2878).
-  Found on the way: the checkbox gave no sign that it had saved; it now shows "Saving…" and "✓ Saved" (PR #51).
+      Done 2026-11-22 on an iPhone in dark mode at Hjemme. Skipped, to keep the live setup working: §1's missing-sign-in
+      message (covered by tests) and §6, removing the charger. The API note was already removed (API commit 19a2878).
+      Found on the way: the checkbox gave no sign that it had saved; it now shows "Saving…" and "✓ Saved" (PR #51).
 
 ---
 
