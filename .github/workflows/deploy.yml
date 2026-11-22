@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   build:
+    name: Build and test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +46,7 @@ jobs:
           retention-days: 7
 
   deploy:
+    name: Deploy to Azure
     needs: build
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
