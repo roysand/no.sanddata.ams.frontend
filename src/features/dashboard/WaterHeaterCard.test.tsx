@@ -58,7 +58,7 @@ describe('WaterHeaterCard', () => {
   it('shows the hot water, temperature and age of an idle heater', async () => {
     show(state())
 
-    expect(await screen.findByText('333 of 360 l')).toBeInTheDocument()
+    expect(await screen.findByText('of 360 l · 40 °C water')).toBeInTheDocument()
     const meter = screen.getByRole('meter', { name: 'Hot water' })
     expect(meter).toHaveAttribute('aria-valuenow', '333')
     expect(meter).toHaveAttribute('aria-valuemax', '360')
@@ -88,11 +88,26 @@ describe('WaterHeaterCard', () => {
     expect(screen.queryByRole('meter')).not.toBeInTheDocument()
   })
 
-  it('shows the power while heating', async () => {
+  it('draws the tank with its share of hot water and the sensor temperatures rounded', async () => {
+    show(state())
+
+    const meter = await screen.findByRole('meter', { name: 'Hot water' })
+    expect(meter).toHaveAttribute('aria-valuetext', '333 of 360 l, 93 %')
+    const text = plain(meter.textContent)
+    expect(text).toContain('93%')
+    expect(text).toContain('70°')
+    expect(text).toContain('68°')
+    expect(text).toContain('55°')
+    expect(text).toContain('top 70,1 °C, middle 68,4 °C, bottom 55,2 °C')
+    expect(meter.querySelector('.heater-glow')).toBeNull()
+  })
+
+  it('shows the power and makes the tank glow while heating', async () => {
     show(state({ isHeating: true, powerKw: 2.04 }))
 
-    await screen.findByText(/70,1/)
+    const meter = await screen.findByRole('meter', { name: 'Hot water' })
     expect(cardText()).toContain('Heating · 2,0 kW')
+    expect(meter.querySelector('.heater-glow')).not.toBeNull()
   })
 
   it('names a special mode and when it ends', async () => {

@@ -172,3 +172,29 @@ body {
     @apply font-sans;
   }
 }
+
+/* The water heater tank glows while it heats: a slow pulse, held still for those who ask for less motion. */
+.heater-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: heater-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes heater-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heater-glow {
+    animation: none;
+    opacity: 0.8;
+  }
+}
