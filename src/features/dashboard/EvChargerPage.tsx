@@ -197,7 +197,7 @@ function IncludeCarCheckbox({ location }: { location: LocationSummary }) {
           onCheckedChange={(value) => change(value === true)}
         />
         <Label htmlFor="include-ev-charger">Count the car charger with the house</Label>
-        <span role="status" className="ml-auto text-xs text-muted-foreground">
+        <span role="status" className="text-sm font-medium text-muted-foreground">
           {save.isPending ? (
             'Saving…'
           ) : savedAt !== null ? (
