@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { CheckIcon } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { SELF_SERVICE_ENABLED, useSelectedLocation, type LocationSummary } from '../locations'
@@ -12,6 +13,9 @@ import { formatKwh, formatOsloDate, osloToday } from './format'
 import { useCarMonth, useEvChargerInclude, useEvChargerSessions } from './hooks'
 
 const NO_CHARGING = 'No charging yet'
+
+/** How long "Saved" stays beside the checkbox after a change is saved. */
+const SAVED_SHOWN_MS = 4000
 
 /**
  * The Car tab (spec 013): what the selected location's car charger charged today and this month, in kWh only, and the
@@ -161,14 +165,27 @@ function SessionsCard({ locationId }: { locationId: string }) {
 }
 
 /**
- * The location's "count the car charger with the house" setting (FR-011–FR-013). While saving it shows the value being
- * sent; after a failure it shows the location's value again. The owner check is UX only: the API answers 403.
+ * The location's "count the car charger with the house" setting (FR-011–FR-013). It saves as soon as it is changed,
+ * with "Saving…" and then "Saved" for a few seconds so the change is seen to stick. While saving it shows the value
+ * being sent; after a failure it shows the location's value again. The owner check is UX only: the API answers 403.
  */
 function IncludeCarCheckbox({ location }: { location: LocationSummary }) {
   const { roles } = useAuth()
   const save = useEvChargerInclude(location.id)
   const mayChange = location.role === 'Owner' || roles.includes('Admin')
   const checked = save.isPending ? save.variables : location.includeEvCharger
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (savedAt === null) return
+    const timer = setTimeout(() => setSavedAt(null), SAVED_SHOWN_MS)
+    return () => clearTimeout(timer)
+  }, [savedAt])
+
+  const change = (include: boolean) => {
+    setSavedAt(null)
+    save.mutate(include, { onSuccess: () => setSavedAt(Date.now()) })
+  }
 
   return (
     <div className="space-y-1">
@@ -177,9 +194,19 @@ function IncludeCarCheckbox({ location }: { location: LocationSummary }) {
           id="include-ev-charger"
           checked={checked}
           disabled={!mayChange || save.isPending}
-          onCheckedChange={(value) => save.mutate(value === true)}
+          onCheckedChange={(value) => change(value === true)}
         />
         <Label htmlFor="include-ev-charger">Count the car charger with the house</Label>
+        <span role="status" className="ml-auto text-xs text-muted-foreground">
+          {save.isPending ? (
+            'Saving…'
+          ) : savedAt !== null ? (
+            <span className="inline-flex items-center gap-1 text-price-cheap">
+              <CheckIcon className="size-3.5" aria-hidden="true" />
+              Saved
+            </span>
+          ) : null}
+        </span>
       </div>
       <p className="text-xs text-muted-foreground">
         In kWh only. Costs and the bill stay the house's own.
