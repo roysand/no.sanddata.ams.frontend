@@ -1,13 +1,6 @@
 import { osloToday } from './format'
 import { osloWeekdayHour, WEEKDAY_LONG } from './heatmap'
-import type {
-  BillLine,
-  CapacityCharge,
-  ConsumptionItem,
-  CurrentHourCost,
-  HourlyCostItem,
-  MonthlyBill,
-} from './types'
+import type { CapacityCharge, ConsumptionItem, CurrentHourCost, HourlyCostItem } from './types'
 import type { UsualPower } from './usual'
 
 // The rules behind the warnings banner (spec 012). They are pure and take the time as a parameter, so they are tested at
@@ -27,8 +20,6 @@ export const USAGE_MIN_EXCESS_KW = 1
 export const USUAL_MIN_WEEKS = 3
 /** A newest reading older than this means the power now is unknown; the same 6 minutes as `currentPowerKw`. */
 export const STALE_AFTER_MINUTES = 6
-/** The Norgespris credit may round a little below the energy's kWh; less than this is not over the limit. */
-export const NORGESPRIS_MARGIN_KWH = 0.5
 
 // ---- Capacity step (US1, research R1) -----------------------------------------------------------------------------
 
@@ -131,32 +122,4 @@ export function usageWarning(input: {
     ratio: usualKw > 0 ? Math.round(nowKw / usualKw) : null,
     weekday: at ? WEEKDAY_LONG[at.weekday] : '',
   }
-}
-
-// ---- Norgespris monthly limit (US3, research R7) ------------------------------------------------------------------
-
-export interface NorgesPrisWarning {
-  /** All the month's kWh, so far + projected. */
-  projectedKwh: number
-  /** The Norgespris monthly limit (5 000 kWh, 1 000 for a holiday home). */
-  limitKwh: number
-  /** True when the kWh used so far are already above the limit. */
-  passed: boolean
-}
-
-const quantityOf = (lines: BillLine[], code: string) => lines.find((l) => l.code === code)?.quantity
-
-/**
- * Whether the current month is expected to go over the Norgespris limit. The API doesn't send the limit, but the
- * expected bill shows it: the Norgespris credit covers only the kWh within the limit, while the energy line covers all
- * of them. So the month is projected over the limit exactly when the credit has fewer kWh, and the credit's kWh are
- * then the limit.
- */
-export function norgesPrisWarning(bill: MonthlyBill | undefined): NorgesPrisWarning | null {
-  if (!bill || bill.status !== 'Estimate' || !bill.projection) return null
-  const total = quantityOf(bill.strom.lines, 'SpotEnergy')
-  const within = quantityOf(bill.nettleie.lines, 'NorgesPrisCredit')
-  if (total === undefined || within === undefined) return null
-  if (total - within <= NORGESPRIS_MARGIN_KWH) return null
-  return { projectedKwh: total, limitKwh: within, passed: total - bill.projection.kwh >= within }
 }

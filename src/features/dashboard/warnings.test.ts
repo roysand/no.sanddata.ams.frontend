@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { november2026Estimate, spotBill, withLine } from '../../test/bills'
-import { capacityWarning, norgesPrisWarning, usageWarning } from './warnings'
-import type {
-  CapacityCharge,
-  ConsumptionItem,
-  CurrentHourCost,
-  HourlyCostItem,
-  MonthlyBill,
-} from './types'
+import { capacityWarning, usageWarning } from './warnings'
+import type { CapacityCharge, ConsumptionItem, CurrentHourCost, HourlyCostItem } from './types'
 
 // Friday 20 November 2026, 11:30 in Oslo: the hour 11–12 started at 10:00 UTC, 30 minutes ago.
 const NOW = new Date('2026-11-20T10:30:00Z')
@@ -169,45 +162,5 @@ describe('usageWarning', () => {
       usualKw: 0,
       ratio: null,
     })
-  })
-})
-
-describe('norgesPrisWarning', () => {
-  /** The current month's expected bill with `total` kWh in all, `within` of them within the limit. */
-  const bill = (total: number, within: number, projectedKwh: number): MonthlyBill => {
-    const estimate = withLine(
-      withLine(november2026Estimate(), 'SpotEnergy', { quantity: total }),
-      'NorgesPrisCredit',
-      { quantity: within },
-    )
-    return {
-      ...estimate,
-      projection: estimate.projection && { ...estimate.projection, kwh: projectedKwh },
-    }
-  }
-
-  it('warns when the month is projected over the limit, reading the limit from the credit', () => {
-    expect(norgesPrisWarning(bill(1240, 1000, 600))).toEqual({
-      projectedKwh: 1240,
-      limitKwh: 1000,
-      passed: false,
-    })
-  })
-
-  it('says the limit is passed once the kWh so far are above it', () => {
-    // 1 240 − 200 = 1 040 kWh so far.
-    expect(norgesPrisWarning(bill(1240, 1000, 200))?.passed).toBe(true)
-  })
-
-  it('does not warn while the month stays within the limit', () => {
-    expect(norgesPrisWarning(bill(840, 840, 400))).toBeNull()
-    expect(norgesPrisWarning(bill(840.3, 840, 400))).toBeNull()
-  })
-
-  it('does not warn on spot price, for a final month, or without a projection', () => {
-    expect(norgesPrisWarning(spotBill(bill(1240, 1000, 600)))).toBeNull()
-    expect(norgesPrisWarning({ ...bill(1240, 1000, 600), status: 'Final' })).toBeNull()
-    expect(norgesPrisWarning({ ...bill(1240, 1000, 600), projection: null })).toBeNull()
-    expect(norgesPrisWarning(undefined)).toBeNull()
   })
 })

@@ -2,36 +2,108 @@ import type { ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { LocationSummary } from '../locations'
-import { formatKw, osloMonth } from './format'
+import { formatKw, formatRate, osloMonth } from './format'
 import {
   useCapacityCharge,
   useCurrentHourCost,
   useLastHourPower,
-  useMonthlyBill,
+  useNorgesPrisStatus,
   useNow,
   useTodayHourlyCost,
+  useTomorrowPrices,
   useUsualPower,
 } from './hooks'
-import { capacityWarning, norgesPrisWarning, usageWarning } from './warnings'
+import {
+  expensiveHours,
+  limitWarning,
+  needsTomorrow,
+  type ExpensiveHours,
+  type LimitWarning,
+} from './norgesPris'
+import { capacityWarning, usageWarning } from './warnings'
 
 /** A step limit as it is spoken: "10 kW", or "7,5 kW". */
 const stepKw = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 })
 /** A month's kWh, whole: "1 240 kWh". */
-const monthKwh = (kwh: number) =>
-  `${new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(kwh)} kWh`
+const wholeKwh = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 })
+const monthKwh = (kwh: number) => `${wholeKwh.format(kwh)} kWh`
+/** The Oslo date the limit resets: "1 December". */
+const resetDate = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'Europe/Oslo',
+})
+const twoDigits = (hour: number) => String(hour).padStart(2, '0')
+/** At most this many hour ranges, then a count of the rest, so a line fits in two on a phone (FR-006). */
+const MAX_RANGES = 3
 
 interface Line {
   key: string
   urgent: boolean
   content: ReactNode
+  /** The location to select when the line is followed; the selected one's capacity and usage lines leave it out. */
+  locationId?: string
+}
+
+/** One limit line, worded as contracts/ui.md. */
+function limitText(name: string, w: LimitWarning): ReactNode {
+  switch (w.kind) {
+    case 'over':
+      return (
+        <>
+          <span className="font-semibold">
+            {name} is over its Norgespris limit: {wholeKwh.format(w.kwhSoFar)} of{' '}
+            {monthKwh(w.limitKwh)}.
+          </span>{' '}
+          The kWh above it are priced at spot price until {resetDate.format(new Date(w.resetsAt))}.
+        </>
+      )
+    case 'approaching': {
+      const soFar = `${name}: ${wholeKwh.format(w.kwhSoFar)} of ${monthKwh(w.limitKwh)} this month`
+      if (w.reachedIn === 'today' || w.reachedIn === 'tomorrow') {
+        return `${soFar}. At this pace the limit is reached ${w.reachedIn}.`
+      }
+      if (typeof w.reachedIn === 'number') {
+        return `${soFar}. At this pace the limit is reached in about ${w.reachedIn} days.`
+      }
+      if (w.projectedKwh !== null)
+        return `${soFar}, expected to end at ${monthKwh(w.projectedKwh)}.`
+      return `${soFar}.`
+    }
+    case 'projected':
+      return (
+        `${name} is expected to use ${monthKwh(w.projectedKwh)} this month, above the ` +
+        `Norgespris limit of ${monthKwh(w.limitKwh)}. The kWh above it are priced at spot price.`
+      )
+  }
+}
+
+/** "07–09 and 17–20", or the first three ranges and "and 4 more hours". */
+function rangesText({ ranges, hours }: ExpensiveHours): string {
+  const shown = ranges.slice(0, MAX_RANGES)
+  const parts = shown.map((r) => `${twoDigits(r.fromHour)}–${twoDigits(r.toHour)}`)
+  const rest = hours - shown.reduce((sum, r) => sum + r.toHour - r.fromHour, 0)
+  if (ranges.length > MAX_RANGES && rest > 0)
+    parts.push(`${rest} more ${rest === 1 ? 'hour' : 'hours'}`)
+  return parts.length === 1
+    ? parts[0]
+    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
 }
 
 /**
- * Warnings for the selected location (spec 012), above the key reminders on every page: anyone who may see the location
- * sees them. Each rule is pure and uses figures the dashboard already reads; a warning whose figures are missing or
- * failed is simply left out, never shown as an error.
+ * Warnings above the key reminders on every page, for anyone who may see the location: the capacity and usage warnings
+ * for the selected location (spec 012), then the Norgespris warnings for every active location (spec 015), each naming
+ * its location. Each rule is pure; a warning whose figures are missing or failed is left out, never shown as an error.
  */
-export function WarningBanner({ location }: { location: LocationSummary }) {
+export function WarningBanner({
+  location,
+  locations,
+  onSelect,
+}: {
+  location: LocationSummary
+  locations: LocationSummary[]
+  onSelect: (locationId: string) => void
+}) {
   // Checked again every minute, so a warning comes and goes within a minute.
   const nowMs = useNow(60_000)
   const now = new Date(nowMs)
@@ -41,7 +113,25 @@ export function WarningBanner({ location }: { location: LocationSummary }) {
   const currentHour = useCurrentHourCost(id)
   const minutes = useLastHourPower(id)
   const usual = useUsualPower(id, nowMs)
-  const bill = useMonthlyBill(id, osloMonth(now), true)
+  const status = useNorgesPrisStatus()
+
+  // The Norgespris locations, the selected one first, then the others by name (FR-008, research R2).
+  const names = new Map(locations.map((l) => [l.id, l.name]))
+  const norgesPris = (status.data?.items ?? [])
+    .filter((item) => names.has(item.locationId))
+    .map((item) => ({ item, name: names.get(item.locationId)!, warning: limitWarning(item, now) }))
+    .sort((a, b) =>
+      a.item.locationId === id
+        ? -1
+        : b.item.locationId === id
+          ? 1
+          : a.name.localeCompare(b.name, 'nb'),
+    )
+  // Tomorrow's prices only where the spot price changes the bill (FR-010).
+  const tomorrow = useTomorrowPrices(
+    norgesPris.filter((n) => needsTomorrow(n.warning)).map((n) => n.item.locationId),
+    nowMs,
+  )
 
   const lines: Line[] = []
 
@@ -87,23 +177,24 @@ export function WarningBanner({ location }: { location: LocationSummary }) {
     })
   }
 
-  const norgesPris = norgesPrisWarning(bill.data)
-  if (norgesPris) {
-    const limit = monthKwh(norgesPris.limitKwh)
+  for (const { item, name, warning } of norgesPris) {
+    if (!warning) continue
     lines.push({
-      key: 'norgespris',
-      urgent: norgesPris.passed,
-      content: norgesPris.passed ? (
-        <>
-          <span className="font-semibold">
-            {location.name} has passed the Norgespris limit of {limit} this month.
-          </span>{' '}
-          The rest of the month is priced at spot price.
-        </>
-      ) : (
-        `${location.name} is expected to use ${monthKwh(norgesPris.projectedKwh)} this month, above the ` +
-        `Norgespris limit of ${limit}. The kWh above it are priced at spot price.`
-      ),
+      key: `limit-${item.locationId}`,
+      urgent: warning.kind === 'over',
+      content: limitText(name, warning),
+      locationId: item.locationId,
+    })
+  }
+  for (const { item, name, warning } of norgesPris) {
+    if (!needsTomorrow(warning)) continue
+    const expensive = expensiveHours(tomorrow[item.locationId], item.norgesPrisPricePerKwh)
+    if (!expensive) continue
+    lines.push({
+      key: `expensive-${item.locationId}`,
+      urgent: false,
+      content: `${name}, tomorrow: spot price is high ${rangesText(expensive)}, up to ${formatRate(expensive.maxPrice)}.`,
+      locationId: item.locationId,
     })
   }
 
@@ -111,7 +202,7 @@ export function WarningBanner({ location }: { location: LocationSummary }) {
   return (
     <section
       role="region"
-      aria-label={`Warnings for ${location.name}`}
+      aria-label="Warnings"
       className="mt-2 rounded-xl border border-border bg-card p-3 text-sm"
     >
       <div className="flex items-start gap-2">
@@ -121,6 +212,7 @@ export function WarningBanner({ location }: { location: LocationSummary }) {
             <li key={line.key}>
               <Link
                 to="/"
+                onClick={line.locationId ? () => onSelect(line.locationId!) : undefined}
                 data-urgent={line.urgent ? 'true' : undefined}
                 className={
                   line.urgent

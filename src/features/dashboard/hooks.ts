@@ -20,6 +20,7 @@ import {
   getMinuteConsumption,
   getMonthlyBill,
   getNorgesPrisSaving,
+  getNorgesPrisStatus,
   getWaterHeaterPower,
   getWaterHeaterState,
   getEvChargerSessions,
@@ -36,7 +37,7 @@ import {
   rowsFromHourly,
   type UsageRow,
 } from './series'
-import type { Consumption, HourlyCostItem } from './types'
+import type { Consumption, DayPrices, HourlyCostItem } from './types'
 import { usualPower } from './usual'
 
 const ONE_MINUTE = 60_000
@@ -414,5 +415,37 @@ export function useRecentWaterHeater(
     enabled: enabled && !!locationId && startMs !== undefined,
     refetchInterval: ONE_MINUTE,
     retry: false,
+  })
+}
+
+/**
+ * The Norgespris month of every location (spec 015, research R1), read once for all of them every 5 minutes. The key
+ * starts with `cost`, so the car checkbox's invalidation of `['cost']` refreshes it at once.
+ */
+export function useNorgesPrisStatus() {
+  return useQuery({
+    queryKey: ['cost', 'norgespris-status'],
+    queryFn: getNorgesPrisStatus,
+    refetchInterval: 5 * ONE_MINUTE,
+  })
+}
+
+/**
+ * Tomorrow's prices for each of `locationIds` (spec 015, research R5), under the same key as `useDayPrices`, so the
+ * cheapest-time card shares them. `now` moves the date at midnight.
+ */
+export function useTomorrowPrices(locationIds: string[], now: number) {
+  const tomorrow = addDays(osloToday(new Date(now)), 1)
+  return useQueries({
+    queries: locationIds.map((id) => ({
+      queryKey: ['prices', tomorrow, id],
+      queryFn: () => getDayPrices(id, tomorrow),
+      refetchInterval: 15 * ONE_MINUTE,
+    })),
+    combine: (results) =>
+      Object.fromEntries(locationIds.map((id, i) => [id, results[i]?.data])) as Record<
+        string,
+        DayPrices | undefined
+      >,
   })
 }

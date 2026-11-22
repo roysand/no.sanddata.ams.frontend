@@ -177,6 +177,11 @@ export interface HourPrice {
   ratePerKwh: number | null
   /** The spot (market) rate: when power is plentiful and cheap, whatever plan the location is on. */
   spotRatePerKwh: number | null
+  /**
+   * Spot energy incl. VAT only; the same under or over the Norgespris limit (API spec 018). Absent from an API without
+   * spec 018: treated as null.
+   */
+  spotEnergyPricePerKwh?: number | null
 }
 
 export interface DayPrices {
@@ -387,4 +392,32 @@ export interface WaterHeaterState {
   }
   /** OSO's undocumented numbers, passed on as they are. */
   osoCodes: Record<string, number | null>
+}
+
+/** One location's Norgespris month (API spec 018), for a location with Norgespris that the caller can see. */
+export interface NorgesPrisStatusItem {
+  locationId: string
+  /** yyyy-MM, Oslo month */
+  month: string
+  /** null: no limit set; never over */
+  limitKwh: number | null
+  /** The car's kWh included when it is counted with the house. */
+  kwhSoFar: number
+  /** The bill's projected month in all; null without a projection. */
+  projectedKwh: number | null
+  /** `kwhSoFar ≥ limitKwh` */
+  overLimit: boolean
+  /** 0 when not over */
+  overLimitKwh: number
+  /** Incl. VAT, no grid charge, taxes or markup; null if not set. */
+  norgesPrisPricePerKwh: number | null
+  /** UTC ISO, 00:00 Oslo on the 1st of next month */
+  resetsAt: string
+}
+
+export interface NorgesPrisStatus {
+  /** UTC ISO: when the figures were read */
+  asOf: string
+  /** In `GET /api/locations` order. */
+  items: NorgesPrisStatusItem[]
 }
