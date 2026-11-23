@@ -101,7 +101,17 @@ export interface EvChargerBillPart extends EvChargerDayPart {
   /** UTC ISO; the first and last charging hour so far. */
   firstHour: string
   lastHour: string
+  /** NOK incl. VAT, the hours so far, not rounded (API spec 019); null: not priced. Added to no sum. */
+  cost: number | null
+  /** The rule that priced the car; null only from an API without spec 019. */
+  pricedAt: EvChargerPricedAt | null
 }
+
+/**
+ * How the car's kWh were priced (API spec 019): at the Norgespris price incl. VAT when not counted with the house, at the
+ * house's price per kWh when counted. A later rule may add a value, so any string is allowed.
+ */
+export type EvChargerPricedAt = 'NorgesPrisPrice' | 'HousePrice' | (string & {})
 
 /** One completed charging session. */
 export interface EvChargerSession {

@@ -44,16 +44,6 @@ Still open:
   manifest and service worker, which it does not have today), and the backend must send the notifications, which
   moves the rules to the API.
 
-## Car charging cost
-
-The car charger (spec 013) shows kWh only and is never priced. At Hjemme it is in the garage, on its own meter and an
-agreement shared by 12 garages, which has Norgespris. Roy's choices (2026-11-22):
-
-- The bill overview shows what the car charging costs, as its own line, whether or not the car is counted with the
-  house.
-- The cost is the car's kWh × the Norgespris price including VAT: energy only, no grid fees and no taxes other than
-  VAT.
-
 ## Usage against outdoor temperature
 
 Show how usage follows the outdoor temperature (most of a Norwegian home's use is heating): kWh per day against the
