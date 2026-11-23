@@ -58,7 +58,8 @@ null`, `pricedAt: raw.evCharger.pricedAt ?? null`, with a raw type where both ar
 ## Phase 5: Polish
 
 - [x] T010 Run `npm test`, `npm run build`, `npm run lint` and Prettier; fix what they find.
-- [ ] T011 Manual checks from quickstart.md 1–5 against the API with spec 019 deployed. Tick them here when done.
+- [x] T011 Manual checks from quickstart.md 1–5 against the API with spec 019 deployed. Tick them here when done.
+  - Checked by Roy on 2026-11-23 against the deployed API: all fine.
 
 ## Dependencies
 
