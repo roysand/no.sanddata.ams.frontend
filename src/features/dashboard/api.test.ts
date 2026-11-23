@@ -157,3 +157,36 @@ describe('getNorgesPrisStatus (spec 015)', () => {
     expect(status.items).toEqual([item])
   })
 })
+
+describe('the car charging cost on the bill (spec 016)', () => {
+  const part = {
+    kwh: 212.7,
+    estimated: false,
+    included: false,
+    hoursWithoutMeterReading: 0,
+    firstHour: '2026-11-01T06:00:00Z',
+    lastHour: '2026-11-20T21:00:00Z',
+  }
+  const serve = (evCharger: object) =>
+    server.use(
+      http.get('*/api/electricity-cost/bill', () =>
+        HttpResponse.json({ ...november2026Estimate(), evCharger }),
+      ),
+    )
+
+  it('reads a car part from an API without spec 019 as having no cost figures', async () => {
+    serve(part)
+
+    const bill = await getMonthlyBill('l1', '2026-11')
+
+    expect(bill.evCharger).toEqual({ ...part, cost: null, pricedAt: null })
+  })
+
+  it('passes the cost and its rule through', async () => {
+    serve({ ...part, cost: 106.35, pricedAt: 'NorgesPrisPrice' })
+
+    const bill = await getMonthlyBill('l1', '2026-11')
+
+    expect(bill.evCharger).toMatchObject({ cost: 106.35, pricedAt: 'NorgesPrisPrice' })
+  })
+})

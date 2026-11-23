@@ -13,7 +13,7 @@ import {
   lineName,
   PART_TITLES,
 } from './bill'
-import type { BillAmounts, BillLine, BillPart, MonthlyBill } from './types'
+import type { BillAmounts, BillLine, BillPart, EvChargerBillPart, MonthlyBill } from './types'
 
 /**
  * How much of a line or bill to show. `invoice` (History) has every column of the invoice: quantity, price per unit
@@ -185,9 +185,23 @@ export function WaterHeaterBillNote({ bill }: { bill: MonthlyBill }) {
   )
 }
 
+/** How the car's cost was priced, as the note says it; nothing for a rule the app doesn't know (spec 016, R2). */
+const PRICED_AT_TEXT: Record<string, string> = {
+  NorgesPrisPrice: ' at the Norgespris price',
+  HousePrice: " at the house's price",
+}
+
+/** The car's cost in the note: "106,35 kr at the Norgespris price", "about …", "not priced", or nothing (R1, R3). */
+function carCostText(part: EvChargerBillPart): string | null {
+  if (part.pricedAt === null) return null
+  if (part.cost === null) return 'not priced'
+  return `${part.estimated ? 'about ' : ''}${formatNok(part.cost)}${PRICED_AT_TEXT[part.pricedAt] ?? ''}`
+}
+
 /**
- * What the car charged in the month (API spec 016), below the water heating note. The car is never priced and adds to
- * no sum: it only says whether its kWh are counted with the house's usage.
+ * What the car charged in the month (API spec 016), below the water heating note, and what it cost so far (API spec
+ * 019): at the Norgespris price when not counted with the house, at the house's price when counted. The cost is set
+ * apart in small text and adds to no sum, and it is never projected.
  */
 export function EvChargerBillNote({ bill }: { bill: MonthlyBill }) {
   const part = bill.evCharger
@@ -199,9 +213,10 @@ export function EvChargerBillNote({ bill }: { bill: MonthlyBill }) {
     : bill.status === 'Estimate'
       ? 'so far this month'
       : `in ${formatMonth(bill.month)}`
+  const cost = carCostText(part)
   return (
     <p className="text-xs text-muted-foreground">
-      Car charging {period}: {formatKwh(part.kwh)} ·{' '}
+      Car charging {period}: {formatKwh(part.kwh)} · {cost !== null && `${cost} · `}
       {part.included ? 'counted with the house' : 'not counted with the house'}
     </p>
   )

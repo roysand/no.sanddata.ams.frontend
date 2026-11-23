@@ -331,3 +331,66 @@ describe('BillCard car charging (spec 013)', () => {
     )
   })
 })
+
+describe('BillCard car charging cost (spec 016)', () => {
+  const julyWith = (part: Parameters<typeof withEvCharger>[1]) => (month: string) =>
+    month === '2026-07' ? withEvCharger(july2026Bill, part) : byMonth[month]
+  const note = async (part: Parameters<typeof withEvCharger>[1]) => {
+    renderCard(julyWith({ firstHour: '2026-06-30T22:00:00Z', ...part }))
+    await screen.findByText('Final')
+    return screen.getByText(/^Car charging in July 2026:/).textContent?.replace(/\s/g, ' ')
+  }
+
+  it('gives the cost at the Norgespris price when the car is not counted with the house', async () => {
+    expect(await note({ included: false, cost: 106.35, pricedAt: 'NorgesPrisPrice' })).toBe(
+      'Car charging in July 2026: 212,7 kWh · 106,35 kr at the Norgespris price · not counted with the house',
+    )
+  })
+
+  it("gives the cost at the house's price when the car is counted with the house", async () => {
+    expect(await note({ included: true, cost: 98.2, pricedAt: 'HousePrice' })).toBe(
+      "Car charging in July 2026: 212,7 kWh · 98,20 kr at the house's price · counted with the house",
+    )
+  })
+
+  it('says about for estimated kWh', async () => {
+    expect(
+      await note({ included: false, estimated: true, cost: 106.35, pricedAt: 'NorgesPrisPrice' }),
+    ).toBe(
+      'Car charging in July 2026: 212,7 kWh · about 106,35 kr at the Norgespris price · not counted with the house',
+    )
+  })
+
+  it('says not priced, never 0 kr, without a cost', async () => {
+    const text = await note({ included: false, cost: null, pricedAt: 'NorgesPrisPrice' })
+
+    expect(text).toBe(
+      'Car charging in July 2026: 212,7 kWh · not priced · not counted with the house',
+    )
+    expect(text).not.toMatch(/kr/)
+  })
+
+  it('shows the cost without a rule for a rule it does not know', async () => {
+    expect(await note({ included: false, cost: 106.35, pricedAt: 'GarageAgreement' })).toBe(
+      'Car charging in July 2026: 212,7 kWh · 106,35 kr · not counted with the house',
+    )
+  })
+
+  it('reads as before with an API without spec 019', async () => {
+    expect(await note({ included: false, cost: null, pricedAt: null })).toBe(
+      'Car charging in July 2026: 212,7 kWh · not counted with the house',
+    )
+  })
+
+  it('changes no amount on the bill', async () => {
+    renderCard(julyWith({ cost: 106.35, pricedAt: 'NorgesPrisPrice' }))
+    await screen.findByText('Final')
+
+    expect(sectionText('Strøm (supplier)')).toContain(
+      'Sum Strøm333,86 kr excl. VAT + 83,47 kr VAT417,33 kr',
+    )
+    expect(plain(document.body.textContent)).toContain(
+      'Total including VAT488,12 kr excl. VAT + 185,43 kr VAT673,55 kr',
+    )
+  })
+})

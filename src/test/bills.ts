@@ -282,6 +282,8 @@ export function withEvCharger(
       hoursWithoutMeterReading: 0,
       firstHour: '2026-07-01T06:00:00Z',
       lastHour: '2026-07-31T21:00:00Z',
+      cost: null,
+      pricedAt: null,
       ...part,
     },
   }

@@ -6,6 +6,7 @@ import type {
   DailyCost,
   DailyCostItem,
   DayPrices,
+  EvChargerBillPart,
   EvChargerSession,
   HourlyCostItem,
   LatestMeasurement,
@@ -27,7 +28,14 @@ type RawDailyItem = Older<DailyCostItem, 'waterHeater' | 'totalKwh' | 'evCharger
 type RawPagedHourlyCost = Omit<PagedHourlyCost, 'items'> & { items: RawHourlyItem[] }
 type RawDailyCost = { items: RawDailyItem[] }
 type RawCurrentHourCost = Older<CurrentHourCost, 'totalKwhSoFar' | 'evCharger'>
-type RawMonthlyBill = Older<MonthlyBill, 'waterHeater' | 'totalKwh' | 'evCharger'>
+/** An API without spec 019 leaves the car part's `cost` and `pricedAt` out: read as no cost figures. */
+type RawEvChargerBillPart = Older<EvChargerBillPart, 'cost' | 'pricedAt'>
+type RawMonthlyBill = Omit<
+  Older<MonthlyBill, 'waterHeater' | 'totalKwh' | 'evCharger'>,
+  'evCharger'
+> & {
+  evCharger?: RawEvChargerBillPart | null
+}
 
 function withParts<T extends RawHourlyItem | RawDailyItem>(item: T) {
   return {
@@ -142,7 +150,13 @@ export function getMonthlyBill(locationId: string, month: string): Promise<Month
       ...raw,
       waterHeater: raw.waterHeater ?? null,
       totalKwh: raw.totalKwh ?? null,
-      evCharger: raw.evCharger ?? null,
+      evCharger: raw.evCharger
+        ? {
+            ...raw.evCharger,
+            cost: raw.evCharger.cost ?? null,
+            pricedAt: raw.evCharger.pricedAt ?? null,
+          }
+        : null,
     }))
 }
 

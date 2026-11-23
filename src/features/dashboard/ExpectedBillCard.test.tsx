@@ -260,4 +260,22 @@ describe('ExpectedBillCard car charging (spec 013)', () => {
 
     expect(screen.queryByText(/Car charging/)).not.toBeInTheDocument()
   })
+
+  it('gives the cost so far, not projected (spec 016)', async () => {
+    renderCard(
+      withEvCharger(estimate, {
+        firstHour: '2026-10-31T23:00:00Z',
+        included: false,
+        cost: 106.35,
+        pricedAt: 'NorgesPrisPrice',
+      }),
+    )
+    await screen.findByText('Estimate')
+
+    expect(
+      screen.getByText(
+        /^Car charging so far this month: 212,7 kWh · 106,35\skr at the Norgespris price · not counted with the house$/,
+      ),
+    ).toBeInTheDocument()
+  })
 })
