@@ -35,7 +35,7 @@ Picture first, then the heading in bold, the details joined by " · ", then the 
 ## Now page: the "Car charging" tile (added 2026-11-25, FR-013)
 
 Below "Last 3 hours", above "What Norgespris has saved"; region and title "Car charging". Only for `state ===
-'charging'`. No state heading (the title says it). The drawing, cropped and small, on the left; beside it:
+'charging'`. No state heading (the title says it). The figures on the left; the drawing, cropped and small, on the right (Roy, 2026-11-25):
 
 ```text
 4,5 kW charging speed

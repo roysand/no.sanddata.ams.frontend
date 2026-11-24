@@ -63,8 +63,8 @@ function LiveDetails({ view }: { view: LiveView }) {
 }
 
 /**
- * The Now page's car tile (spec 017, amended 2026-11-25): a small drawing with the Car tab's figures beside it, on
- * three lines, and the age; without the state's heading. Shown only while the car charges. Nothing in any other state, while loading or after a failed read. Render it only for a
+ * The Now page's car tile (spec 017, amended 2026-11-25): the Car tab's figures on three lines with a small drawing
+ * on the right, and the age; without the state's heading. Shown only while the car charges. Nothing in any other state, while loading or after a failed read. Render it only for a
  * location with a charger, so nothing is asked otherwise.
  */
 export function CarChargingCard({ locationId }: { locationId: string }) {
@@ -80,12 +80,7 @@ export function CarChargingCard({ locationId }: { locationId: string }) {
           <CardTitle className="text-base font-extrabold">Car charging</CardTitle>
         </CardHeader>
         {/* The title already says the car is charging, so the state's heading is left out (Roy, 2026-11-25). */}
-        <CardContent className="flex items-center gap-4">
-          <EvChargerPicture
-            mode={view.picture}
-            cropped
-            className="block h-auto w-28 shrink-0 sm:w-36"
-          />
+        <CardContent className="flex items-center justify-between gap-4">
           <div className="min-w-0 space-y-0.5">
             {/* A line too long for a phone wraps between its parts, never inside one. */}
             {view.lines.map((parts) => (
@@ -103,6 +98,11 @@ export function CarChargingCard({ locationId }: { locationId: string }) {
             ))}
             {view.age && <p className="pt-1 text-xs text-muted-foreground">{view.age}</p>}
           </div>
+          <EvChargerPicture
+            mode={view.picture}
+            cropped
+            className="block h-auto w-28 shrink-0 sm:w-36"
+          />
         </CardContent>
       </Card>
     </section>
