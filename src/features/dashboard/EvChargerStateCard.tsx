@@ -49,7 +49,7 @@ export function EvChargerStateCard({ locationId }: { locationId: string }) {
   )
 }
 
-/** The state, its figures and how long ago it was read: the same on the Car tab and the Now page. */
+/** The state, its figures and how long ago it was read, centred under the Car tab's drawing. */
 function LiveDetails({ view }: { view: LiveView }) {
   return (
     <div className="space-y-1 text-center">
@@ -63,8 +63,8 @@ function LiveDetails({ view }: { view: LiveView }) {
 }
 
 /**
- * The Now page's car tile (spec 017, amended 2026-11-25): the same state and figures as the Car tab's tile, shown only
- * while the car charges. Nothing in any other state, while loading or after a failed read. Render it only for a
+ * The Now page's car tile (spec 017, amended 2026-11-25): the Car tab's figures and age, left-aligned and without the
+ * state's heading, shown only while the car charges. Nothing in any other state, while loading or after a failed read. Render it only for a
  * location with a charger, so nothing is asked otherwise.
  */
 export function CarChargingCard({ locationId }: { locationId: string }) {
@@ -79,8 +79,10 @@ export function CarChargingCard({ locationId }: { locationId: string }) {
         <CardHeader>
           <CardTitle className="text-base font-extrabold">Car charging</CardTitle>
         </CardHeader>
-        <CardContent>
-          <LiveDetails view={view} />
+        {/* The title already says the car is charging, so the state's heading is left out (Roy, 2026-11-25). */}
+        <CardContent className="space-y-1">
+          <p className="text-sm tabular-nums">{view.details.join(' · ')}</p>
+          {view.age && <p className="text-xs text-muted-foreground">{view.age}</p>}
         </CardContent>
       </Card>
     </section>
