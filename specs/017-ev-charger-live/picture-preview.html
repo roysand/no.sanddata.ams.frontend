@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Car charging picture – preview</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding: 16px;
+        background: #e5e7eb;
+      }
+      .tile {
+        width: 380px;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .light {
+        background: #fff;
+        color: #0f172a;
+        --body: #8aa4bd;
+        --body-dark: #5d7891;
+        --glass: #1e293b;
+        --tyre: #1f2937;
+        --post: #111827;
+        --cable: #374151;
+        --muted: #64748b;
+      }
+      .dark {
+        background: #111827;
+        color: #f1f5f9;
+        --body: #7d98b3;
+        --body-dark: #4f6a84;
+        --glass: #0b1220;
+        --tyre: #030712;
+        --post: #020617;
+        --cable: #4b5563;
+        --muted: #94a3b8;
+      }
+      .caption {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 6px 4px 0;
+      }
+      .flow {
+        stroke: #4ade80;
+        stroke-dasharray: 100 100;
+        stroke-dashoffset: 100;
+        animation: flow 1.6s linear infinite;
+        filter: drop-shadow(0 0 3px #4ade80);
+      }
+      @keyframes flow {
+        from {
+          stroke-dashoffset: 100;
+        }
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .flow {
+          animation: none;
+          stroke-dashoffset: 0;
+        }
+      }
+      .bolt {
+        fill: var(--muted);
+      }
+      .charging .bolt {
+        fill: #4ade80;
+      }
+      .nocar .car {
+        opacity: 0.25;
+      }
+      .nocar .plugged {
+        display: none;
+      }
+      .offline svg {
+        opacity: 0.45;
+      }
+    </style>
+  </head>
+  <body>
+    <template id="pic">
+      <svg
+        viewBox="0 0 380 200"
+        width="100%"
+        role="img"
+        aria-label="A car connected to the charger"
+      >
+        <g class="car">
+          <!-- wheels -->
+          <rect x="62" y="148" width="34" height="40" rx="7" fill="var(--tyre)" />
+          <rect x="224" y="148" width="34" height="40" rx="7" fill="var(--tyre)" />
+          <!-- roof and windscreen -->
+          <path
+            d="M84 108 L104 54 Q108 44 120 44 L200 44 Q212 44 216 54 L236 108 Z"
+            fill="var(--body-dark)"
+          />
+          <path
+            d="M95 102 L111 60 Q114 53 122 53 L198 53 Q206 53 209 60 L225 102 Z"
+            fill="var(--glass)"
+          />
+          <!-- mirrors -->
+          <path d="M68 86 Q72 78 86 82 L88 96 Q74 98 68 92 Z" fill="var(--body-dark)" />
+          <path d="M252 86 Q248 78 234 82 L232 96 Q246 98 252 92 Z" fill="var(--body-dark)" />
+          <!-- body -->
+          <path
+            d="M54 150 Q50 118 74 104 L246 104 Q270 118 266 150 L266 164 Q266 172 258 172 L62 172 Q54 172 54 164 Z"
+            fill="var(--body)"
+          />
+          <!-- headlights -->
+          <path d="M66 120 Q90 118 114 126 L110 132 Q86 130 68 128 Z" fill="#f8fafc" />
+          <path d="M254 120 Q230 118 206 126 L210 132 Q234 130 252 128 Z" fill="#f8fafc" />
+          <!-- grille and bumper -->
+          <rect
+            x="122"
+            y="118"
+            width="76"
+            height="36"
+            rx="12"
+            fill="var(--glass)"
+            stroke="#e2e8f0"
+            stroke-width="2"
+          />
+          <path
+            d="M130 128 H190 M130 136 H190 M130 144 H190"
+            stroke="var(--body-dark)"
+            stroke-width="2"
+          />
+          <path
+            d="M78 162 H242"
+            stroke="#e2e8f0"
+            stroke-width="3"
+            stroke-linecap="round"
+            opacity=".7"
+          />
+        </g>
+        <!-- charger post -->
+        <rect x="330" y="40" width="36" height="150" rx="7" fill="var(--post)" />
+        <rect x="330" y="40" width="36" height="14" rx="5" fill="var(--cable)" />
+        <rect x="330" y="56" width="36" height="3" fill="#e5e7eb" />
+        <path class="bolt" d="M351 92 L341 108 H348 L344 122 L356 104 H349 Z" />
+        <!-- cable: from the charger to the car's right front -->
+        <g class="plugged" fill="none" stroke-linecap="round">
+          <path
+            id="cable"
+            d="M330 84 C 296 80, 318 150, 310 170 C 302 188, 276 182, 280 160 C 284 140, 282 132, 262 130"
+            stroke="var(--cable)"
+            stroke-width="4"
+          />
+          <path
+            class="flow-path"
+            d="M330 84 C 296 80, 318 150, 310 170 C 302 188, 276 182, 280 160 C 284 140, 282 132, 262 130"
+            pathLength="100"
+            stroke-width="4"
+          />
+        </g>
+      </svg>
+    </template>
+
+    <script>
+      const states = [
+        ['charging', 'Charging · 4,4 kW · 13,0 kWh this charge · since 16:37'],
+        ['connected', 'Connected, not charging · 13,0 kWh this charge'],
+        ['nocar', 'No car connected'],
+        ['offline', 'Offline · last reported 14:10'],
+      ]
+      for (const theme of ['light', 'dark']) {
+        for (const [state, text] of states) {
+          const tile = document.createElement('div')
+          tile.className = `tile ${theme} ${state}`
+          tile.append(document.getElementById('pic').content.cloneNode(true))
+          if (state === 'charging') tile.querySelector('.flow-path').classList.add('flow')
+          const p = document.createElement('p')
+          p.className = 'caption'
+          p.textContent = text
+          tile.append(p)
+          document.body.append(tile)
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { carMonth, formatDuration, sessionTimes } from './evCharger'
+import { LIVE_STATES, liveState } from '../../test/evCharger'
+import { carMonth, chargingNowLine, formatDuration, liveView, sessionTimes } from './evCharger'
 import type { DailyCostItem, EvChargerDayPart, EvChargerSession } from './types'
 
 const part = (kwh: number, hoursWithoutMeterReading = 0): EvChargerDayPart => ({
@@ -108,4 +109,108 @@ describe('formatDuration', () => {
     expect(formatDuration(278)).toBe('4 h 38 min')
     expect(formatDuration(720)).toBe('12 h')
   })
+})
+
+// 19:35:02 Oslo on 2026-11-24, a minute after the fixture's read.
+const NOW = new Date('2026-11-24T18:35:02Z')
+const live = (state: keyof typeof LIVE_STATES, patch = {}) =>
+  liveState({ state, ...LIVE_STATES[state], ...patch })
+
+describe('liveView (spec 017)', () => {
+  it('gives every figure while charging, in Oslo time', () => {
+    expect(liveView(live('charging'), NOW)).toEqual({
+      heading: 'Charging',
+      details: ['4,4 kW', '13,0 kWh this charge', 'charging since 16:37', 'plugged in at 15:52'],
+      picture: 'charging',
+      label: 'A car charging from the charger',
+      age: 'updated 1 minute ago',
+    })
+  })
+
+  it('gives no power and no charging start when connected or finished', () => {
+    expect(liveView(live('connected'), NOW)).toMatchObject({
+      heading: 'Connected, not charging',
+      details: ['13,0 kWh this charge', 'plugged in at 15:52'],
+      picture: 'plugged',
+    })
+    expect(liveView(live('finished'), NOW)).toMatchObject({
+      heading: 'Finished charging',
+      details: ['24,6 kWh this charge', 'plugged in at 15:52'],
+      picture: 'plugged',
+    })
+  })
+
+  it('shows 0 kWh for a new charge, and leaves out kWh it was not sent', () => {
+    expect(liveView(live('connected', { sessionKwh: 0 }), NOW)?.details[0]).toBe(
+      '0,0 kWh this charge',
+    )
+    expect(liveView(live('connected', { sessionKwh: null }), NOW)?.details).toEqual([
+      'plugged in at 15:52',
+    ])
+  })
+
+  it('gives no figures with no car, and only the last report when offline', () => {
+    expect(liveView(live('noCar'), NOW)).toMatchObject({
+      heading: 'No car connected',
+      details: [],
+      picture: 'noCar',
+    })
+    expect(liveView(live('offline'), NOW)).toMatchObject({
+      heading: 'Offline',
+      details: ['last reported 14:10'],
+      picture: 'faded',
+    })
+    expect(liveView(live('offline', { lastReportedAt: null }), NOW)?.details).toEqual([])
+  })
+
+  it('shows the kWh of an unknown state, and nothing for a location without a charger', () => {
+    expect(liveView(live('unknown'), NOW)).toMatchObject({
+      heading: 'Status unknown',
+      details: ['13,0 kWh this charge'],
+      picture: 'faded',
+    })
+    expect(liveView(live('noCharger'), NOW)).toBeNull()
+  })
+
+  it('gives the date for a time on an earlier day', () => {
+    const view = liveView(
+      live('charging', {
+        pluggedInAt: '2026-11-23T22:10:00Z',
+        chargingSince: '2026-11-23T22:12:00Z',
+      }),
+      NOW,
+    )
+    expect(view?.details).toContain('charging since 23.11. 23:12')
+    expect(view?.details).toContain('plugged in at 23.11. 23:10')
+  })
+
+  it('says how long ago the charger was read', () => {
+    expect(liveView(live('noCar', { readAt: '2026-11-24T18:35:00Z' }), NOW)?.age).toBe(
+      'updated just now',
+    )
+    expect(liveView(live('noCar', { readAt: '2026-11-24T18:30:00Z' }), NOW)?.age).toBe(
+      'updated 5 minutes ago',
+    )
+  })
+})
+
+describe('chargingNowLine (spec 017)', () => {
+  it('gives the line while charging', () => {
+    expect(chargingNowLine(live('charging'), NOW)).toBe(
+      'Car charging now: 4,4 kW · 13,0 kWh this charge · since 16:37',
+    )
+  })
+
+  it('leaves out a missing figure with its separator', () => {
+    expect(chargingNowLine(live('charging', { sessionKwh: null }), NOW)).toBe(
+      'Car charging now: 4,4 kW · since 16:37',
+    )
+  })
+
+  it.each(['connected', 'finished', 'noCar', 'unknown', 'offline', 'noCharger'] as const)(
+    'gives no line when %s',
+    (state) => {
+      expect(chargingNowLine(live(state), NOW)).toBeNull()
+    },
+  )
 })

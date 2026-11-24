@@ -190,6 +190,9 @@ export function formatMonth(month: string): string {
 export const formatKw = (value: number) => `${oneDecimal.format(value)} kW`
 
 /** 70.1 -> "70,1 °C" */
+/** Always one decimal: 12.962 -> "13,0 kWh". */
+export const formatKwh1 = (value: number) => `${oneDecimal.format(value)} kWh`
+
 export const formatCelsius = (value: number) => `${oneDecimal.format(value)} °C`
 
 /** How old a reading is, in words: "updated just now", "updated 5 minutes ago", "updated 2 hours ago". */
@@ -232,4 +235,11 @@ export function formatOsloDateTime(isoUtc: string, now = new Date()): string {
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
   if (day === tomorrow.toISOString().slice(0, 10)) return `tomorrow ${clock}`
   return `${formatDay(day)} ${clock}`
+}
+
+/** "16:37" for a time on the Oslo day of `now`, otherwise "23.11. 23:10", in Oslo time. */
+export function formatOsloTimeOrDate(isoUtc: string, now = new Date()): string {
+  const clock = formatClock(isoUtc)
+  const day = osloDayKey(new Date(isoUtc))
+  return day === osloDayKey(now) ? clock : `${formatDay(day)} ${clock}`
 }

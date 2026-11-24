@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { carMonth, formatDuration, sessionTimes } from './evCharger'
+import { EvChargerStateCard } from './EvChargerStateCard'
 import { formatKwh, formatOsloDate, osloToday } from './format'
 import { useCarMonth, useEvChargerInclude, useEvChargerSessions } from './hooks'
 
@@ -18,7 +19,7 @@ const NO_CHARGING = 'No charging yet'
 const SAVED_SHOWN_MS = 4000
 
 /**
- * The Car tab (spec 013): what the selected location's car charger charged today and this month, in kWh only, and the
+ * The Car tab (spec 013): the charger's state right now (spec 017), what the selected location's car charger charged today and this month, in kWh only, and the
  * completed sessions of the last 30 days. Shown in the tab bar only for a location with a charger.
  */
 export function EvChargerPage() {
@@ -56,6 +57,7 @@ export function EvChargerPage() {
 
   return (
     <div className="space-y-4">
+      <EvChargerStateCard locationId={selected.id} />
       <ChargingCard location={selected} />
       <SessionsCard locationId={selected.id} />
     </div>
@@ -107,7 +109,8 @@ function ChargingCard({ location }: { location: LocationSummary }) {
             )
           )}
           <p className="text-xs text-muted-foreground">
-            A charge in progress shows here about 15 minutes after it ends.
+            Finished charges show here about 15 minutes after they end. The charger&apos;s state
+            right now is at the top.
           </p>
         </CardContent>
       </Card>

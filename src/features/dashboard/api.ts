@@ -7,6 +7,8 @@ import type {
   DailyCostItem,
   DayPrices,
   EvChargerBillPart,
+  EvChargerLiveState,
+  EvChargerLiveStatus,
   EvChargerSession,
   HourlyCostItem,
   LatestMeasurement,
@@ -169,6 +171,30 @@ export function getWaterHeaterState(locationId: string) {
 export function getEvChargerSessions(locationId: string) {
   return api.get<{ items: EvChargerSession[] }>(`/api/locations/${locationId}/ev-charger/sessions`)
 }
+
+const LIVE_STATUSES: readonly EvChargerLiveStatus[] = [
+  'charging',
+  'connected',
+  'finished',
+  'noCar',
+  'unknown',
+  'offline',
+  'noCharger',
+]
+
+/**
+ * The car charger's state right now (API spec 021). A state the app doesn't know, perhaps added later, is read as
+ * `unknown` (spec 017, research R1).
+ */
+export async function getEvChargerState(locationId: string): Promise<EvChargerLiveState> {
+  const raw = await api.get<Omit<EvChargerLiveState, 'state'> & { state: string }>(
+    `/api/locations/${locationId}/ev-charger/state`,
+  )
+  return { ...raw, state: isLiveStatus(raw.state) ? raw.state : 'unknown' }
+}
+
+const isLiveStatus = (state: string): state is EvChargerLiveStatus =>
+  LIVE_STATUSES.some((known) => known === state)
 
 /** The location's "count the car charger with the house" setting. Owner or Admin; a viewer gets 403. */
 export function setEvChargerInclude(locationId: string, include: boolean) {

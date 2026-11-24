@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
 import { renderWithQuery } from '../../test/render'
+import { LIVE_STATES, liveState, serveLiveState } from '../../test/evCharger'
 import { AuthContext, type AuthContextValue } from '../auth/context'
 import { osloDayStartUtc } from './format'
 import { NowCard } from './NowCard'
@@ -75,6 +76,8 @@ interface Setup {
   measuredAt?: string
   /** The API sends the parts of the price (the full-price calculation). */
   withParts?: boolean
+  /** The location has a car charger. */
+  hasEvCharger?: boolean
 }
 
 function renderNow({
@@ -87,6 +90,7 @@ function renderNow({
   stale = false,
   measuredAt,
   withParts = false,
+  hasEvCharger = false,
 }: Setup = {}) {
   server.use(
     http.get('*/api/electricity-cost/current', () =>
@@ -135,7 +139,7 @@ function renderNow({
   return renderWithQuery(
     <AuthContext.Provider value={USER}>
       <MemoryRouter>
-        <NowCard locationId="l1" />
+        <NowCard locationId="l1" hasEvCharger={hasEvCharger} />
       </MemoryRouter>
     </AuthContext.Provider>,
   )
@@ -292,5 +296,51 @@ describe('NowCard', () => {
       expect(await screen.findByText(/Prices include VAT/)).toBeInTheDocument()
       expect(screen.queryByText(LIMIT)).not.toBeInTheDocument()
     })
+  })
+})
+
+describe('NowCard: the car charging now (spec 017)', () => {
+  const LINE = /^Car charging now: 4,4 kW · 13,0 kWh this charge · since (24\.11\. )?16:37$/
+
+  it('shows the car line while the car charges, and leaves the house figures as they are', async () => {
+    server.use(serveLiveState(liveState()).handler)
+    renderNow({ hasEvCharger: true })
+
+    expect(await screen.findByText(LINE)).toBeInTheDocument()
+    expect(screen.getByText('3,42')).toBeInTheDocument()
+    expect(screen.getByText(/0,67/)).toBeInTheDocument()
+  })
+
+  it.each(['connected', 'finished', 'noCar', 'offline'] as const)(
+    'shows no car line when %s',
+    async (state) => {
+      const live = serveLiveState(liveState({ state, ...LIVE_STATES[state] }))
+      server.use(live.handler)
+      renderNow({ hasEvCharger: true })
+
+      expect(await screen.findByText('3,42')).toBeInTheDocument()
+      await vi.waitFor(() => expect(live.calls.state).toBe(1))
+      expect(screen.queryByText(/Car charging now/)).not.toBeInTheDocument()
+    },
+  )
+
+  it('shows no car line when the state is unavailable', async () => {
+    const live = serveLiveState({ status: 503, code: 'EvCharger.Unavailable' })
+    server.use(live.handler)
+    renderNow({ hasEvCharger: true })
+
+    expect(await screen.findByText('3,42')).toBeInTheDocument()
+    await vi.waitFor(() => expect(live.calls.state).toBe(1))
+    expect(screen.queryByText(/Car charging now/)).not.toBeInTheDocument()
+  })
+
+  it('never asks for the state of a location without a charger', async () => {
+    const live = serveLiveState()
+    server.use(live.handler)
+    renderNow()
+
+    expect(await screen.findByText('Cheap now')).toBeInTheDocument()
+    expect(live.calls.state).toBe(0)
+    expect(screen.queryByText(/Car charging now/)).not.toBeInTheDocument()
   })
 })
