@@ -31,7 +31,8 @@ Chosen with Roy on 2026-11-24:
 ### Session 2026-11-25
 
 - Roy: while the car charges, the Now page also shows a tile, below "Last 3 hours" and above "What Norgespris has
-  saved", with the same state and figures as the Car tab: "Charging · 4,5 kW · 25,0 kWh this charge · charging since
+  saved", with the same state and figures as the Car tab, in place of the line in "Right now", which is removed; the
+  drawing waits for now: "Charging · 4,5 kW · 25,0 kWh this charge · charging since
   16:37 · plugged in at 15:52 · updated 1 minute ago" (FR-013).
 
 ## User Scenarios & Testing _(mandatory)_
@@ -102,6 +103,9 @@ repeats. Unplug the car: within about 3 minutes the line stops and the cable is 
 
 ### User Story 2 - See a running charge on the Now page (Priority: P1)
 
+> **Changed 2026-11-25** (Roy): the line in "Right now" is removed; the Now page shows the "Car charging" tile of
+> FR-013 instead. The scenarios below hold for that tile.
+
 While the car charges, the Now page shows a line in the "Right now" card: "Car charging now: 4,4 kW · 13,0 kWh this
 charge · since 16:37". In every other state, there is no line.
 
@@ -152,8 +156,7 @@ started. When the charge ends, the line is gone within about 3 minutes.
   charger last reported.
 - **FR-003**: The Car tab MUST say how long ago the state was updated ("updated 2 min ago"), and this text MUST move on
   between updates.
-- **FR-004**: The Now page MUST show "Car charging now: {kW} · {kWh} this charge · since {time}" in the "Right now"
-  card while, and only while, the state is charging.
+- **FR-004**: _Replaced by FR-013 on 2026-11-25._ The Now page MUST NOT show a car line in the "Right now" card.
 - **FR-005**: The app MUST ask for the state every 3 minutes while a page that shows it is open, and MUST NOT ask for a
   location without a car charger.
 - **FR-006**: When the state can't be read, the Car tab MUST say it is unavailable right now and the Now page MUST show

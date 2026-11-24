@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LIVE_STATES, liveState } from '../../test/evCharger'
-import { carMonth, chargingNowLine, formatDuration, liveView, sessionTimes } from './evCharger'
+import { carMonth, formatDuration, liveView, sessionTimes } from './evCharger'
 import type { DailyCostItem, EvChargerDayPart, EvChargerSession } from './types'
 
 const part = (kwh: number, hoursWithoutMeterReading = 0): EvChargerDayPart => ({
@@ -192,25 +192,4 @@ describe('liveView (spec 017)', () => {
       'updated 5 minutes ago',
     )
   })
-})
-
-describe('chargingNowLine (spec 017)', () => {
-  it('gives the line while charging', () => {
-    expect(chargingNowLine(live('charging'), NOW)).toBe(
-      'Car charging now: 4,4 kW · 13,0 kWh this charge · since 16:37',
-    )
-  })
-
-  it('leaves out a missing figure with its separator', () => {
-    expect(chargingNowLine(live('charging', { sessionKwh: null }), NOW)).toBe(
-      'Car charging now: 4,4 kW · since 16:37',
-    )
-  })
-
-  it.each(['connected', 'finished', 'noCar', 'unknown', 'offline', 'noCharger'] as const)(
-    'gives no line when %s',
-    (state) => {
-      expect(chargingNowLine(live(state), NOW)).toBeNull()
-    },
-  )
 })

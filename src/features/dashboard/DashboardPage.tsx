@@ -61,7 +61,7 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <NowCard locationId={selected.id} hasEvCharger={selected.hasEvCharger === true} />
+      <NowCard locationId={selected.id} />
       <RecentUsage locationId={selected.id} hasWaterHeater={selected.hasWaterHeater === true} />
       {selected.hasEvCharger === true && <CarChargingCard locationId={selected.id} />}
       <SavingCard
