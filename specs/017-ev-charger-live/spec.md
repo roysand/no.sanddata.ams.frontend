@@ -167,8 +167,9 @@ started. When the charge ends, the line is gone within about 3 minutes.
 - **FR-009**: Times MUST be shown in Oslo time, with the date for a time before today.
 - **FR-010**: The Car tab's hint about a charge in progress MUST be reworded to fit the new state card.
 - **FR-013**: While the car charges, the Now page MUST show a "Car charging" tile below "Last 3 hours" and above
-  "What Norgespris has saved", with the same state, figures and age as the Car tab's tile, without the drawing. In
-  every other state, while loading and when the state is unavailable, the tile MUST NOT be shown.
+  "What Norgespris has saved", with the same figures and age as the Car tab's tile, left-aligned, without the state's
+  heading (the title says it) and without the drawing. In every other state, while loading and when the state is
+  unavailable, the tile MUST NOT be shown.
 - **FR-011**: The state tile MUST show a drawing of a car joined by a cable to a charger. While charging, a green line
   MUST run along the cable from the charger to the car and start again from the charger, without end; in other
   states the drawing MUST follow User Story 3.

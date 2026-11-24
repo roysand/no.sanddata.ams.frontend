@@ -5,12 +5,12 @@ import { LIVE_STATES, liveState, serveLiveState } from '../../test/evCharger'
 import { CarChargingCard } from './EvChargerStateCard'
 
 describe('CarChargingCard on the Now page (spec 017)', () => {
-  it('shows the state, the figures and how long ago it was read while the car charges', async () => {
+  it('shows the figures and how long ago it was read while the car charges, without a state heading', async () => {
     server.use(serveLiveState(liveState()).handler)
     renderWithQuery(<CarChargingCard locationId="l1" />)
 
     const tile = await screen.findByRole('region', { name: 'Car charging' })
-    expect(tile).toHaveTextContent('Charging')
+    expect(screen.queryByText('Charging', { exact: true })).not.toBeInTheDocument()
     expect(tile).toHaveTextContent(
       /4,4 kW · 13,0 kWh this charge · charging since (24\.11\. )?16:37 · plugged in at (24\.11\. )?15:52/,
     )
