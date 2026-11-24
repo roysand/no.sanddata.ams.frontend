@@ -1,15 +1,8 @@
-import { ArrowDownIcon, ArrowUpIcon, PlugZapIcon } from 'lucide-react'
+import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isAboveCap } from './cap'
-import { chargingNowLine } from './evCharger'
-import {
-  useCurrentHourCost,
-  useDayPrices,
-  useEvChargerState,
-  useLatestMeasurement,
-  useYesterdayHour,
-} from './hooks'
+import { useCurrentHourCost, useDayPrices, useLatestMeasurement, useYesterdayHour } from './hooks'
 import {
   formatClock,
   formatClockSeconds,
@@ -38,38 +31,7 @@ function ordinal(n: number): string {
   return `${n}${{ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th'}`
 }
 
-/**
- * The car's charge while it runs (spec 017, US2), below the house's figures, which it never changes. Nothing in any
- * other state, after a failed read, or for a location without a charger (then nothing is asked).
- */
-function CarChargingNow({
-  locationId,
-  hasEvCharger,
-}: {
-  locationId: string
-  hasEvCharger: boolean
-}) {
-  const { data, error } = useEvChargerState(locationId, hasEvCharger)
-  const line = hasEvCharger && data && !error ? chargingNowLine(data, new Date()) : null
-  if (!line) return null
-  return (
-    <p className="mt-3 flex items-center gap-1.5 text-sm font-semibold">
-      <PlugZapIcon
-        className="size-4 shrink-0 text-green-600 dark:text-green-400"
-        aria-hidden="true"
-      />
-      {line}
-    </p>
-  )
-}
-
-export function NowCard({
-  locationId,
-  hasEvCharger = false,
-}: {
-  locationId: string
-  hasEvCharger?: boolean
-}) {
+export function NowCard({ locationId }: { locationId: string }) {
   const current = useCurrentHourCost(locationId)
   const latest = useLatestMeasurement(locationId)
   const prices = useDayPrices(locationId)
@@ -178,8 +140,6 @@ export function NowCard({
             </dt>
           </div>
         </dl>
-
-        <CarChargingNow locationId={locationId} hasEvCharger={hasEvCharger} />
 
         <p className="mt-3 text-xs text-muted-foreground">
           Prices include VAT, the grid charge and taxes. The supplier&apos;s monthly fee is not

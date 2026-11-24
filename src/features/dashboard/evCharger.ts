@@ -147,14 +147,3 @@ export function liveView(live: EvChargerLiveState, now: Date): LiveView | null {
     age: live.readAt ? formatAge((now.getTime() - new Date(live.readAt).getTime()) / 1000) : null,
   }
 }
-
-/** The Now page's line, only while charging (spec 017, US2): "Car charging now: 4,4 kW · 13,0 kWh this charge · since 16:37". */
-export function chargingNowLine(live: EvChargerLiveState, now: Date): string | null {
-  if (live.state !== 'charging') return null
-  const parts = [
-    live.powerKw !== null ? formatKw(live.powerKw) : null,
-    live.sessionKwh !== null ? `${formatKwh1(live.sessionKwh)} this charge` : null,
-    live.chargingSince ? `since ${formatOsloTimeOrDate(live.chargingSince, now)}` : null,
-  ].filter((part) => part !== null)
-  return parts.length === 0 ? 'Car charging now' : `Car charging now: ${parts.join(' · ')}`
-}

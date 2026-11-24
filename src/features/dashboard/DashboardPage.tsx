@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CapacityCard } from './CapacityCard'
 import { ExpectedBillCard } from './ExpectedBillCard'
+import { CarChargingCard } from './EvChargerStateCard'
 import { NowCard } from './NowCard'
 import { CheapestTimeCard } from './CheapestTimeCard'
 import { PriceTimeline } from './PriceTimeline'
@@ -60,8 +61,9 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <NowCard locationId={selected.id} hasEvCharger={selected.hasEvCharger === true} />
+      <NowCard locationId={selected.id} />
       <RecentUsage locationId={selected.id} hasWaterHeater={selected.hasWaterHeater === true} />
+      {selected.hasEvCharger === true && <CarChargingCard locationId={selected.id} />}
       <SavingCard
         locationId={selected.id}
         hasNorgesPriceAgreement={selected.hasNorgesPriceAgreement}
