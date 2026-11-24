@@ -69,7 +69,7 @@ None.
 
 - [x] T019 `npm run format`, `npm run lint`, `npm test`, `npm run build` all pass
 - [x] T020 Look at the Car tab at 375 px in light and dark mode against a mocked charging state (headless screenshot) (SC-005)
-- [ ] T021 Run quickstart.md's checks by hand against production (Roy)
+- [x] T021 Run quickstart.md's checks by hand against production (Roy)
 
 ## Dependencies
 
