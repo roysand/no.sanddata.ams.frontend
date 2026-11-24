@@ -338,7 +338,7 @@ describe('EvChargerPage: the charger now (spec 017)', () => {
     expect(within(now).getByText('Charging')).toBeInTheDocument()
     expect(now).toHaveTextContent(
       new RegExp(
-        `4,4 kW · 13,0 kWh this charge · charging since ${onDay}16:37 · plugged in at ${onDay}15:52`,
+        `4,4 kW charging speed · 13,0 kWh this charge · charging since ${onDay}16:37 · plugged in at ${onDay}15:52`,
       ),
     )
     expect(within(now).getByText(/^updated /)).toBeInTheDocument()

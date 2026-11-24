@@ -87,6 +87,8 @@ export interface LiveView {
   heading: string
   /** In the order shown, joined by " · ". */
   details: string[]
+  /** The same, on up to three lines for the Now tile: the speed, the charge's kWh, and the times (each a part). */
+  lines: string[][]
   picture: ChargerPicture
   /** The drawing's text for screen readers. */
   label: string
@@ -127,21 +129,28 @@ export function liveView(live: EvChargerLiveState, now: Date): LiveView | null {
   if (live.state === 'noCharger') return null
   const { state } = live
   const at = (iso: string) => formatOsloTimeOrDate(iso, now)
-  const details: string[] = []
-  if (state === 'charging' && live.powerKw !== null) details.push(formatKw(live.powerKw))
-  if (state !== 'offline' && state !== 'noCar' && live.sessionKwh !== null) {
-    details.push(`${formatKwh1(live.sessionKwh)} this charge`)
-  }
-  if (state === 'charging' && live.chargingSince)
-    details.push(`charging since ${at(live.chargingSince)}`)
-  if (state !== 'offline' && live.pluggedInAt) details.push(`plugged in at ${at(live.pluggedInAt)}`)
-  if (state === 'offline' && live.lastReportedAt)
-    details.push(`last reported ${at(live.lastReportedAt)}`)
+  const power =
+    state === 'charging' && live.powerKw !== null
+      ? `${formatKw(live.powerKw)} charging speed`
+      : null
+  const charge =
+    state !== 'offline' && state !== 'noCar' && live.sessionKwh !== null
+      ? `${formatKwh1(live.sessionKwh)} this charge`
+      : null
+  const times = [
+    state === 'charging' && live.chargingSince ? `charging since ${at(live.chargingSince)}` : null,
+    state !== 'offline' && live.pluggedInAt ? `plugged in at ${at(live.pluggedInAt)}` : null,
+    state === 'offline' && live.lastReportedAt ? `last reported ${at(live.lastReportedAt)}` : null,
+  ].filter((text) => text !== null)
+  const lines = [power ? [power] : [], charge ? [charge] : [], times].filter(
+    (line) => line.length > 0,
+  )
 
   const picture = PICTURE[state]
   return {
     heading: HEADING[state],
-    details,
+    details: [power, charge, ...times].filter((text) => text !== null),
+    lines,
     picture,
     label: PICTURE_LABEL[picture],
     age: live.readAt ? formatAge((now.getTime() - new Date(live.readAt).getTime()) / 1000) : null,

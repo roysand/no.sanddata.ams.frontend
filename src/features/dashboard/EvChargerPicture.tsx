@@ -9,15 +9,25 @@ const CABLE =
  * US3; agreed with Roy in picture-preview.html). While charging, a green line runs along the cable from the charger to
  * the car, over and over. The app's own drawing: no car maker's shape, logo or name.
  */
-export function EvChargerPicture({ mode }: { mode: ChargerPicture }) {
+export function EvChargerPicture({
+  mode,
+  className = 'mx-auto block h-auto w-full max-w-sm',
+  cropped = false,
+}: {
+  mode: ChargerPicture
+  /** Its size and place; centred up to 24 rem wide by default. */
+  className?: string
+  /** Without the margin around the car and the charger, for a small drawing. */
+  cropped?: boolean
+}) {
   const charging = mode === 'charging'
   return (
     <svg
-      viewBox="0 0 380 200"
+      viewBox={cropped ? '48 36 324 158' : '0 0 380 200'}
       role="img"
       aria-label={PICTURE_LABEL[mode]}
       data-mode={mode}
-      className={`mx-auto block h-auto w-full max-w-sm ${mode === 'faded' ? 'opacity-45' : ''}`}
+      className={`${className} ${mode === 'faded' ? 'opacity-45' : ''}`}
     >
       <g className={mode === 'noCar' ? 'opacity-25' : undefined}>
         {/* wheels */}
