@@ -5,7 +5,9 @@ import {
   formatCelsius,
   formatClockSeconds,
   formatKw,
+  formatKwh1,
   formatKwh2,
+  formatOsloTimeOrDate,
   formatMonth,
   formatOsloDate,
   formatOsloDateTime,
@@ -158,5 +160,23 @@ describe('addYearsToDate', () => {
 
   it('turns 29 February into 28 February in a year without it', () => {
     expect(addYearsToDate('2028-02-29', 1)).toBe('2029-02-28')
+  })
+})
+
+describe('formatKwh1 and formatOsloTimeOrDate (spec 017)', () => {
+  it('always gives one decimal', () => {
+    expect(plain(formatKwh1(12.962))).toBe('13,0 kWh')
+    expect(plain(formatKwh1(0))).toBe('0,0 kWh')
+  })
+
+  it('gives the time alone on the Oslo day of now, the date and time before it', () => {
+    const now = new Date('2026-11-24T18:35:00Z')
+    expect(formatOsloTimeOrDate('2026-11-24T15:37:41Z', now)).toBe('16:37')
+    expect(formatOsloTimeOrDate('2026-11-23T22:10:00Z', now)).toBe('23.11. 23:10')
+  })
+
+  it('counts just after Oslo midnight as today, though it is still yesterday in UTC', () => {
+    const now = new Date('2026-11-24T08:00:00Z')
+    expect(formatOsloTimeOrDate('2026-11-23T23:05:00Z', now)).toBe('00:05')
   })
 })

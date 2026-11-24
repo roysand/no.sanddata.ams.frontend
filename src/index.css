@@ -198,3 +198,31 @@ body {
     opacity: 0.8;
   }
 }
+
+/*
+ * The car charger's cable while the car charges (spec 017): a green line runs from the charger to the car and starts
+ * again. The path has pathLength 100, so the dash is the whole cable whatever its curve. Still and green for those who
+ * ask for less motion.
+ */
+.cable-flow {
+  stroke-dasharray: 100 100;
+  stroke-dashoffset: 100;
+  animation: cable-flow 1.5s linear infinite;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+@keyframes cable-flow {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cable-flow {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

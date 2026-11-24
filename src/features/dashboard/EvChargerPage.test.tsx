@@ -5,9 +5,10 @@ import { MemoryRouter } from 'react-router-dom'
 import { AuthContext, type AuthContextValue } from '../auth/context'
 import { server } from '../../test/server'
 import { renderWithQuery } from '../../test/render'
+import { LIVE_STATES, liveState, serveLiveState } from '../../test/evCharger'
 import { osloToday } from './format'
 import { EvChargerPage } from './EvChargerPage'
-import type { DailyCostItem, EvChargerDayPart, EvChargerSession } from './types'
+import type { DailyCostItem, EvChargerDayPart, EvChargerLiveState, EvChargerSession } from './types'
 
 const authAs = (roles: string[]): AuthContextValue => ({
   isAuthenticated: true,
@@ -68,14 +69,25 @@ function serve({
   days = defaultDays(),
   sessions = SESSIONS,
   daily,
+  live = liveState(),
 }: {
   locations?: ReturnType<typeof location>[]
   days?: DailyCostItem[]
   sessions?: EvChargerSession[]
   daily?: () => Response
+  live?: Parameters<typeof serveLiveState>[0]
 } = {}) {
-  const calls = { daily: 0, sessions: 0, locations: 0 }
+  const state = serveLiveState(live)
+  const calls = {
+    daily: 0,
+    sessions: 0,
+    locations: 0,
+    get state() {
+      return state.calls.state
+    },
+  }
   server.use(
+    state.handler,
     http.get('*/api/locations', () => {
       calls.locations++
       return HttpResponse.json(locations)
@@ -155,12 +167,14 @@ describe('EvChargerPage', () => {
     expect(screen.queryByText(/had no house reading/)).not.toBeInTheDocument()
   })
 
-  it('explains that a charge in progress shows up after it ends', async () => {
+  it('explains that finished charges show up after they end, and points to the state', async () => {
     serve()
     renderPage()
 
     expect(
-      await screen.findByText('A charge in progress shows here about 15 minutes after it ends.'),
+      await screen.findByText(
+        "Finished charges show here about 15 minutes after they end. The charger's state right now is at the top.",
+      ),
     ).toBeInTheDocument()
   })
 
@@ -195,6 +209,7 @@ describe('EvChargerPage', () => {
     expect(await screen.findByText(/No car charger is connected at Hjemme/)).toBeInTheDocument()
     expect(calls.daily).toBe(0)
     expect(calls.sessions).toBe(0)
+    expect(calls.state).toBe(0)
   })
 
   it('keeps the sessions when the figures fail', async () => {
@@ -306,5 +321,102 @@ describe('EvChargerPage: count the car charger with the house', () => {
     expect(box).toBeEnabled()
     await user.click(box)
     await waitFor(() => expect(bodies).toEqual([{ include: true }]))
+  })
+})
+
+describe('EvChargerPage: the charger now (spec 017)', () => {
+  const live = (state: EvChargerLiveState['state']) => liveState({ state, ...LIVE_STATES[state] })
+  const tile = () => screen.findByRole('region', { name: 'Charger now' })
+  // The fixture's times are on 2026-11-24; on a later day they also carry the date.
+  const onDay = '(24\\.11\\. )?'
+
+  it('shows a charge with its figures, the moving line and how long ago it was read', async () => {
+    serve()
+    renderPage()
+
+    const now = await tile()
+    expect(within(now).getByText('Charging')).toBeInTheDocument()
+    expect(now).toHaveTextContent(
+      new RegExp(
+        `4,4 kW · 13,0 kWh this charge · charging since ${onDay}16:37 · plugged in at ${onDay}15:52`,
+      ),
+    )
+    expect(within(now).getByText(/^updated /)).toBeInTheDocument()
+    const picture = within(now).getByRole('img', { name: 'A car charging from the charger' })
+    expect(within(picture).getByTestId('cable-flow')).toBeInTheDocument()
+  })
+
+  it('shows a connected car without power or a moving line', async () => {
+    serve({ live: live('connected') })
+    renderPage()
+
+    const now = await tile()
+    expect(await within(now).findByText('Connected, not charging')).toBeInTheDocument()
+    expect(now).not.toHaveTextContent('kW ·')
+    const picture = within(now).getByRole('img', {
+      name: 'A car connected to the charger, not charging',
+    })
+    expect(within(picture).queryByTestId('cable-flow')).not.toBeInTheDocument()
+  })
+
+  it('shows a finished charge with its kWh', async () => {
+    serve({ live: live('finished') })
+    renderPage()
+
+    const now = await tile()
+    expect(await within(now).findByText('Finished charging')).toBeInTheDocument()
+    expect(now).toHaveTextContent('24,6 kWh this charge')
+  })
+
+  it('shows no car and no figures when none is connected', async () => {
+    serve({ live: live('noCar') })
+    renderPage()
+
+    const now = await tile()
+    expect(await within(now).findByText('No car connected')).toBeInTheDocument()
+    expect(now).not.toHaveTextContent('kWh')
+    expect(
+      within(now).getByRole('img', { name: 'The charger with no car connected' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows an offline charger with when it last reported', async () => {
+    serve({ live: live('offline') })
+    renderPage()
+
+    const now = await tile()
+    expect(await within(now).findByText('Offline')).toBeInTheDocument()
+    expect(now).toHaveTextContent(new RegExp(`last reported ${onDay}14:10`))
+  })
+
+  it('shows a state it does not know as unknown', async () => {
+    // The API may add states later; the cast sends one the type doesn't allow.
+    serve({ live: { ...live('unknown'), state: 'paused' } as unknown as EvChargerLiveState })
+    renderPage()
+
+    expect(await within(await tile()).findByText('Status unknown')).toBeInTheDocument()
+  })
+
+  it('says the state is unavailable when it cannot be read, and keeps the rest of the tab', async () => {
+    serve({ live: { status: 503, code: 'EvCharger.Unavailable' } })
+    renderPage()
+
+    const now = await tile()
+    expect(
+      await within(now).findByText("The charger's state is unavailable right now."),
+    ).toBeInTheDocument()
+    expect(within(now).queryByTestId('cable-flow')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Charging' })).toBeInTheDocument()
+  })
+
+  it('shows no tile when the location has no charger after all', async () => {
+    serve({ live: live('noCharger') })
+    renderPage()
+
+    expect(await screen.findByRole('region', { name: 'Charging' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Loading the charger's state")).not.toBeInTheDocument(),
+    )
+    expect(screen.queryByRole('region', { name: 'Charger now' })).not.toBeInTheDocument()
   })
 })

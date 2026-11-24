@@ -431,3 +431,28 @@ export interface NorgesPrisStatus {
   /** In `GET /api/locations` order. */
   items: NorgesPrisStatusItem[]
 }
+
+/** The car charger's state right now (API spec 021). Anything else the API sends is read as `unknown`. */
+export type EvChargerLiveStatus =
+  'charging' | 'connected' | 'finished' | 'noCar' | 'unknown' | 'offline' | 'noCharger'
+
+/**
+ * The charger's state right now, read from Zaptec at most every 3 minutes. Shown only: never added to any usage, cost,
+ * bill or Norgespris figure (spec 017, FR-008). Times are UTC ISO.
+ */
+export interface EvChargerLiveState {
+  state: EvChargerLiveStatus
+  /** Null for `noCharger`. */
+  online: boolean | null
+  /** Only while charging. */
+  powerKw: number | null
+  /** The charge's kWh so far: connected, charging and finished; unknown when Zaptec sends it. */
+  sessionKwh: number | null
+  pluggedInAt: string | null
+  /** When charging last started (after a pause, when it resumed). Only while charging. */
+  chargingSince: string | null
+  /** The charger's last check-in; may be null when offline. */
+  lastReportedAt: string | null
+  /** When the API read Zaptec; null only for `noCharger`. */
+  readAt: string | null
+}

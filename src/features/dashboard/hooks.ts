@@ -24,6 +24,7 @@ import {
   getWaterHeaterPower,
   getWaterHeaterState,
   getEvChargerSessions,
+  getEvChargerState,
   setEvChargerInclude,
 } from './api'
 import { osloDayStartUtc, osloMonth, osloToday, sameHourYesterday } from './format'
@@ -339,6 +340,21 @@ export function useWaterHeaterState(locationId: string | undefined) {
     enabled: !!locationId,
     retry: false,
     refetchInterval: (query) => (isNotFound(query.state.error) ? false : ONE_MINUTE),
+  })
+}
+
+/**
+ * The car charger's state right now (spec 017, research R2), every 3 minutes: the API reads Zaptec no more often and
+ * holds a failure for a minute, so asking sooner or retrying adds nothing. Shared by the Car tab and the Now page.
+ * Asked only for a location with a charger; a 404 stops it.
+ */
+export function useEvChargerState(locationId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['ev-charger', 'state', locationId],
+    queryFn: () => getEvChargerState(locationId!),
+    enabled: !!locationId && enabled,
+    retry: false,
+    refetchInterval: (query) => (isNotFound(query.state.error) ? false : 3 * ONE_MINUTE),
   })
 }
 

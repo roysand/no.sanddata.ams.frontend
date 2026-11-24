@@ -1,10 +1,12 @@
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
 import { november2026Estimate } from '../../test/bills'
+import { liveState } from '../../test/evCharger'
 import type { MonthlyBill } from './types'
 import {
   getCurrentHourCost,
   getDailyCost,
+  getEvChargerState,
   getHourlyCost,
   getMonthlyBill,
   getNorgesPrisStatus,
@@ -188,5 +190,29 @@ describe('the car charging cost on the bill (spec 016)', () => {
     const bill = await getMonthlyBill('l1', '2026-11')
 
     expect(bill.evCharger).toMatchObject({ cost: 106.35, pricedAt: 'NorgesPrisPrice' })
+  })
+})
+
+describe('getEvChargerState (spec 017)', () => {
+  const serve = (state: string) =>
+    server.use(
+      http.get('*/api/locations/:id/ev-charger/state', () =>
+        HttpResponse.json({ ...liveState(), state }),
+      ),
+    )
+
+  it('passes a known state through', async () => {
+    serve('finished')
+
+    expect((await getEvChargerState('l1')).state).toBe('finished')
+  })
+
+  it('reads a state the app does not know as unknown, keeping the figures', async () => {
+    serve('paused')
+
+    const live = await getEvChargerState('l1')
+
+    expect(live.state).toBe('unknown')
+    expect(live.sessionKwh).toBe(12.962)
   })
 })
