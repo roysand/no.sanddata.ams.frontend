@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EvChargerPicture } from './EvChargerPicture'
-import { liveView } from './evCharger'
+import { liveView, type LiveView } from './evCharger'
 import { isNotFound, useEvChargerState, useNow } from './hooks'
 
 /**
@@ -37,18 +37,50 @@ export function EvChargerStateCard({ locationId }: { locationId: string }) {
         <CardContent className="space-y-3">
           <EvChargerPicture mode={view?.picture ?? 'faded'} />
           {view ? (
-            <div className="space-y-1 text-center">
-              <p className="text-lg font-bold">{view.heading}</p>
-              {view.details.length > 0 && (
-                <p className="text-sm tabular-nums">{view.details.join(' · ')}</p>
-              )}
-              {view.age && <p className="text-xs text-muted-foreground">{view.age}</p>}
-            </div>
+            <LiveDetails view={view} />
           ) : (
             <p className="text-center text-sm text-muted-foreground">
               The charger&apos;s state is unavailable right now.
             </p>
           )}
+        </CardContent>
+      </Card>
+    </section>
+  )
+}
+
+/** The state, its figures and how long ago it was read: the same on the Car tab and the Now page. */
+function LiveDetails({ view }: { view: LiveView }) {
+  return (
+    <div className="space-y-1 text-center">
+      <p className="text-lg font-bold">{view.heading}</p>
+      {view.details.length > 0 && (
+        <p className="text-sm tabular-nums">{view.details.join(' · ')}</p>
+      )}
+      {view.age && <p className="text-xs text-muted-foreground">{view.age}</p>}
+    </div>
+  )
+}
+
+/**
+ * The Now page's car tile (spec 017, amended 2026-11-25): the same state and figures as the Car tab's tile, shown only
+ * while the car charges. Nothing in any other state, while loading or after a failed read. Render it only for a
+ * location with a charger, so nothing is asked otherwise.
+ */
+export function CarChargingCard({ locationId }: { locationId: string }) {
+  const { data, error } = useEvChargerState(locationId)
+  const now = useNow(30_000)
+  const view = !error && data?.state === 'charging' ? liveView(data, new Date(now)) : null
+  if (!view) return null
+
+  return (
+    <section aria-label="Car charging">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-extrabold">Car charging</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LiveDetails view={view} />
         </CardContent>
       </Card>
     </section>

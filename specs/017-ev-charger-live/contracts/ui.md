@@ -38,3 +38,14 @@ Picture first, then the heading in bold, the details joined by " · ", then the 
 
 - Only for `state === 'charging'`; a missing kWh is left out with its separator.
 - Never for another state, an error, or a location without a charger (no request is made then).
+
+## Now page: the "Car charging" tile (added 2026-11-25, FR-013)
+
+Below "Last 3 hours", above "What Norgespris has saved"; region and title "Car charging". Only for `state ===
+'charging'`, with the same heading, details and age as the Car tab's tile, and no drawing:
+
+```text
+Charging
+4,5 kW · 25,0 kWh this charge · charging since 16:37 · plugged in at 15:52
+updated 1 minute ago
+```
