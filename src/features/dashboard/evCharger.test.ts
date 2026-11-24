@@ -120,11 +120,29 @@ describe('liveView (spec 017)', () => {
   it('gives every figure while charging, in Oslo time', () => {
     expect(liveView(live('charging'), NOW)).toEqual({
       heading: 'Charging',
-      details: ['4,4 kW', '13,0 kWh this charge', 'charging since 16:37', 'plugged in at 15:52'],
+      details: [
+        '4,4 kW charging speed',
+        '13,0 kWh this charge',
+        'charging since 16:37',
+        'plugged in at 15:52',
+      ],
+      lines: [
+        ['4,4 kW charging speed'],
+        ['13,0 kWh this charge'],
+        ['charging since 16:37', 'plugged in at 15:52'],
+      ],
       picture: 'charging',
       label: 'A car charging from the charger',
       age: 'updated 1 minute ago',
     })
+  })
+
+  it('puts a state without power on fewer lines', () => {
+    expect(liveView(live('connected'), NOW)?.lines).toEqual([
+      ['13,0 kWh this charge'],
+      ['plugged in at 15:52'],
+    ])
+    expect(liveView(live('noCar'), NOW)?.lines).toEqual([])
   })
 
   it('gives no power and no charging start when connected or finished', () => {

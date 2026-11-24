@@ -63,8 +63,8 @@ function LiveDetails({ view }: { view: LiveView }) {
 }
 
 /**
- * The Now page's car tile (spec 017, amended 2026-11-25): the Car tab's figures and age, left-aligned and without the
- * state's heading, shown only while the car charges. Nothing in any other state, while loading or after a failed read. Render it only for a
+ * The Now page's car tile (spec 017, amended 2026-11-25): a small drawing with the Car tab's figures beside it, on
+ * three lines, and the age; without the state's heading. Shown only while the car charges. Nothing in any other state, while loading or after a failed read. Render it only for a
  * location with a charger, so nothing is asked otherwise.
  */
 export function CarChargingCard({ locationId }: { locationId: string }) {
@@ -80,9 +80,29 @@ export function CarChargingCard({ locationId }: { locationId: string }) {
           <CardTitle className="text-base font-extrabold">Car charging</CardTitle>
         </CardHeader>
         {/* The title already says the car is charging, so the state's heading is left out (Roy, 2026-11-25). */}
-        <CardContent className="space-y-1">
-          <p className="text-sm tabular-nums">{view.details.join(' · ')}</p>
-          {view.age && <p className="text-xs text-muted-foreground">{view.age}</p>}
+        <CardContent className="flex items-center gap-4">
+          <EvChargerPicture
+            mode={view.picture}
+            cropped
+            className="block h-auto w-28 shrink-0 sm:w-36"
+          />
+          <div className="min-w-0 space-y-0.5">
+            {/* A line too long for a phone wraps between its parts, never inside one. */}
+            {view.lines.map((parts) => (
+              <p key={parts.join()} className="text-sm tabular-nums">
+                {parts.map((part, i) => (
+                  <span key={part}>
+                    {i > 0 && ' '}
+                    <span className="whitespace-nowrap">
+                      {part}
+                      {i < parts.length - 1 && ' ·'}
+                    </span>
+                  </span>
+                ))}
+              </p>
+            ))}
+            {view.age && <p className="pt-1 text-xs text-muted-foreground">{view.age}</p>}
+          </div>
         </CardContent>
       </Card>
     </section>
