@@ -25,6 +25,7 @@ import {
   getWaterHeaterState,
   getEvChargerSessions,
   getEvChargerState,
+  getHotWater,
   setEvChargerInclude,
 } from './api'
 import { osloDayStartUtc, osloMonth, osloToday, sameHourYesterday } from './format'
@@ -38,7 +39,7 @@ import {
   rowsFromHourly,
   type UsageRow,
 } from './series'
-import type { Consumption, DayPrices, HourlyCostItem } from './types'
+import type { Consumption, DayPrices, HotWaterPeriod, HourlyCostItem } from './types'
 import { usualPower } from './usual'
 
 const ONE_MINUTE = 60_000
@@ -355,6 +356,26 @@ export function useEvChargerState(locationId: string | undefined, enabled = true
     enabled: !!locationId && enabled,
     retry: false,
     refetchInterval: (query) => (isNotFound(query.state.error) ? false : 3 * ONE_MINUTE),
+  })
+}
+
+/**
+ * The hot water used in a period (spec 018, research R2). The bars of the last period stay while the next loads. Only
+ * the current period changes, so only it is read again, every 5 minutes.
+ */
+export function useHotWater(
+  locationId: string | undefined,
+  period: HotWaterPeriod,
+  date: string,
+  isCurrent: boolean,
+) {
+  return useQuery({
+    queryKey: ['water-heater', 'hot-water', locationId, period, date],
+    queryFn: () => getHotWater(locationId!, period, date),
+    enabled: !!locationId,
+    placeholderData: keepPreviousData,
+    staleTime: 5 * ONE_MINUTE,
+    refetchInterval: isCurrent ? 5 * ONE_MINUTE : false,
   })
 }
 

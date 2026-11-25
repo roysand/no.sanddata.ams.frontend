@@ -7,6 +7,7 @@ import {
   getCurrentHourCost,
   getDailyCost,
   getEvChargerState,
+  getHotWater,
   getHourlyCost,
   getMonthlyBill,
   getNorgesPrisStatus,
@@ -214,5 +215,31 @@ describe('getEvChargerState (spec 017)', () => {
 
     expect(live.state).toBe('unknown')
     expect(live.sessionKwh).toBe(12.962)
+  })
+})
+
+describe('getHotWater (spec 018)', () => {
+  it('asks for the period and the date', async () => {
+    const asked: { url?: URL } = {}
+    server.use(
+      http.get('*/api/locations/l1/water-heater/hot-water', ({ request }) => {
+        asked.url = new URL(request.url)
+        return HttpResponse.json({
+          locationId: 'l1',
+          period: 'week',
+          from: '2026-11-22T23:00:00Z',
+          to: '2026-11-29T23:00:00Z',
+          totalLitres: null,
+          sampledMinutes: 0,
+          items: [],
+        })
+      }),
+    )
+
+    const answer = await getHotWater('l1', 'week', '2026-11-23')
+
+    expect(asked.url?.searchParams.get('period')).toBe('week')
+    expect(asked.url?.searchParams.get('date')).toBe('2026-11-23')
+    expect(answer.totalLitres).toBeNull()
   })
 })
