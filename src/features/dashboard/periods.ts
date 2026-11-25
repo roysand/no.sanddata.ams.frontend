@@ -115,7 +115,7 @@ function monthWindow(year: number): PeriodWindow {
 }
 
 /** "Mon 17 Nov", with the year when it is not this year. */
-function dayName(date: string, thisYear: number) {
+export function dayName(date: string, thisYear: number) {
   const text = dayTitle.format(anchor(date))
   return named(Number(date.slice(0, 4)) === thisYear ? text : `${text} ${date.slice(0, 4)}`)
 }
@@ -129,7 +129,7 @@ function weekName(first: string, last: string, thisYear: number) {
 }
 
 /** "October", or "October 2025" when it is not this year. */
-function monthTitle(year: number, month: number, thisYear: number) {
+export function monthTitle(year: number, month: number, thisYear: number) {
   const name = monthLong.format(new Date(Date.UTC(year, month - 1, 15)))
   return named(year === thisYear ? name : `${name} ${year}`)
 }

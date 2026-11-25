@@ -10,6 +10,8 @@ import type {
   EvChargerLiveState,
   EvChargerLiveStatus,
   EvChargerSession,
+  HotWater,
+  HotWaterPeriod,
   HourlyCostItem,
   LatestMeasurement,
   MonthlyBill,
@@ -208,6 +210,16 @@ export function setEvChargerInclude(locationId: string, include: boolean) {
 export function getWaterHeaterPower(locationId: string, fromUtc: string, toUtc: string) {
   return api.get<WaterHeaterPower>(
     `/api/locations/${locationId}/water-heater/power?${query({ from: fromUtc, to: toUtc })}`,
+  )
+}
+
+/**
+ * The hot water used in the period of `period` that holds `date` (an Oslo yyyy-MM-dd), per hour, day or month (API
+ * spec 020). Both are always sent, so the answer never depends on the server's idea of today.
+ */
+export function getHotWater(locationId: string, period: HotWaterPeriod, date: string) {
+  return api.get<HotWater>(
+    `/api/locations/${locationId}/water-heater/hot-water?${query({ period, date })}`,
   )
 }
 

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNotFound, useWaterHeaterState } from './hooks'
 import { WaterHeaterCard } from './WaterHeaterCard'
+import { HotWaterCard } from './HotWaterCard'
 import { WaterHeaterEnergyCard } from './WaterHeaterEnergyCard'
 
 /**
@@ -50,6 +51,7 @@ export function WaterHeaterPage() {
     <div className="space-y-4">
       <WaterHeaterCard locationId={selected.id} />
       {/* Not before the state has said there is a heater, so a location without one makes no extra requests. */}
+      {!state.isLoading && <HotWaterCard locationId={selected.id} />}
       {!state.isLoading && <WaterHeaterEnergyCard locationId={selected.id} />}
     </div>
   )

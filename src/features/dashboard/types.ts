@@ -456,3 +456,28 @@ export interface EvChargerLiveState {
   /** When the API read Zaptec; null only for `noCharger`. */
   readAt: string | null
 }
+
+export type HotWaterPeriod = 'day' | 'week' | 'month' | 'year'
+
+/** The hot water used in one part of a period: an hour, a day or a month (API spec 020). */
+export interface HotWaterItem {
+  /** UTC ISO */
+  start: string
+  /** Whole litres of 40 °C water; null when the part has no sampled time (a gap, never 0). */
+  litres: number | null
+  sampledMinutes: number
+}
+
+/** The litres of 40 °C water (V40) used in a period, per part so far, with the total (API spec 020). */
+export interface HotWater {
+  locationId: string
+  period: HotWaterPeriod
+  /** The whole period in UTC, also after now. */
+  from: string
+  to: string
+  /** The sum of the items' litres; null when no item has litres. */
+  totalLitres: number | null
+  sampledMinutes: number
+  /** One per part that starts before now, in time order. */
+  items: HotWaterItem[]
+}
