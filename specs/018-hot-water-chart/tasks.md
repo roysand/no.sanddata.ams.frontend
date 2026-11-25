@@ -66,7 +66,7 @@ None.
 
 - [x] T017 `npm run lint`, `npm test`, `npm run build` pass; `prettier --check` on the changed files only
 - [x] T018 Look at the card at 375 px in light and dark mode for a day with a gap and a partial hour, and a month (headless screenshot; harness not committed) (SC-004)
-- [ ] T019 Run quickstart.md's checks by hand against production (Roy)
+- [x] T019 Run quickstart.md's checks by hand against production (Roy)
 - [x] T020 Remove `specs/_backlog/water-heater-hot-water-frontend.md` from the API repository in its own small PR (a separate worktree): API PR #78
 
 ## Dependencies
