@@ -89,6 +89,8 @@ export interface UsageRow {
   expectedMinutes?: number
   /** The car's kWh when it is counted with the house; absent or null otherwise. Never priced. */
   carKwh?: number | null
+  /** The car's own kWh, counted with the house or not, for the Car tab's chart (spec 019); null without charging. */
+  carOwnKwh?: number | null
 }
 
 const HOUR_IN_MS = 3_600_000
@@ -113,6 +115,7 @@ export function rowsFromHourly(items: HourlyCostItem[], now = new Date()): Usage
       nok: item.actual?.cost ?? null,
       ...heaterFields(item.waterHeater),
       carKwh: carKwhOf(item.evCharger),
+      carOwnKwh: item.evCharger?.kwh ?? null,
       expectedMinutes: elapsedMinutes(start, new Date(start.getTime() + HOUR_IN_MS), now),
     }
   })
@@ -138,6 +141,7 @@ export function rowsFromDaily(
     const cost = item.actual?.cost ?? null
     const part = item.waterHeater
     const car = carKwhOf(item.evCharger)
+    const own = item.evCharger?.kwh ?? null
     const expected = part ? dayMinutes(item.date, now) : 0
     const entry = rows.get(key)
     if (!entry) {
@@ -149,6 +153,7 @@ export function rowsFromDaily(
           ...heaterFields(part),
           expectedMinutes: expected,
           carKwh: car,
+          carOwnKwh: own,
         },
         parts: part ? [part] : [],
       })
@@ -156,6 +161,7 @@ export function rowsFromDaily(
       const { row } = entry
       row.kwh += item.totalKwh
       if (car !== null) row.carKwh = (row.carKwh ?? 0) + car
+      if (own !== null) row.carOwnKwh = (row.carOwnKwh ?? 0) + own
       row.nok = cost === null ? row.nok : (row.nok ?? 0) + cost
       if (part) entry.parts.push(part)
       row.expectedMinutes = (row.expectedMinutes ?? 0) + expected
@@ -164,6 +170,15 @@ export function rowsFromDaily(
   return [...rows.values()].map(({ row, parts }) =>
     byMonth ? { ...row, ...heaterFields(sumParts(parts)) } : row,
   )
+}
+
+/**
+ * The car's own kWh as rows of their own, for the Car tab's chart (spec 019): a slot without charging is 0 kWh, and a
+ * period without any charging has no rows, so the chart says so instead of drawing zeros. In kWh only: never priced.
+ */
+export function carUsageRows(rows: UsageRow[]): UsageRow[] {
+  if (!rows.some((row) => row.carOwnKwh != null)) return []
+  return rows.map((row) => ({ key: row.key, kwh: row.carOwnKwh ?? 0, nok: null }))
 }
 
 function valuesBySlot(slots: Slot[], rows: UsageRow[], unit: Unit): (number | null)[] {

@@ -1,6 +1,7 @@
 import {
   buildRecentUsage,
   buildUsageSeries,
+  carUsageRows,
   currentPowerKw,
   hourTrend,
   rowsFromDaily,
@@ -579,6 +580,59 @@ describe('car charging in the chart series (spec 013)', () => {
     )
 
     expect(series.points[0]).toMatchObject({ current: 4, previous: 3 })
+  })
+
+  describe("the car's own kWh, for the Car tab's chart (spec 019)", () => {
+    it('gives the car its own kWh whether or not it is counted with the house', () => {
+      const [counted, apart, none] = rowsFromHourly(
+        [
+          hourItem('2026-11-20T18:00:00Z', 1, car(3, true)),
+          hourItem('2026-11-20T19:00:00Z', 1, car(2, false)),
+          hourItem('2026-11-20T20:00:00Z', 1, null),
+        ],
+        LATER,
+      )
+
+      expect(counted.carOwnKwh).toBe(3)
+      expect(apart).toMatchObject({ carKwh: null, carOwnKwh: 2 })
+      expect(none.carOwnKwh).toBeNull()
+    })
+
+    it("sums the days' own car kWh into months for the year", () => {
+      const rows = rowsFromDaily(
+        [
+          dayItem('2026-11-19', 20, car(10, false)),
+          dayItem('2026-11-20', 20, car(5, true)),
+          dayItem('2026-10-20', 20, null),
+        ],
+        true,
+        LATER,
+      )
+
+      expect(rows.find((row) => row.key === '2026-11')?.carOwnKwh).toBe(15)
+      expect(rows.find((row) => row.key === '2026-10')?.carOwnKwh).toBeNull()
+    })
+
+    it('turns house rows into car rows, a slot without charging being 0 kWh', () => {
+      const rows = rowsFromHourly(
+        [
+          hourItem('2026-11-20T18:00:00Z', 1, car(3, false)),
+          hourItem('2026-11-20T19:00:00Z', 1, null),
+        ],
+        LATER,
+      )
+
+      expect(carUsageRows(rows)).toEqual([
+        { key: rows[0].key, kwh: 3, nok: null },
+        { key: rows[1].key, kwh: 0, nok: null },
+      ])
+    })
+
+    it('gives no rows for a period without any charging, so nothing is charted as 0', () => {
+      const rows = rowsFromHourly([hourItem('2026-11-20T18:00:00Z', 1, null)], LATER)
+
+      expect(carUsageRows(rows)).toEqual([])
+    })
   })
 })
 

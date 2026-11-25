@@ -492,4 +492,71 @@ describe('UsageChart car charging (spec 013)', () => {
     expect(screen.queryByText('Car charging', { selector: 'li' })).not.toBeInTheDocument()
     expect(screen.queryByText(/Car charging/)).not.toBeInTheDocument()
   })
+
+  describe("the Car tab's chart (spec 019)", () => {
+    it.each([true, false])(
+      "charts the car's own kWh, counted with the house: %s",
+      async (included) => {
+        useCarApi(included)
+        renderWithQuery(<UsageChart locationId="l1" measure="car" />)
+
+        expect(await screen.findByText('Car usage')).toBeInTheDocument()
+        expect(await screen.findByText(/Today so far/)).toBeInTheDocument()
+        expect(screen.getByText('3 kWh', { selector: 'p' })).toBeInTheDocument()
+      },
+    )
+
+    it('is in kWh only, with no unit switch and no split', async () => {
+      useCarApi(true)
+      const user = userEvent.setup()
+      renderWithQuery(<UsageChart locationId="l1" measure="car" />)
+      await screen.findByText(/Today so far/)
+
+      expect(screen.queryByRole('button', { name: 'NOK' })).not.toBeInTheDocument()
+      const chart = screen.getByRole('group', { name: /^Car charging, Today compared with/ })
+      chart.focus()
+      await user.keyboard('{ArrowRight}')
+      expect(await screen.findByText(/3 kWh/, { selector: 'p[aria-live] b' })).toBeInTheDocument()
+      expect(screen.queryByText(/Everything else/)).not.toBeInTheDocument()
+    })
+
+    it('says there is no charging yet instead of drawing zeros, and so for an earlier day', async () => {
+      useApi()
+      const user = userEvent.setup()
+      renderWithQuery(<UsageChart locationId="l1" measure="car" />)
+
+      expect(await screen.findByText('No charging yet')).toBeInTheDocument()
+      expect(screen.queryByRole('group', { name: /Car charging/ })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Previous day' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Week' }))
+      expect(await screen.findByText('No charging yet')).toBeInTheDocument()
+    })
+
+    it('says there was no charging in an earlier period', async () => {
+      useCarApi(true)
+      const user = userEvent.setup()
+      renderWithQuery(<UsageChart locationId="l1" measure="car" />)
+      await screen.findByText(/Today so far/)
+
+      await user.click(screen.getByRole('button', { name: 'Previous day' }))
+
+      expect(await screen.findByText('No charging in Yesterday')).toBeInTheDocument()
+    })
+
+    it("remembers its period apart from Now's chart", async () => {
+      useApi()
+      localStorage.setItem('ams.chart', JSON.stringify({ period: 'week', unit: 'nok' }))
+      const user = userEvent.setup()
+      renderWithQuery(<UsageChart locationId="l1" measure="car" />)
+      await screen.findByText('Car usage')
+
+      await user.click(screen.getByRole('button', { name: 'Month' }))
+
+      expect(JSON.parse(localStorage.getItem('ams.car-chart')!)).toMatchObject({ period: 'month' })
+      expect(JSON.parse(localStorage.getItem('ams.chart')!)).toEqual({
+        period: 'week',
+        unit: 'nok',
+      })
+    })
+  })
 })

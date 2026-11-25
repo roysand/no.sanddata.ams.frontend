@@ -113,15 +113,6 @@ export interface EvChargerBillPart extends EvChargerDayPart {
  */
 export type EvChargerPricedAt = 'NorgesPrisPrice' | 'HousePrice' | (string & {})
 
-/** One completed charging session. */
-export interface EvChargerSession {
-  /** UTC ISO */
-  start: string
-  end: string
-  kwh: number
-  estimated: boolean
-}
-
 export interface HourlyCostItem {
   hourStart: string
   consumptionKwh: number

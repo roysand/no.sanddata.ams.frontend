@@ -8,7 +8,8 @@ import { renderWithQuery } from '../../test/render'
 import { LIVE_STATES, liveState, serveLiveState } from '../../test/evCharger'
 import { osloToday } from './format'
 import { EvChargerPage } from './EvChargerPage'
-import type { DailyCostItem, EvChargerDayPart, EvChargerLiveState, EvChargerSession } from './types'
+import { periodPlan } from './periods'
+import type { DailyCostItem, EvChargerDayPart, EvChargerLiveState } from './types'
 
 const authAs = (roles: string[]): AuthContextValue => ({
   isAuthenticated: true,
@@ -59,21 +60,38 @@ const day = (date: string, evCharger: EvChargerDayPart | null): DailyCostItem =>
 const defaultDays = () =>
   TODAY === MONTH_START ? [day(TODAY, part(7))] : [day(MONTH_START, part(2)), day(TODAY, part(5))]
 
-const SESSIONS: EvChargerSession[] = [
-  { start: '2026-11-20T16:02:11Z', end: '2026-11-20T20:40:03Z', kwh: 23.418, estimated: false },
-  { start: '2026-11-18T22:10:00Z', end: '2026-11-19T01:30:00Z', kwh: 12.5, estimated: true },
-]
+/** Today's charging as the hourly figures give it: all in the first hour, so it is always before now. */
+const TODAY_KWH = TODAY === MONTH_START ? 7 : 5
+
+/** The hourly figures the car chart reads for the day (spec 019): today's first hour charged, yesterday nothing. */
+function hourlyItems(from: string | null, carKwh: number) {
+  const today = periodPlan('day', new Date()).current
+  if (from !== today.fromUtc || carKwh === 0) return []
+  return [
+    {
+      hourStart: today.fromUtc,
+      consumptionKwh: 1,
+      totalKwh: 1,
+      pricingModel: 'Spot',
+      actual: { ratePerKwh: 1, cost: 1 },
+      comparison: null,
+      waterHeater: null,
+      evCharger: { kwh: carKwh, estimated: false, included: false },
+    },
+  ]
+}
 
 function serve({
   locations = [location()],
   days = defaultDays(),
-  sessions = SESSIONS,
+  carKwh = TODAY_KWH,
   daily,
   live = liveState(),
 }: {
   locations?: ReturnType<typeof location>[]
   days?: DailyCostItem[]
-  sessions?: EvChargerSession[]
+  /** Today's charging in the hourly figures. */
+  carKwh?: number
   daily?: () => Response
   live?: Parameters<typeof serveLiveState>[0]
 } = {}) {
@@ -96,9 +114,14 @@ function serve({
       calls.daily++
       return daily ? daily() : HttpResponse.json({ items: days })
     }),
+    http.get('*/api/electricity-cost/hourly', ({ request }) => {
+      const items = hourlyItems(new URL(request.url).searchParams.get('from'), carKwh)
+      return HttpResponse.json({ items, page: 1, pageSize: 500, totalCount: items.length })
+    }),
+    // The session list is gone (spec 019): counted to show it is never asked for.
     http.get('*/api/locations/:id/ev-charger/sessions', () => {
       calls.sessions++
-      return HttpResponse.json({ items: sessions })
+      return HttpResponse.json({ items: [] })
     }),
   )
   return calls
@@ -141,10 +164,11 @@ describe('EvChargerPage', () => {
   })
 
   it('says there is no charging yet, never 0 kWh', async () => {
-    serve({ days: [day(TODAY, null)], sessions: [] })
+    serve({ days: [day(TODAY, null)], carKwh: 0 })
     renderPage()
 
-    expect(await screen.findAllByText('No charging yet')).toHaveLength(2)
+    await screen.findByText('Car usage')
+    expect(await within(charging()).findAllByText('No charging yet')).toHaveLength(2)
     expect(screen.queryByText(/^0 kWh/)).not.toBeInTheDocument()
   })
 
@@ -167,39 +191,37 @@ describe('EvChargerPage', () => {
     expect(screen.queryByText(/had no house reading/)).not.toBeInTheDocument()
   })
 
-  it('explains that finished charges show up after they end, and points to the state', async () => {
+  it('explains that a finished charge shows up after it ends, and points to the state', async () => {
     serve()
     renderPage()
 
     expect(
       await screen.findByText(
-        "Finished charges show here about 15 minutes after they end. The charger's state right now is at the top.",
+        "A finished charge shows here and in the chart below about 15 minutes after it ends. The charger's state right now is at the top.",
       ),
     ).toBeInTheDocument()
   })
 
-  it('lists the sessions newest first, with times, kWh and duration, and marks estimates', async () => {
+  it('charts the car below "Charging" in place of the session list, and never asks for the sessions', async () => {
+    const calls = serve()
+    renderPage()
+
+    const title = await screen.findByText('Car usage')
+    expect(
+      charging().compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(screen.queryByText('Sessions, last 30 days')).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Charging sessions' })).not.toBeInTheDocument()
+    expect(calls.sessions).toBe(0)
+  })
+
+  it('gives the same total for today as "Today" in "Charging" (spec 019, FR-004)', async () => {
     serve()
     renderPage()
 
-    const list = await screen.findByRole('list', { name: 'Charging sessions' })
-    const rows = within(list).getAllByRole('listitem')
-    expect(rows).toHaveLength(2)
-    expect(rows[0]).toHaveTextContent('Fri 20.11 · 17:02–21:40')
-    expect(rows[0]).toHaveTextContent('23,42 kWh')
-    expect(rows[0]).toHaveTextContent('4 h 38 min')
-    expect(within(rows[0]).queryByText('estimated')).not.toBeInTheDocument()
-    expect(rows[1]).toHaveTextContent('Wed 18.11 · 23:10–19.11 02:30')
-    expect(within(rows[1]).getByText('estimated')).toBeInTheDocument()
-  })
-
-  it('says when there are no sessions in the last 30 days', async () => {
-    serve({ sessions: [] })
-    renderPage()
-
-    expect(
-      await screen.findByText('No completed charging sessions in the last 30 days.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/Today so far/)).toBeInTheDocument()
+    await waitFor(() => expect(rowText('Today')).toBe(`${TODAY_KWH} kWh`))
+    expect(screen.getByText(`${TODAY_KWH} kWh`, { selector: 'p' })).toBeInTheDocument()
   })
 
   it('says so for a location without a charger, and asks for nothing', async () => {
@@ -212,7 +234,7 @@ describe('EvChargerPage', () => {
     expect(calls.state).toBe(0)
   })
 
-  it('keeps the sessions when the figures fail', async () => {
+  it('keeps the chart when the daily figures fail', async () => {
     serve({
       daily: () =>
         HttpResponse.json({ errors: { generalErrors: ['Daily failed'] } }, { status: 500 }),
@@ -220,7 +242,7 @@ describe('EvChargerPage', () => {
     renderPage()
 
     expect(await screen.findByText('Daily failed')).toBeInTheDocument()
-    expect(await screen.findByRole('list', { name: 'Charging sessions' })).toBeInTheDocument()
+    expect(await screen.findByText(/Today so far/)).toBeInTheDocument()
   })
 })
 
