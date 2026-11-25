@@ -23,7 +23,6 @@ import {
   getNorgesPrisStatus,
   getWaterHeaterPower,
   getWaterHeaterState,
-  getEvChargerSessions,
   getEvChargerState,
   getHotWater,
   setEvChargerInclude,
@@ -399,16 +398,6 @@ export function useCarMonth(locationId: string | undefined) {
   return useQuery({
     queryKey: ['ev-charger', 'month', locationId, month],
     queryFn: () => getDailyCostRange(locationId!, `${month}-01`, osloToday(now)),
-    enabled: !!locationId,
-    refetchInterval: 15 * ONE_MINUTE,
-  })
-}
-
-/** The completed charging sessions of the last 30 days, every 15 minutes. */
-export function useEvChargerSessions(locationId: string | undefined) {
-  return useQuery({
-    queryKey: ['ev-charger', 'sessions', locationId],
-    queryFn: () => getEvChargerSessions(locationId!),
     enabled: !!locationId,
     refetchInterval: 15 * ONE_MINUTE,
   })

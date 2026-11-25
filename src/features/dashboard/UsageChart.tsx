@@ -9,15 +9,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePeriodData } from './hooks'
 import { formatNok } from './format'
 import { periodPlan, type Period, type Unit } from './periods'
-import { buildUsageSeries, type UsageSeries } from './series'
+import { buildUsageSeries, carUsageRows, type UsageRow, type UsageSeries } from './series'
 import { isolatedDot } from './chartDots'
 
-const STORAGE_KEY = 'ams.chart'
+/** Now's chart and the Car tab's remember their period apart (spec 019, FR-005). */
+const STORAGE_KEY = { house: 'ams.chart', car: 'ams.car-chart' } as const
 const PERIODS: Period[] = ['day', 'week', 'month', 'year']
 
-function readPrefs(): { period: Period; unit: Unit } {
+function readPrefs(key: string): { period: Period; unit: Unit } {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? '{}') as {
       period?: string
       unit?: string
     }
@@ -104,12 +105,32 @@ const config = {
   rest: { label: 'Everything else', color: 'var(--usage)' },
 } satisfies ChartConfig
 
-export function UsageChart({ locationId, large = false }: { locationId: string; large?: boolean }) {
-  const [prefs, setPrefs] = useState(readPrefs)
+/**
+ * The usage tile: a day, week, month or year against the period before. `measure="car"` charts the car charger's own
+ * kWh instead, for the Car tab (spec 019): kWh only, in the car's colour, from the same figures and cache as Now's.
+ */
+export function UsageChart({
+  locationId,
+  large = false,
+  measure = 'house',
+}: {
+  locationId: string
+  large?: boolean
+  measure?: 'house' | 'car'
+}) {
+  const car = measure === 'car'
+  const storageKey = STORAGE_KEY[measure]
+  const [prefs, setPrefs] = useState(() => readPrefs(storageKey))
   const [active, setActive] = useState<number | null>(null)
   // 0 = the period going on now; -1 = the one before. Not remembered: the chart always opens on now.
   const [offset, setOffset] = useState(0)
-  const { period, unit } = prefs
+  const period = prefs.period
+  // The car is never priced per hour or day: its chart is in kWh only.
+  const unit: Unit = car ? 'kwh' : prefs.unit
+  const rowsOf = (rows: UsageRow[]) => (car ? carUsageRows(rows) : rows)
+  // The car isn't charged every day, so its day isn't compared with yesterday; its week, month and year are (spec 019).
+  const previousOf = (rows: UsageRow[]) => (car && period === 'day' ? [] : rowsOf(rows))
+  const main = car ? 'var(--ev-charger)' : 'var(--usage)'
   const { data, isLoading, isPlaceholderData, error } = usePeriodData(locationId, period, offset)
   // The title of the period asked for, shown at once while its data loads.
   const wanted = periodPlan(period, new Date(), offset).current
@@ -125,7 +146,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
     setActive(null)
     if (next.period !== undefined && next.period !== prefs.period) setOffset(0)
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+      localStorage.setItem(storageKey, JSON.stringify(value))
     } catch {
       // Storage can be blocked; the choice then lasts until the page is closed.
     }
@@ -144,20 +165,23 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
           { value: 'year', label: 'Year' },
         ]}
       />
-      <Segmented
-        label="Unit"
-        value={unit}
-        onChange={(value) => update({ unit: value })}
-        options={[
-          { value: 'kwh', label: 'kWh' },
-          { value: 'nok', label: 'NOK' },
-        ]}
-      />
+      {!car && (
+        <Segmented
+          label="Unit"
+          value={unit}
+          onChange={(value) => update({ unit: value })}
+          options={[
+            { value: 'kwh', label: 'kWh' },
+            { value: 'nok', label: 'NOK' },
+          ]}
+        />
+      )}
     </div>
   )
 
-  // Stepping back stops at a period that, like the one before it, has no readings: the app does not know when the
-  // first reading was, and a single empty period (the meter was off) should not block the way further back.
+  // Stepping back stops at a period that, like the one before it, has no meter readings, for the car too, which often
+  // has days without charging. The app does not know when the first reading was, and a single empty period (the meter
+  // was off) should not block the way further back.
   const shownSeries =
     data && !isPlaceholderData
       ? buildUsageSeries(
@@ -199,7 +223,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
   const header = (
     <CardHeader>
       <CardTitle className="text-base font-extrabold">
-        {large ? 'Usage and cost' : 'Usage'}
+        {car ? 'Car usage' : large ? 'Usage and cost' : 'Usage'}
       </CardTitle>
       {controls}
       {navigation}
@@ -208,7 +232,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
 
   if (isLoading) {
     return (
-      <Card aria-busy="true" aria-label="Loading usage">
+      <Card aria-busy="true" aria-label={car ? 'Loading car usage' : 'Loading usage'}>
         {header}
         <CardContent>
           <Skeleton className="h-52 w-full" />
@@ -231,18 +255,18 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
   const { plan } = data
   const series: UsageSeries = buildUsageSeries(
     plan.current.slots,
-    data.current,
+    rowsOf(data.current),
     plan.previous.slots,
-    data.previous,
+    previousOf(data.previous),
     unit,
   )
   const kwhSeries =
     unit === 'nok'
       ? buildUsageSeries(
           plan.current.slots,
-          data.current,
+          rowsOf(data.current),
           plan.previous.slots,
-          data.previous,
+          previousOf(data.previous),
           'kwh',
         )
       : series
@@ -257,6 +281,17 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
               <p className="text-base font-semibold text-foreground">Cost needs prices</p>
               Prices are not available yet. Switch to kWh to see your usage.
             </>
+          ) : car ? (
+            plan.offset === 0 ? (
+              <>
+                <p className="text-base font-semibold text-foreground">No charging yet</p>
+                The car&apos;s charging shows here about 15 minutes after a charge ends.
+              </>
+            ) : (
+              <p className="text-base font-semibold text-foreground">
+                No charging in {plan.current.title}
+              </p>
+            )
           ) : plan.offset === 0 ? (
             <>
               <p className="text-base font-semibold text-foreground">Nothing to chart yet</p>
@@ -335,7 +370,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
 
         <div
           role="group"
-          aria-label={`${unit === 'kwh' ? 'Energy use' : 'Cost'}, ${plan.current.title} compared with ${plan.previous.title}. Use the arrow keys to move between points.`}
+          aria-label={`${car ? 'Car charging' : unit === 'kwh' ? 'Energy use' : 'Cost'}, ${plan.current.title}${car && period === 'day' ? '' : ` compared with ${plan.previous.title}`}. Use the arrow keys to move between points.`}
           tabIndex={0}
           className="mt-3 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           onKeyDown={(event) => {
@@ -427,7 +462,7 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                   ) : (
                     <Bar
                       dataKey="current"
-                      fill="var(--usage)"
+                      fill={main}
                       radius={[4, 4, 2, 2]}
                       isAnimationActive={false}
                     >
@@ -482,13 +517,13 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
                   <Area
                     dataKey="current"
                     type="monotone"
-                    stroke="var(--usage)"
+                    stroke={main}
                     strokeWidth={2.5}
-                    fill="var(--usage)"
+                    fill={main}
                     fillOpacity={0.14}
                     dot={isolatedDot(
                       rows.map((row) => row.current),
-                      'var(--usage)',
+                      main,
                     )}
                     isAnimationActive={false}
                   />
@@ -502,7 +537,15 @@ export function UsageChart({ locationId, large = false }: { locationId: string; 
           <li className="flex items-center gap-1.5">
             <span
               aria-hidden="true"
-              className={bars ? 'size-2.5 rounded-sm bg-usage' : 'h-0.5 w-4 bg-usage'}
+              className={
+                car
+                  ? bars
+                    ? 'size-2.5 rounded-sm bg-ev-charger'
+                    : 'h-0.5 w-4 bg-ev-charger'
+                  : bars
+                    ? 'size-2.5 rounded-sm bg-usage'
+                    : 'h-0.5 w-4 bg-usage'
+              }
             />
             {plan.current.title}
           </li>

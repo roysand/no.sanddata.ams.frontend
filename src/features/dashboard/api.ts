@@ -9,7 +9,6 @@ import type {
   EvChargerBillPart,
   EvChargerLiveState,
   EvChargerLiveStatus,
-  EvChargerSession,
   HotWater,
   HotWaterPeriod,
   HourlyCostItem,
@@ -167,11 +166,6 @@ export function getMonthlyBill(locationId: string, month: string): Promise<Month
 /** The water heater's state, read from OSO now. 404 when the location has no heater (or is not visible). */
 export function getWaterHeaterState(locationId: string) {
   return api.get<WaterHeaterState>(`/api/locations/${locationId}/water-heater`)
-}
-
-/** The completed charging sessions of the last 30 days (the API's default range), newest first (API spec 016). */
-export function getEvChargerSessions(locationId: string) {
-  return api.get<{ items: EvChargerSession[] }>(`/api/locations/${locationId}/ev-charger/sessions`)
 }
 
 const LIVE_STATUSES: readonly EvChargerLiveStatus[] = [

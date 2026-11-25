@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LIVE_STATES, liveState } from '../../test/evCharger'
-import { carMonth, formatDuration, liveView, sessionTimes } from './evCharger'
-import type { DailyCostItem, EvChargerDayPart, EvChargerSession } from './types'
+import { carMonth, liveView } from './evCharger'
+import type { DailyCostItem, EvChargerDayPart } from './types'
 
 const part = (kwh: number, hoursWithoutMeterReading = 0): EvChargerDayPart => ({
   kwh,
@@ -67,47 +67,6 @@ describe('carMonth', () => {
       const { today, month } = carMonth(items, TODAY)
       expect(month ?? 0).toBeGreaterThanOrEqual(today ?? 0)
     }
-  })
-})
-
-const session = (start: string, end: string): EvChargerSession => ({
-  start,
-  end,
-  kwh: 23.4,
-  estimated: false,
-})
-
-describe('sessionTimes', () => {
-  it('gives the Oslo date and the start and end times of a session within one day', () => {
-    expect(sessionTimes(session('2026-11-20T16:02:11Z', '2026-11-20T20:40:03Z'))).toEqual({
-      date: 'Fri 20.11',
-      from: '17:02',
-      to: '21:40',
-      minutes: 278,
-    })
-  })
-
-  it('gives the end date as well when a session ends on a later Oslo day', () => {
-    const times = sessionTimes(session('2026-11-20T22:10:00Z', '2026-11-21T01:30:00Z'))
-    expect(times.date).toBe('Fri 20.11')
-    expect(times.from).toBe('23:10')
-    expect(times.to).toBe('21.11 02:30')
-  })
-
-  it('uses Oslo time across the October clock change', () => {
-    // 25 October 2026: clocks go back from 03:00 CEST to 02:00 CET.
-    const times = sessionTimes(session('2026-10-24T23:30:00Z', '2026-10-25T02:30:00Z'))
-    expect(times.from).toBe('01:30')
-    expect(times.to).toBe('03:30')
-    expect(times.minutes).toBe(180)
-  })
-})
-
-describe('formatDuration', () => {
-  it('gives minutes, hours and minutes, or whole hours', () => {
-    expect(formatDuration(45)).toBe('45 min')
-    expect(formatDuration(278)).toBe('4 h 38 min')
-    expect(formatDuration(720)).toBe('12 h')
   })
 })
 

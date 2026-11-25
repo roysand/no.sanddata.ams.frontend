@@ -1,17 +1,17 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckIcon } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { SELF_SERVICE_ENABLED, useSelectedLocation, type LocationSummary } from '../locations'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { carMonth, formatDuration, sessionTimes } from './evCharger'
+import { carMonth } from './evCharger'
 import { EvChargerStateCard } from './EvChargerStateCard'
 import { formatKwh, formatOsloDate, osloToday } from './format'
-import { useCarMonth, useEvChargerInclude, useEvChargerSessions } from './hooks'
+import { useCarMonth, useEvChargerInclude } from './hooks'
+import { UsageChart } from './UsageChart'
 
 const NO_CHARGING = 'No charging yet'
 
@@ -19,8 +19,9 @@ const NO_CHARGING = 'No charging yet'
 const SAVED_SHOWN_MS = 4000
 
 /**
- * The Car tab (spec 013): the charger's state right now (spec 017), what the selected location's car charger charged today and this month, in kWh only, and the
- * completed sessions of the last 30 days. Shown in the tab bar only for a location with a charger.
+ * The Car tab (spec 013): the charger's state right now (spec 017), what the selected location's car charger charged
+ * today and this month, in kWh only, and its charging over time in the usage chart (spec 019). Shown in the tab bar
+ * only for a location with a charger.
  */
 export function EvChargerPage() {
   const { all, selected, isLoading, error } = useSelectedLocation()
@@ -59,7 +60,7 @@ export function EvChargerPage() {
     <div className="space-y-4">
       <EvChargerStateCard locationId={selected.id} />
       <ChargingCard location={selected} />
-      <SessionsCard locationId={selected.id} />
+      <UsageChart locationId={selected.id} measure="car" />
     </div>
   )
 }
@@ -109,61 +110,12 @@ function ChargingCard({ location }: { location: LocationSummary }) {
             )
           )}
           <p className="text-xs text-muted-foreground">
-            Finished charges show here about 15 minutes after they end. The charger&apos;s state
-            right now is at the top.
+            A finished charge shows here and in the chart below about 15 minutes after it ends. The
+            charger&apos;s state right now is at the top.
           </p>
         </CardContent>
       </Card>
     </section>
-  )
-}
-
-function SessionsCard({ locationId }: { locationId: string }) {
-  const sessions = useEvChargerSessions(locationId)
-  const items = sessions.data?.items ?? []
-
-  let body: ReactNode
-  if (sessions.isLoading) body = <Skeleton className="h-24 w-full" aria-label="Loading sessions" />
-  else if (sessions.error)
-    body = <p className="text-sm text-destructive">{sessions.error.message}</p>
-  else if (items.length === 0)
-    body = (
-      <p className="text-sm text-muted-foreground">
-        No completed charging sessions in the last 30 days.
-      </p>
-    )
-  else
-    body = (
-      <ul aria-label="Charging sessions" className="divide-y text-sm">
-        {items.map((session) => {
-          const times = sessionTimes(session)
-          return (
-            <li key={session.start} className="flex items-start justify-between gap-3 py-2">
-              <span className="space-x-2">
-                <span>
-                  {times.date} · {times.from}–{times.to}
-                </span>
-                {session.estimated && <Badge variant="secondary">estimated</Badge>}
-              </span>
-              <span className="text-right tabular-nums">
-                <span className="block font-semibold">{formatKwh(session.kwh)}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {formatDuration(times.minutes)}
-                </span>
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-    )
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base font-extrabold">Sessions, last 30 days</CardTitle>
-      </CardHeader>
-      <CardContent>{body}</CardContent>
-    </Card>
   )
 }
 
