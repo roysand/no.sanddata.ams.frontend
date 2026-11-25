@@ -35,14 +35,15 @@ faint comparison. Switch to Month: a bar per day, the month's total equal to "Th
 
 1. **Given** the Car tab, **When** it is shown, **Then** a "Car usage" tile replaces "Sessions, last 30 days", below
    the "Charging" card.
-2. **Given** Day, **When** shown, **Then** the car's kWh per hour today so far are drawn against yesterday's, as on
-   Now, with "Today so far" and the total in kWh.
+2. **Given** Day, **When** shown, **Then** the car's kWh per hour today so far are drawn, with "Today so far" and the
+   total in kWh, and without yesterday: the car isn't charged every day, so a day has no comparison (Roy,
+   2026-11-25).
 3. **Given** Week, Month or Year, **When** shown, **Then** this period and the one before are drawn as bars side by
    side, each with its value, as on Now.
-4. **Given** a previous period with charging, **When** shown, **Then** the change in per cent against it is shown as
-   on Now ("▲ 12% vs yesterday").
+4. **Given** a week, month or year with charging in the period before, **When** shown, **Then** the change in per
+   cent against it is shown as on Now ("▲ 12% vs last week").
 5. **Given** the arrows, **When** pressed, **Then** the chart steps back and forward one period, never past now, and
-   stops where neither the period nor the one before has any charging, as on Now.
+   stops only where the meter has no readings, so days without charging don't block the way back.
 6. **Given** a point is tapped or chosen with the arrow keys, **When** shown, **Then** it gives that hour, day or
    month's kWh and the period before's, as on Now.
 7. **Given** the car counted with the house or not, **When** charted, **Then** the car's kWh are the same: the chart

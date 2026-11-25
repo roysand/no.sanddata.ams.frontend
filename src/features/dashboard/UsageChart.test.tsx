@@ -513,7 +513,7 @@ describe('UsageChart car charging (spec 013)', () => {
       await screen.findByText(/Today so far/)
 
       expect(screen.queryByRole('button', { name: 'NOK' })).not.toBeInTheDocument()
-      const chart = screen.getByRole('group', { name: /^Car charging, Today compared with/ })
+      const chart = screen.getByRole('group', { name: /^Car charging, Today\. Use the arrow keys/ })
       chart.focus()
       await user.keyboard('{ArrowRight}')
       expect(await screen.findByText(/3 kWh/, { selector: 'p[aria-live] b' })).toBeInTheDocument()
@@ -527,7 +527,8 @@ describe('UsageChart car charging (spec 013)', () => {
 
       expect(await screen.findByText('No charging yet')).toBeInTheDocument()
       expect(screen.queryByRole('group', { name: /Car charging/ })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Previous day' })).toBeDisabled()
+      // The meter has readings, so a day without charging doesn't block the way back.
+      expect(screen.getByRole('button', { name: 'Previous day' })).toBeEnabled()
       await user.click(screen.getByRole('button', { name: 'Week' }))
       expect(await screen.findByText('No charging yet')).toBeInTheDocument()
     })
@@ -541,6 +542,55 @@ describe('UsageChart car charging (spec 013)', () => {
       await user.click(screen.getByRole('button', { name: 'Previous day' }))
 
       expect(await screen.findByText('No charging in Yesterday')).toBeInTheDocument()
+    })
+
+    it('does not compare a day with yesterday: the car is not charged every day', async () => {
+      useCarApi(true)
+      renderWithQuery(<UsageChart locationId="l1" measure="car" />)
+      await screen.findByText(/Today so far/)
+
+      expect(screen.queryByText('Yesterday', { selector: 'li' })).not.toBeInTheDocument()
+      expect(screen.queryByText(/vs yesterday/)).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('group', { name: /^Car charging, Today\. Use the arrow keys/ }),
+      ).toBeInTheDocument()
+    })
+
+    it('compares a week with the week before', async () => {
+      const weekPlan = periodPlan('week', new Date())
+      server.use(
+        http.get('*/api/electricity-cost/hourly', () =>
+          HttpResponse.json({ items: [], page: 1, pageSize: 500, totalCount: 0 }),
+        ),
+        http.get('*/api/electricity-cost/daily', ({ request }) => {
+          const from = new URL(request.url).searchParams.get('from')
+          const isCurrent = from === weekPlan.current.fromDate
+          return HttpResponse.json({
+            items: (isCurrent ? weekPlan.current : weekPlan.previous).slots.map((slot) => ({
+              date: slot.key,
+              consumptionKwh: 10,
+              totalKwh: 10,
+              pricingModel: 'Spot',
+              actual: { cost: 10 },
+              comparison: null,
+              waterHeater: null,
+              evCharger: {
+                kwh: isCurrent ? 2 : 4,
+                estimated: false,
+                included: false,
+                hoursWithoutMeterReading: 0,
+              },
+            })),
+          })
+        }),
+      )
+      localStorage.setItem('ams.car-chart', JSON.stringify({ period: 'week', unit: 'kwh' }))
+      renderWithQuery(<UsageChart locationId="l1" measure="car" />)
+
+      expect(
+        await screen.findByText(weekPlan.previous.title, { selector: 'li' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/▼ 50% vs/)).toBeInTheDocument()
     })
 
     it("remembers its period apart from Now's chart", async () => {

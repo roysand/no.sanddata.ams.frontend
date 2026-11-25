@@ -128,6 +128,8 @@ export function UsageChart({
   // The car is never priced per hour or day: its chart is in kWh only.
   const unit: Unit = car ? 'kwh' : prefs.unit
   const rowsOf = (rows: UsageRow[]) => (car ? carUsageRows(rows) : rows)
+  // The car isn't charged every day, so its day isn't compared with yesterday; its week, month and year are (spec 019).
+  const previousOf = (rows: UsageRow[]) => (car && period === 'day' ? [] : rowsOf(rows))
   const main = car ? 'var(--ev-charger)' : 'var(--usage)'
   const { data, isLoading, isPlaceholderData, error } = usePeriodData(locationId, period, offset)
   // The title of the period asked for, shown at once while its data loads.
@@ -177,15 +179,16 @@ export function UsageChart({
     </div>
   )
 
-  // Stepping back stops at a period that, like the one before it, has no readings: the app does not know when the
-  // first reading was, and a single empty period (the meter was off) should not block the way further back.
+  // Stepping back stops at a period that, like the one before it, has no meter readings, for the car too, which often
+  // has days without charging. The app does not know when the first reading was, and a single empty period (the meter
+  // was off) should not block the way further back.
   const shownSeries =
     data && !isPlaceholderData
       ? buildUsageSeries(
           data.plan.current.slots,
-          rowsOf(data.current),
+          data.current,
           data.plan.previous.slots,
-          rowsOf(data.previous),
+          data.previous,
           'kwh',
         )
       : null
@@ -254,7 +257,7 @@ export function UsageChart({
     plan.current.slots,
     rowsOf(data.current),
     plan.previous.slots,
-    rowsOf(data.previous),
+    previousOf(data.previous),
     unit,
   )
   const kwhSeries =
@@ -263,7 +266,7 @@ export function UsageChart({
           plan.current.slots,
           rowsOf(data.current),
           plan.previous.slots,
-          rowsOf(data.previous),
+          previousOf(data.previous),
           'kwh',
         )
       : series
@@ -367,7 +370,7 @@ export function UsageChart({
 
         <div
           role="group"
-          aria-label={`${car ? 'Car charging' : unit === 'kwh' ? 'Energy use' : 'Cost'}, ${plan.current.title} compared with ${plan.previous.title}. Use the arrow keys to move between points.`}
+          aria-label={`${car ? 'Car charging' : unit === 'kwh' ? 'Energy use' : 'Cost'}, ${plan.current.title}${car && period === 'day' ? '' : ` compared with ${plan.previous.title}`}. Use the arrow keys to move between points.`}
           tabIndex={0}
           className="mt-3 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           onKeyDown={(event) => {
