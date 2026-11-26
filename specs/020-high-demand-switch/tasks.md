@@ -38,5 +38,5 @@
 
 - [x] T010 `npm run lint`, `npm test`, `npm run build` pass; `prettier --check` on the changed files only
 - [x] T011 Look at the card with the switch at 375 px in light and dark mode, off and on (headless screenshot; harness not committed; the failure texts are covered by tests)
-- [ ] T012 Remove `specs/_backlog/oso-high-demand-frontend.md` from the API repository in its own small PR (a separate worktree)
+- [x] T012 Remove `specs/_backlog/oso-high-demand-frontend.md` from the API repository in its own small PR (a separate worktree): API PR #81
 - [ ] T013 Run quickstart.md's checks by hand against production (Roy)
