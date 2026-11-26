@@ -25,6 +25,7 @@ import {
   getWaterHeaterState,
   getEvChargerState,
   getHotWater,
+  setHighDemand,
   setEvChargerInclude,
 } from './api'
 import { osloDayStartUtc, osloMonth, osloToday, sameHourYesterday } from './format'
@@ -417,6 +418,29 @@ export function useEvChargerInclude(locationId: string) {
           queryClient.invalidateQueries({ queryKey }),
         ),
       ),
+  })
+}
+
+/**
+ * Turns High Demand on or off (spec 020, research R2). The answer's state goes straight into the heater's cached state
+ * for that location, so the tab shows it at once; without one, or when the outcome is unknown (503), the state is read
+ * again. Never retried.
+ */
+export function useHighDemand(locationId: string) {
+  const queryClient = useQueryClient()
+  const stateKey = ['water-heater', 'state', locationId]
+  return useMutation({
+    mutationFn: (on: boolean) => setHighDemand(locationId, on),
+    retry: 0,
+    onSuccess: (answer) => {
+      if (answer.state) queryClient.setQueryData(stateKey, answer.state)
+      else return queryClient.invalidateQueries({ queryKey: stateKey })
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 503) {
+        return queryClient.invalidateQueries({ queryKey: stateKey })
+      }
+    },
   })
 }
 

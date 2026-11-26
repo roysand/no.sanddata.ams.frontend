@@ -1,9 +1,11 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test/server'
 import { renderWithQuery } from '../../test/render'
 import { plain } from '../../test/text'
 import { formatClock } from './format'
+import { AuthContext, type AuthContextValue } from '../auth/context'
 import { WaterHeaterCard } from './WaterHeaterCard'
 import type { WaterHeaterState } from './types'
 
@@ -114,8 +116,9 @@ describe('WaterHeaterCard', () => {
     const end = new Date(Date.now() + 60_000).toISOString()
     show(state({ specialMode: { mode: 'Supercharge', start: STATE.readingTime, end } }))
 
-    expect(await screen.findByText('Supercharge')).toBeInTheDocument()
-    expect(cardText()).toMatch(new RegExp(`until (today|tomorrow) ${formatClock(end)}`))
+    // OSO's "Supercharge" is called High Demand, as in its app and on the switch (spec 020).
+    expect(await screen.findByText('High Demand')).toBeInTheDocument()
+    expect(cardText()).toMatch(new RegExp(`High Demand until (today|tomorrow) ${formatClock(end)}`))
   })
 
   it('shows holiday mode, but not the blue battery profile', async () => {
@@ -177,5 +180,196 @@ describe('WaterHeaterCard', () => {
     // 94 s + 30 s: the clock ticks before the next fetch (at 60 s) arrives.
     await act(() => vi.advanceTimersByTimeAsync(30_000))
     expect(cardText()).toContain('updated 2 minutes ago')
+  })
+})
+
+describe('WaterHeaterCard: High Demand (spec 020)', () => {
+  const SWITCH_PATH = '*/api/admin/locations/:id/water-heater/high-demand'
+  const ON_UNTIL = '2026-11-27T05:21:13Z'
+  const on = () =>
+    state({
+      isHeating: true,
+      specialMode: { mode: 'Supercharge', start: '2026-11-26T05:21:13Z', end: ON_UNTIL },
+    })
+
+  const authAs = (roles: string[]): AuthContextValue => ({
+    isAuthenticated: true,
+    isLoading: false,
+    email: 'someone@sanddata.no',
+    roles,
+    login: async () => {},
+    logout: () => {},
+  })
+
+  /** The heater's state (asked for counted), as the given roles. */
+  function showAs(roles: string[], body: WaterHeaterState = state()) {
+    const reads = { count: 0 }
+    server.use(
+      http.get(PATH, () => {
+        reads.count++
+        return HttpResponse.json(body)
+      }),
+    )
+    renderWithQuery(
+      <AuthContext.Provider value={authAs(roles)}>
+        <WaterHeaterCard locationId="loc-1" />
+      </AuthContext.Provider>,
+    )
+    return reads
+  }
+
+  /** Answers the switch with `reply`, and records the methods asked for. */
+  function serveSwitch(reply: (method: string) => Response) {
+    const asked: string[] = []
+    server.use(
+      http.all(SWITCH_PATH, ({ request }) => {
+        asked.push(request.method)
+        return reply(request.method)
+      }),
+    )
+    return asked
+  }
+
+  const highDemand = () => screen.findByRole('switch', { name: 'High Demand' })
+
+  it('is not shown to a user who is not an Admin, who still sees the mode', async () => {
+    showAs(['User'], on())
+
+    expect(await screen.findByText('High Demand')).toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  })
+
+  it('shows an Admin the switch, off or on as the heater reports, with its 24 hours', async () => {
+    showAs(['Admin'])
+
+    expect(await highDemand()).not.toBeChecked()
+    expect(screen.getByText('Heats the tank extra for 24 hours.')).toBeInTheDocument()
+  })
+
+  it('turns High Demand on and shows the answer at once', async () => {
+    const user = userEvent.setup()
+    showAs(['Admin'])
+    const asked = serveSwitch(() =>
+      HttpResponse.json({ locationId: 'loc-1', highDemand: true, state: on() }),
+    )
+
+    await user.click(await highDemand())
+
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'High Demand' })).toBeChecked())
+    expect(asked).toEqual(['PUT'])
+    expect(cardText()).toMatch(/High Demand until/)
+  })
+
+  it('turns High Demand off with DELETE', async () => {
+    const user = userEvent.setup()
+    showAs(['Admin'], on())
+    const asked = serveSwitch(() =>
+      HttpResponse.json({ locationId: 'loc-1', highDemand: false, state: state() }),
+    )
+    const toggle = await highDemand()
+    expect(toggle).toBeChecked()
+
+    await user.click(toggle)
+
+    await waitFor(() => expect(toggle).not.toBeChecked())
+    expect(asked).toEqual(['DELETE'])
+  })
+
+  it('is disabled and says it is switching while the heater answers', async () => {
+    const user = userEvent.setup()
+    showAs(['Admin'])
+    let release = () => {}
+    const answered = new Promise<void>((resolve) => (release = resolve))
+    server.use(
+      http.all(SWITCH_PATH, async () => {
+        await answered
+        return HttpResponse.json({ locationId: 'loc-1', highDemand: true, state: on() })
+      }),
+    )
+
+    await user.click(await highDemand())
+
+    expect(await screen.findByText('Switching…')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'High Demand' })).toBeDisabled()
+    release()
+    await waitFor(() => expect(screen.queryByText('Switching…')).not.toBeInTheDocument())
+  })
+
+  it('reads the state again when the answer has none', async () => {
+    const user = userEvent.setup()
+    const reads = showAs(['Admin'])
+    serveSwitch(() => HttpResponse.json({ locationId: 'loc-1', highDemand: true, state: null }))
+    await highDemand()
+    const before = reads.count
+
+    await user.click(screen.getByRole('switch', { name: 'High Demand' }))
+
+    await waitFor(() => expect(reads.count).toBeGreaterThan(before))
+    expect(screen.queryByText(/Couldn't|failed/)).not.toBeInTheDocument()
+  })
+
+  it("says the outcome is unknown when the heater can't be reached, reads the state, and never retries", async () => {
+    const user = userEvent.setup()
+    const reads = showAs(['Admin'])
+    const asked = serveSwitch(() =>
+      HttpResponse.json(
+        { code: 'WaterHeater.Unavailable', message: 'OSO is down.' },
+        { status: 503 },
+      ),
+    )
+    await highDemand()
+    const before = reads.count
+
+    await user.click(screen.getByRole('switch', { name: 'High Demand' }))
+
+    expect(
+      await screen.findByText(
+        "Couldn't reach the heater. It may or may not have switched; the state below is read again.",
+      ),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(reads.count).toBeGreaterThan(before))
+    expect(asked).toEqual(['PUT'])
+    expect(screen.getByRole('switch', { name: 'High Demand' })).toBeEnabled()
+  })
+
+  it('disables the switch when OSO no longer offers High Demand', async () => {
+    const user = userEvent.setup()
+    showAs(['Admin'])
+    serveSwitch(() =>
+      HttpResponse.json(
+        { code: 'WaterHeater.HighDemandNotOffered', message: 'Not offered.' },
+        { status: 502 },
+      ),
+    )
+
+    await user.click(await highDemand())
+
+    expect(await screen.findByText('OSO no longer offers High Demand.')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'High Demand' })).toBeDisabled()
+  })
+
+  it('asks for the heater to be reconnected when its key is rejected, and shows other messages as sent', async () => {
+    const user = userEvent.setup()
+    showAs(['Admin'])
+    serveSwitch(() =>
+      HttpResponse.json({ code: 'WaterHeater.Rejected', message: 'Rejected.' }, { status: 502 }),
+    )
+
+    await user.click(await highDemand())
+    const region = screen.getByRole('region', { name: 'Water heater' })
+    expect(
+      await within(region).findByText(
+        "The heater's OSO key must be reconnected under Admin → Locations.",
+      ),
+    ).toBeInTheDocument()
+
+    serveSwitch(() =>
+      HttpResponse.json(
+        { code: 'Something.Else', message: 'Something went wrong.' },
+        { status: 500 },
+      ),
+    )
+    await user.click(screen.getByRole('switch', { name: 'High Demand' }))
+    expect(await within(region).findByText('Something went wrong.')).toBeInTheDocument()
   })
 })
