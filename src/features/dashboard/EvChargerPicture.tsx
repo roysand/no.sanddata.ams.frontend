@@ -7,7 +7,7 @@ const CABLE =
 /**
  * The car charger drawn: a car seen from the front, the charger post beside it and the cable between them (spec 017,
  * US3; agreed with Roy in picture-preview.html). While charging, a green line runs along the cable from the charger to
- * the car, over and over. The app's own drawing: no car maker's shape, logo or name.
+ * the car, over and over. The app's own drawing, after Roy's next car (a Volvo EX60), with no maker's emblem or name.
  */
 export function EvChargerPicture({
   mode,
@@ -29,69 +29,108 @@ export function EvChargerPicture({
       data-mode={mode}
       className={`${className} ${mode === 'faded' ? 'opacity-45' : ''}`}
     >
+      {/*
+        The car, after Roy's photo of his next car, a Volvo EX60, seen from the front: dark grey paint, black mirrors,
+        a smooth front with no grille, slim light bars high at the corners with a short upright end, small stacked
+        lights in the lower corners, a wide intake split into sections and a thin silver strip at the bottom. No
+        maker's emblem or name.
+      */}
       <g className={mode === 'noCar' ? 'opacity-25' : undefined}>
         {/* wheels */}
         <rect
-          x="62"
-          y="148"
-          width="34"
+          x="60"
+          y="150"
+          width="36"
           height="40"
-          rx="7"
-          className="fill-gray-800 dark:fill-gray-950"
+          rx="8"
+          className="fill-gray-900 dark:fill-black"
         />
         <rect
           x="224"
-          y="148"
-          width="34"
+          y="150"
+          width="36"
           height="40"
-          rx="7"
-          className="fill-gray-800 dark:fill-gray-950"
+          rx="8"
+          className="fill-gray-900 dark:fill-black"
         />
-        {/* roof, windscreen and mirrors */}
+        {/* roof and pillars, windscreen, black mirrors */}
         <path
-          d="M84 108 L104 54 Q108 44 120 44 L200 44 Q212 44 216 54 L236 108 Z"
-          className="fill-slate-500 dark:fill-slate-600"
-        />
-        <path
-          d="M95 102 L111 60 Q114 53 122 53 L198 53 Q206 53 209 60 L225 102 Z"
-          className="fill-slate-800 dark:fill-slate-950"
+          d="M86 104 L104 50 Q108 40 120 40 L200 40 Q212 40 216 50 L234 104 Z"
+          className="fill-zinc-700 dark:fill-zinc-600"
         />
         <path
-          d="M68 86 Q72 78 86 82 L88 96 Q74 98 68 92 Z"
-          className="fill-slate-500 dark:fill-slate-600"
+          d="M97 99 L112 57 Q115 49 123 49 L197 49 Q205 49 208 57 L223 99 Z"
+          className="fill-slate-900 dark:fill-slate-950"
         />
         <path
-          d="M252 86 Q248 78 234 82 L232 96 Q246 98 252 92 Z"
-          className="fill-slate-500 dark:fill-slate-600"
-        />
-        {/* body */}
-        <path
-          d="M54 150 Q50 118 74 104 L246 104 Q270 118 266 150 L266 164 Q266 172 258 172 L62 172 Q54 172 54 164 Z"
-          className="fill-slate-400 dark:fill-slate-500"
-        />
-        {/* headlights */}
-        <path d="M66 120 Q90 118 114 126 L110 132 Q86 130 68 128 Z" className="fill-slate-50" />
-        <path d="M254 120 Q230 118 206 126 L210 132 Q234 130 252 128 Z" className="fill-slate-50" />
-        {/* grille and bumper */}
-        <rect
-          x="122"
-          y="118"
-          width="76"
-          height="36"
-          rx="12"
-          strokeWidth="2"
-          className="fill-slate-800 stroke-slate-200 dark:fill-slate-950"
+          d="M66 84 Q70 76 86 80 L88 94 Q72 96 66 90 Z"
+          className="fill-zinc-900 dark:fill-black"
         />
         <path
-          d="M130 128 H190 M130 136 H190 M130 144 H190"
-          strokeWidth="2"
-          className="stroke-slate-500 dark:stroke-slate-600"
+          d="M254 84 Q250 76 234 80 L232 94 Q248 96 254 90 Z"
+          className="fill-zinc-900 dark:fill-black"
+        />
+        {/* body: dark grey, with the bonnet's soft edge */}
+        <path
+          d="M52 152 Q50 116 76 102 L244 102 Q270 116 268 152 L268 166 Q268 174 260 174 L60 174 Q52 174 52 166 Z"
+          className="fill-zinc-600 dark:fill-zinc-500"
         />
         <path
-          d="M78 162 H242"
-          strokeWidth="3"
+          d="M84 110 Q160 100 236 110"
+          fill="none"
+          strokeWidth="1.5"
+          className="stroke-zinc-400 opacity-50"
+        />
+        {/* slim light bars high at the corners, each with a short upright end at the outside */}
+        <path
+          d="M60 113 L112 118 L111 124 L62 124 Q58 118 60 113 Z"
+          className="fill-zinc-900 dark:fill-black"
+        />
+        <path
+          d="M260 113 L208 118 L209 124 L258 124 Q262 118 260 113 Z"
+          className="fill-zinc-900 dark:fill-black"
+        />
+        <path
+          d="M70 120.5 H108 M66 115 V123"
+          fill="none"
+          strokeWidth="2.5"
           strokeLinecap="round"
-          className="stroke-slate-200 opacity-70"
+          className="stroke-white"
+        />
+        <path
+          d="M250 120.5 H212 M254 115 V123"
+          fill="none"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          className="stroke-white"
+        />
+        {/* the thin light strip across the smooth front */}
+        <path
+          d="M100 140 H220"
+          strokeWidth="2"
+          strokeLinecap="round"
+          className="stroke-zinc-300 opacity-80"
+        />
+        {/* small stacked lights in the lower corners */}
+        <path
+          d="M64 133 H72 M64 138 H72 M64 143 H72 M248 133 H256 M248 138 H256 M248 143 H256"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          className="stroke-white opacity-80"
+        />
+        {/* the wide intake, split into sections */}
+        <path d="M84 146 L236 146 L228 162 L92 162 Z" className="fill-zinc-900 dark:fill-black" />
+        <path
+          d="M122 148 V160 M160 148 V160 M198 148 V160"
+          strokeWidth="1.5"
+          className="stroke-zinc-600"
+        />
+        {/* the thin silver strip at the bottom */}
+        <path
+          d="M90 168 H230"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          className="stroke-zinc-300"
         />
       </g>
 
