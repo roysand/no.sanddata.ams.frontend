@@ -9,6 +9,7 @@ import type {
   EvChargerBillPart,
   EvChargerLiveState,
   EvChargerLiveStatus,
+  HighDemandAnswer,
   HotWater,
   HotWaterPeriod,
   HourlyCostItem,
@@ -215,6 +216,15 @@ export function getHotWater(locationId: string, period: HotWaterPeriod, date: st
   return api.get<HotWater>(
     `/api/locations/${locationId}/water-heater/hot-water?${query({ period, date })}`,
   )
+}
+
+/**
+ * Turns the water heater's High Demand on (24 hours) or off (API spec 022, Admin only). Never retried: a second "on"
+ * could restart the 24 hours.
+ */
+export function setHighDemand(locationId: string, on: boolean) {
+  const path = `/api/admin/locations/${locationId}/water-heater/high-demand`
+  return on ? api.put<HighDemandAnswer>(path) : api.delete<HighDemandAnswer>(path)
 }
 
 /** The Norgespris month of every location the caller can see that has Norgespris (API spec 018). */

@@ -472,3 +472,12 @@ export interface HotWater {
   /** One per part that starts before now, in time order. */
   items: HotWaterItem[]
 }
+
+/** The answer to turning High Demand on or off (API spec 022). */
+export interface HighDemandAnswer {
+  locationId: string
+  /** What was asked for. */
+  highDemand: boolean
+  /** The heater read just after the switch; null when that read failed (not an error: read the state again). */
+  state: WaterHeaterState | null
+}

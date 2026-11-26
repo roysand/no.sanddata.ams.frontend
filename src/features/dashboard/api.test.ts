@@ -8,6 +8,7 @@ import {
   getDailyCost,
   getEvChargerState,
   getHotWater,
+  setHighDemand,
   getHourlyCost,
   getMonthlyBill,
   getNorgesPrisStatus,
@@ -241,5 +242,28 @@ describe('getHotWater (spec 018)', () => {
     expect(asked.url?.searchParams.get('period')).toBe('week')
     expect(asked.url?.searchParams.get('date')).toBe('2026-11-23')
     expect(answer.totalLitres).toBeNull()
+  })
+})
+
+describe('setHighDemand (spec 020)', () => {
+  it('turns High Demand on with PUT and off with DELETE, without a body', async () => {
+    const asked: { method: string; body: string }[] = []
+    server.use(
+      http.all('*/api/admin/locations/l1/water-heater/high-demand', async ({ request }) => {
+        asked.push({ method: request.method, body: await request.text() })
+        return HttpResponse.json({
+          locationId: 'l1',
+          highDemand: request.method === 'PUT',
+          state: null,
+        })
+      }),
+    )
+
+    expect((await setHighDemand('l1', true)).highDemand).toBe(true)
+    expect((await setHighDemand('l1', false)).highDemand).toBe(false)
+    expect(asked).toEqual([
+      { method: 'PUT', body: '' },
+      { method: 'DELETE', body: '' },
+    ])
   })
 })

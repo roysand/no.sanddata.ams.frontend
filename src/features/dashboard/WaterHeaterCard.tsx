@@ -1,17 +1,21 @@
+import { useContext, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatAge, formatCelsius, formatKw, formatOsloDateTime } from './format'
 import { isNotFound, useNow, useWaterHeaterState } from './hooks'
 import type { WaterHeaterState } from './types'
+import { AuthContext } from '../auth/context'
 import { WaterHeaterTank } from './WaterHeaterTank'
+import { HighDemandSwitch } from './HighDemandSwitch'
 
 /** The API calls a reading stale after 15 minutes; between fetches the card counts on from the last answer. */
 const STALE_AFTER_SECONDS = 900
 
 const MODE_LABEL: Partial<Record<WaterHeaterState['specialMode']['mode'], string>> = {
   Holiday: 'Holiday',
-  Supercharge: 'Supercharge',
+  // OSO's status calls it Supercharge; its app and our switch call it High Demand (spec 020).
+  Supercharge: 'High Demand',
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
@@ -23,6 +27,9 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export function WaterHeaterCard({ locationId }: { locationId: string }) {
   const { data, error, isLoading, dataUpdatedAt } = useWaterHeaterState(locationId)
   const now = useNow(30_000)
+  // The switch is for Admins only (the API answers 403 to others). Read without `useAuth`, so the card still renders
+  // where there is no signed-in context, and then shows no switch.
+  const isAdmin = useContext(AuthContext)?.roles.includes('Admin') ?? false
 
   if (isNotFound(error)) return null
 
@@ -54,6 +61,7 @@ export function WaterHeaterCard({ locationId }: { locationId: string }) {
           <HeaterFigures
             state={data}
             ageSeconds={data.ageSeconds + Math.max(now - dataUpdatedAt, 0) / 1000}
+            control={isAdmin ? <HighDemandSwitch locationId={locationId} state={data} /> : null}
           />
         )}
       </CardContent>
@@ -61,7 +69,16 @@ export function WaterHeaterCard({ locationId }: { locationId: string }) {
   )
 }
 
-function HeaterFigures({ state, ageSeconds }: { state: WaterHeaterState; ageSeconds: number }) {
+function HeaterFigures({
+  state,
+  ageSeconds,
+  control,
+}: {
+  state: WaterHeaterState
+  ageSeconds: number
+  /** The High Demand switch, for Admins. */
+  control: ReactNode
+}) {
   const { hotWater, temperatures, specialMode } = state
   const { availableLitres40: available, maxLitres40: max } = hotWater
   const hasLitres = available !== null && max !== null && max > 0
@@ -139,6 +156,8 @@ function HeaterFigures({ state, ageSeconds }: { state: WaterHeaterState; ageSeco
       </div>
 
       <p className="text-sm font-medium">{status.join(' · ')}</p>
+
+      {control}
 
       {showMode && (
         <p className="text-sm">
